@@ -1,3 +1,8 @@
+/**
+ * Interface principal de Cliente
+ * ✅ ALINHADA COM BACKEND: ClienteResponse (schemas.py)
+ * Campos compatíveis com API FastAPI + Supabase
+ */
 export interface Cliente {
   id: string;
   nome: string;
@@ -13,17 +18,22 @@ export interface Cliente {
   cidade?: string;
   uf?: string;
   cep?: string;
-  endereco?: string;
+  endereco?: string; // Compatibilidade com versões antigas
   procedencia_id?: string;
   vendedor_id?: string;
   loja_id?: string;
-  procedencia?: string;
-  vendedor_nome?: string;
+  procedencia?: string; // Vem de JOIN no backend
+  vendedor_nome?: string; // Vem de JOIN no backend
   observacoes?: string;
   created_at: string;
   updated_at: string;
 }
 
+/**
+ * Dados de formulário para criar/editar cliente
+ * ✅ ALINHADA COM BACKEND: ClienteCreate (schemas.py)
+ * Campos obrigatórios para criação via API
+ */
 export interface ClienteFormData {
   nome: string;
   cpf_cnpj: string;
@@ -43,6 +53,11 @@ export interface ClienteFormData {
   observacoes?: string;
 }
 
+/**
+ * Filtros para busca de clientes
+ * ✅ ALINHADA COM BACKEND: FiltrosCliente (schemas.py)
+ * Suporta busca por texto, filtros por categoria e período
+ */
 export interface FiltrosCliente {
   busca?: string;
   tipo_venda?: 'NORMAL' | 'FUTURA' | '';

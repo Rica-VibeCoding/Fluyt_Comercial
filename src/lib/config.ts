@@ -36,6 +36,7 @@ export const FRONTEND_CONFIG = {
     USE_REAL_API: process.env.NEXT_PUBLIC_USE_REAL_API === 'true',
     ENABLE_LOGS: process.env.NODE_ENV === 'development',
     MOCK_FALLBACK: true, // Fallback para mocks se API falhar
+    DEBUG_API: process.env.NODE_ENV === 'development', // Logs detalhados de API
   },
   
   // Configurações de localStorage

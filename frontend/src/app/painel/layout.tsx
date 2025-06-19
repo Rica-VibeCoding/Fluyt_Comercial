@@ -23,9 +23,35 @@ const ProgressStepper = dynamic(() => import('../../components/layout/progress-s
   ssr: false,
   loading: () => (
     <div className="bg-white border-b border-gray-200">
-      <div className="max-w-6xl mx-auto px-8 py-6">
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-500">Carregando navegação...</div>
+      <div className="px-8 py-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center justify-center gap-8">
+            {/* ✨ SKELETON que imita exatamente o ProgressStepper final */}
+            {[
+              { label: 'Cliente', width: 'w-16' },
+              { label: 'Ambientes', width: 'w-20' }, 
+              { label: 'Orçamento', width: 'w-18' },
+              { label: 'Contrato', width: 'w-16' }
+            ].map((item, index) => (
+              <React.Fragment key={index}>
+                <div className="flex items-center">
+                  {/* Círculo do ícone */}
+                  <div className="w-12 h-12 rounded-full bg-gray-200 animate-pulse flex-shrink-0"></div>
+                  {/* Textos do lado */}
+                  <div className="ml-4 text-left">
+                    <div className={`h-4 bg-gray-200 rounded ${item.width} mb-1 animate-pulse`}></div>
+                    <div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div>
+                  </div>
+                </div>
+                {/* Linha conectora entre os passos */}
+                {index < 3 && (
+                  <div className="flex-1 min-w-16 max-w-24">
+                    <div className="h-0.5 bg-gray-200"></div>
+                  </div>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
         </div>
       </div>
     </div>

@@ -1,251 +1,306 @@
-# =� Integra��o Backend Fluyt Comercial - Status de Desenvolvimento
+# 📊 Integração Backend Fluyt Comercial - Status de Desenvolvimento
 
-**Data de In�cio:** 19/06/2025  
-**�ltima Atualiza��o:** 19/06/2025 02:30
+**Data de Início:** 19/06/2025  
+**Última Atualização:** 19/06/2025 02:50
 
-## <� Objetivo
+## 🎯 Objetivo
 
-Implementar API REST completa para o sistema Fluyt Comercial, integrando com o frontend Next.js j� existente e utilizando Supabase como banco de dados.
+Implementar API REST completa para o sistema Fluyt Comercial, integrando com o frontend Next.js já existente e utilizando Supabase como banco de dados.
 
-##  O que j� foi feito
+## ✅ O que já foi feito
 
-### 1. **Estrutura Base do Projeto** 
-- [x] Cria��o da estrutura de diret�rios modular
-- [x] Configura��o do ambiente virtual Python
-- [x] Instala��o de todas as depend�ncias (requirements.txt)
+### 1. **Estrutura Base do Projeto** ✅
+- [x] Criação da estrutura de diretórios modular
+- [x] Configuração do ambiente virtual Python
+- [x] Instalação de todas as dependências (requirements.txt)
 
-### 2. **Core do Sistema** 
-- [x] **config.py** - Configura��es centralizadas com Pydantic Settings
-  - Vari�veis de ambiente carregadas do .env
-  - Valida��o autom�tica de tipos
-  - Configura��es de CORS, JWT, Supabase
+### 2. **Core do Sistema** ✅
+- [x] **config.py** - Configurações centralizadas com Pydantic Settings
+  - Variáveis de ambiente carregadas do .env
+  - Validação automática de tipos
+  - Configurações de CORS, JWT, Supabase
   
-- [x] **database.py** - Conex�o com Supabase
-  - Cliente singleton para conex�o
+- [x] **database.py** - Conexão com Supabase
+  - Cliente singleton para conexão
   - Suporte para cliente admin (service key)
   - Health check funcional
-  - Utilit�rios para queries comuns
+  - Utilitários para queries comuns
   
-- [x] **auth.py** - Sistema de autentica��o JWT
-  - Verifica��o de tokens
-  - Extra��o de usu�rio atual
-  - Decorators para n�veis de permiss�o
-  - Integra��o com Supabase Auth
+- [x] **auth.py** - Sistema de autenticação JWT
+  - Verificação de tokens
+  - Extração de usuário atual
+  - Decorators para níveis de permissão
+  - Integração com Supabase Auth
   
 - [x] **dependencies.py** - Dependencies compartilhadas
-  - Pagina��o padronizada
-  - Ordena��o e busca
+  - Paginação padronizada
+  - Ordenação e busca
   - Query builder helper
   - Response models comuns
   
-- [x] **exceptions.py** - Exce��es customizadas
-  - Hierarquia de exce��es do sistema
-  - Handlers para erros espec�ficos
-  - Valida��es padronizadas
+- [x] **exceptions.py** - Exceções customizadas
+  - Hierarquia de exceções do sistema
+  - Handlers para erros específicos
+  - Validações padronizadas
 
-### 3. **API Principal (main.py)** 
-- [x] Configura��o do FastAPI
+### 3. **API Principal (main.py)** ✅
+- [x] Configuração do FastAPI
 - [x] Middleware de CORS configurado
-- [x] Middleware de logging e m�tricas
+- [x] Middleware de logging e métricas
 - [x] Exception handlers globais
-- [x] Documenta��o autom�tica em `/api/v1/docs`
+- [x] Documentação automática em `/api/v1/docs`
 - [x] Health check endpoint funcional
 - [x] Servidor rodando em http://localhost:8000
 
-### 4. **M�dulo de Autentica��o** 
+### 4. **Módulo de Autenticação** ✅
 - [x] **schemas.py** - Modelos Pydantic para request/response
-- [x] **services.py** - L�gica de neg�cio de autentica��o
+- [x] **services.py** - Lógica de negócio de autenticação
 - [x] **controller.py** - Endpoints REST implementados:
   - `POST /api/v1/auth/login` - Login com email/senha
   - `POST /api/v1/auth/refresh` - Renovar token
   - `POST /api/v1/auth/logout` - Logout
-  - `GET /api/v1/auth/me` - Dados do usu�rio atual
-  - `GET /api/v1/auth/verify` - Verificar token v�lido
-  - `GET /api/v1/auth/test-connection` - Teste de conex�o (dev only)
+  - `GET /api/v1/auth/me` - Dados do usuário atual
+  - `GET /api/v1/auth/verify` - Verificar token válido
+  - `GET /api/v1/auth/test-connection` - Teste de conexão (dev only)
 
-### 5. **Problemas Resolvidos** 
-- [x] Conflito de vers�es gotrue/supabase-py resolvido
-  - Downgrade gotrue 2.9.1 � 2.8.1
-- [x] Configura��es extras no .env tratadas
+### 5. **Módulo de Clientes** ✅ **NOVO!**
+- [x] **schemas.py** - Modelos completos seguindo estrutura do frontend
+  - ClienteCreate, ClienteUpdate, ClienteResponse
+  - Validações de CPF/CNPJ, telefone, CEP, UF
+  - Filtros para busca avançada
+  
+- [x] **repository.py** - Operações no Supabase com RLS
+  - Listagem com filtros e paginação
+  - Busca por ID e CPF/CNPJ
+  - CRUD completo com validações
+  - JOINs com vendedor e procedência
+  
+- [x] **services.py** - Lógica de negócio completa
+  - Aplicação de RLS por loja_id
+  - Validações específicas de negócio
+  - Controle de permissões por perfil
+  
+- [x] **controller.py** - 6 endpoints funcionais:
+  - `GET /api/v1/clientes/` - Listar com filtros e paginação
+  - `POST /api/v1/clientes/` - Criar novo cliente
+  - `GET /api/v1/clientes/{id}` - Buscar por ID
+  - `PUT /api/v1/clientes/{id}` - Atualizar cliente
+  - `DELETE /api/v1/clientes/{id}` - Excluir (soft delete)
+  - `GET /api/v1/clientes/verificar-cpf-cnpj/{cpf_cnpj}` - Verificar duplicação
+
+### 6. **Problemas Resolvidos** ✅
+- [x] Conflito de versões gotrue/supabase-py resolvido
+  - Downgrade gotrue 2.9.1 → 2.8.1
+- [x] Configurações extras no .env tratadas
 - [x] Cliente Supabase funcionando corretamente
-- [x] Health check ajustado para n�o depender de tabelas
+- [x] Health check ajustado para não depender de tabelas
+- [x] Estrutura modular completa implementada
 
-## =� O que est� em andamento
+## 🚧 O que está em andamento
 
-### M�dulo de Clientes (Pr�ximo)
-- [ ] Implementar CRUD completo
-- [ ] Aplicar RLS (Row Level Security)
-- [ ] Valida��es de neg�cio
-- [ ] Integra��o com frontend existente
+### Módulo de Clientes - TESTE EM ANDAMENTO ⏳
+- [ ] Ricardo está testando integração com frontend
+- [ ] Validação com dados reais do Supabase
+- [ ] Feedback e ajustes finais
 
-## =� O que falta fazer
+## 📋 O que falta fazer - PRÓXIMAS IMPLEMENTAÇÕES
 
-### 1. **M�dulos de Neg�cio**
+### **PROCESSO DE IMPLANTAÇÃO DEFINIDO:**
+1. **Claude implanta** ✅
+2. **Claude confere** ✅  
+3. **Ricardo testa** ⏳ (Em andamento)
+4. **Ricardo autoriza** ⏳ (Aguardando)
+5. **Claude inicia próxima** ⏳ (Empresas será a próxima)
 
-#### **Clientes** =
-- [ ] `GET /api/v1/clientes` - Listar com pagina��o e filtros
-- [ ] `POST /api/v1/clientes` - Criar novo cliente
-- [ ] `GET /api/v1/clientes/{id}` - Buscar por ID
-- [ ] `PUT /api/v1/clientes/{id}` - Atualizar cliente
-- [ ] `DELETE /api/v1/clientes/{id}` - Excluir cliente
-- [ ] Busca por CPF/CNPJ
-- [ ] Valida��es espec�ficas (CPF/CNPJ v�lidos)
+### 1. **Módulos de Sistema** (Próximos na fila)
+
+#### **Empresas** 🔜 (Próximo após aprovação de Clientes)
+- [ ] `GET /api/v1/empresas/` - Listar empresas
+- [ ] `POST /api/v1/empresas/` - Criar empresa
+- [ ] `GET /api/v1/empresas/{id}` - Buscar por ID
+- [ ] `PUT /api/v1/empresas/{id}` - Atualizar empresa
+- [ ] Validações específicas (CNPJ, etc)
+
+#### **Lojas** (Depende de Empresas)
+- [ ] CRUD completo de lojas
+- [ ] Relacionamento com empresas
+- [ ] Configurações específicas por loja
+- [ ] RLS por loja_id
+
+#### **Equipe** (Depende de Lojas)
+- [ ] CRUD de funcionários
+- [ ] Integração com Supabase Auth
+- [ ] Níveis de permissão
+- [ ] Vinculação com lojas
+
+#### **Setores** (Depende de Empresas)
+- [ ] CRUD básico de setores
+- [ ] Vinculação com empresas
+- [ ] Controle de ativação
+
+### 2. **Módulos de Negócio** (Futuro)
 
 #### **Ambientes**
-- [ ] CRUD b�sico de ambientes
+- [ ] CRUD básico de ambientes
 - [ ] `POST /api/v1/ambientes/upload-xml` - Upload e processamento XML Promob
 - [ ] Parser XML para extrair dados
-- [ ] Vincula��o com cliente
-- [ ] C�lculo autom�tico de valores
+- [ ] Vinculação com cliente
+- [ ] Cálculo automático de valores
 
-#### **Or�amentos** (Mais Complexo)
-- [ ] CRUD de or�amentos
-- [ ] Engine de c�lculo de custos
-- [ ] Sistema de comiss�o progressiva por faixa
-- [ ] Planos de pagamento flex�veis
-- [ ] Sistema de aprova��o hier�rquica
-- [ ] Snapshot de configura��es no momento da cria��o
-- [ ] Filtros por perfil (vendedor n�o v� margem)
+#### **Orçamentos** (Mais Complexo)
+- [ ] CRUD de orçamentos
+- [ ] Engine de cálculo de custos
+- [ ] Sistema de comissão progressiva por faixa
+- [ ] Planos de pagamento flexíveis
+- [ ] Sistema de aprovação hierárquica
+- [ ] Snapshot de configurações no momento da criação
+- [ ] Filtros por perfil (vendedor não vê margem)
 
 #### **Contratos**
-- [ ] Gera��o de contratos a partir de or�amentos
+- [ ] Geração de contratos a partir de orçamentos
 - [ ] Status de assinatura
 - [ ] Versionamento de contratos
-- [ ] Integra��o com sistema de aprova��o
+- [ ] Integração com sistema de aprovação
 
-#### **Configura��es**
-- [ ] Gest�o de empresas
-- [ ] Gest�o de lojas
-- [ ] Gest�o de equipe/funcion�rios
-- [ ] Regras de comiss�o por faixa
-- [ ] Configura��es de custos (deflator, frete)
+#### **Configurações**
+- [ ] Gestão de regras de comissão por faixa
+- [ ] Configurações de custos (deflator, frete)
 - [ ] Limites de desconto por perfil
 
-### 2. **Funcionalidades Transversais**
+### 3. **Funcionalidades Transversais**
 
-#### **Sistema de Permiss�es**
-- [ ] RLS autom�tico por loja_id
-- [ ] Perfis: ADMIN_MASTER, ADMIN, USUARIO
-- [ ] Middleware para aplicar contexto de usu�rio
-- [ ] Auditoria de a��es
+#### **Sistema de Permissões**
+- [x] RLS automático por loja_id (implementado)
+- [x] Perfis: ADMIN_MASTER, ADMIN, USUARIO (implementado)
+- [x] Middleware para aplicar contexto de usuário (implementado)
+- [ ] Auditoria de ações
 
 #### **Processamento de Arquivos**
 - [ ] Upload de XMLs
-- [ ] Parser para 4 cole��es (Unique, Sublime, Port�bille, Brilhart)
-- [ ] Valida��o de arquivos
-- [ ] Armazenamento tempor�rio
+- [ ] Parser para 4 coleções (Unique, Sublime, Portábille, Brilhart)
+- [ ] Validação de arquivos
+- [ ] Armazenamento temporário
 
-#### **Notifica��es**
-- [ ] Sistema de notifica��es para aprova��es
-- [ ] Integra��o com email
-- [ ] Logs de notifica��es enviadas
+#### **Notificações**
+- [ ] Sistema de notificações para aprovações
+- [ ] Integração com email
+- [ ] Logs de notificações enviadas
 
-### 3. **Integra��es**
+### 4. **Integrações**
 
 #### **Frontend Next.js**
 - [ ] Ajustar URLs da API no frontend
 - [ ] Implementar interceptor para tokens
 - [ ] Tratamento de erros padronizado
-- [ ] Refresh token autom�tico
+- [ ] Refresh token automático
 
 #### **Supabase**
-- [ ] Confirmar schema das tabelas
-- [ ] Implementar RLS policies
-- [ ] Configurar triggers necess�rios
-- [ ] Otimizar queries com �ndices
+- [x] Confirmar schema das tabelas (revisado e correto)
+- [ ] Implementar RLS policies adicionais
+- [ ] Configurar triggers necessários
+- [ ] Otimizar queries com índices
 
-### 4. **DevOps e Deploy**
+### 5. **DevOps e Deploy**
 
 #### **Desenvolvimento**
-- [ ] Testes unit�rios para cada m�dulo
-- [ ] Testes de integra��o
+- [ ] Testes unitários para cada módulo
+- [ ] Testes de integração
 - [ ] Scripts de seed para desenvolvimento
-- [ ] Documenta��o de APIs
+- [ ] Documentação de APIs
 
-#### **Produ��o**
+#### **Produção**
 - [ ] Configurar Railway/Render
-- [ ] Vari�veis de ambiente seguras
+- [ ] Variáveis de ambiente seguras
 - [ ] Logs estruturados
 - [ ] Monitoramento e alertas
-- [ ] Backup autom�tico
+- [ ] Backup automático
 
-## =� M�tricas de Progresso
+## 📊 Métricas de Progresso
 
-| M�dulo | Status | Progresso |
+| Módulo | Status | Progresso |
 |--------|--------|-----------|
-| Core |  Completo | 100% |
-| Autentica��o |  Completo | 100% |
-| Clientes | =� Pr�ximo | 0% |
-| Ambientes | � Pendente | 0% |
-| Or�amentos | � Pendente | 0% |
-| Contratos | � Pendente | 0% |
-| Configura��es | � Pendente | 0% |
-| **Total** | **Em Desenvolvimento** | **~25%** |
+| Core | ✅ Completo | 100% |
+| Autenticação | ✅ Completo | 100% |
+| Clientes | 🧪 Em teste | 95% |
+| Empresas | ⏳ Aguardando | 0% |
+| Lojas | ⏳ Aguardando | 0% |
+| Equipe | ⏳ Aguardando | 0% |
+| Setores | ⏳ Aguardando | 0% |
+| Ambientes | ⏳ Pendente | 0% |
+| Orçamentos | ⏳ Pendente | 0% |
+| Contratos | ⏳ Pendente | 0% |
+| Configurações | ⏳ Pendente | 0% |
+| **Total** | **Em Desenvolvimento** | **~35%** |
 
-## =' Comandos �teis
+## 🔧 Comandos Úteis
 
 ### Desenvolvimento
 ```bash
-# Ativar ambiente virtual
-source venv/bin/activate  # Linux/Mac
-venv\Scripts\activate     # Windows
-
-# Instalar depend�ncias
-pip install -r requirements.txt
-
-# Rodar servidor
+# Backend
+cd backend
 python main.py
 
-# Rodar com reload autom�tico
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
+# Frontend (após npm install)
+cd frontend
+npm install  # Primeira vez
+npm run dev
 
-### Testes
-```bash
-# Testar health check
+# Health check
 curl http://localhost:8000/health
 
-# Testar autentica��o
-curl -X POST http://localhost:8000/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email": "user@example.com", "password": "password"}'
-
-# Ver documenta��o
-open http://localhost:8000/api/v1/docs
+# Documentação da API
+http://localhost:8000/api/v1/docs
 ```
 
-## = Issues Conhecidas
+### Testes de Clientes
+```bash
+# Listar clientes (requer autenticação)
+curl -H "Authorization: Bearer TOKEN" http://localhost:8000/api/v1/clientes/
 
-1. **Tabelas n�o encontradas**: Confirmar schema exato no Supabase
-2. **CORS**: Pode precisar ajustar para produ��o
-3. **RLS**: Ainda n�o implementado nas queries
+# Criar cliente
+curl -X POST http://localhost:8000/api/v1/clientes/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer TOKEN" \
+  -d '{"nome": "João Silva", "cpf_cnpj": "12345678901", "telefone": "11999999999"}'
 
-## =� Notas Importantes
+# Verificar CPF/CNPJ
+curl -H "Authorization: Bearer TOKEN" \
+  http://localhost:8000/api/v1/clientes/verificar-cpf-cnpj/12345678901
+```
 
-1. **Comiss�o Progressiva**: Implementar c�lculo por faixas, n�o linear
-2. **M�nimo Garantido**: N�o afeta margem do or�amento
-3. **Perfis de Acesso**: Vendedor nunca v� custos/margem
-4. **Snapshot**: Sempre salvar configura��es vigentes no or�amento
+## 🐛 Issues Conhecidas
 
-## <� Pr�ximos Passos Imediatos
+1. **Frontend**: Dependências não instaladas - `npm install` necessário
+2. **CORS**: Pode precisar ajustar para produção
+3. **Validações**: Algumas validações específicas do Supabase podem precisar ajuste
 
-1. **Confirmar Schema do Banco**
-   - Acessar Supabase dashboard
-   - Documentar estrutura exata das tabelas
-   - Verificar RLS policies existentes
+## 📝 Notas Importantes
 
-2. **Implementar M�dulo Clientes**
-   - Criar schemas Pydantic
-   - Implementar service layer
-   - Criar endpoints REST
-   - Testar com frontend
+1. **Comissão Progressiva**: Implementar cálculo por faixas, não linear
+2. **Mínimo Garantido**: Não afeta margem do orçamento
+3. **Perfis de Acesso**: Vendedor nunca vê custos/margem
+4. **Snapshot**: Sempre salvar configurações vigentes no orçamento
+5. **Modularidade**: Cada módulo deve ser completamente independente
+6. **RLS**: Aplicado automaticamente em todas as operações
 
-3. **Validar Integra��o Frontend**
-   - Testar login/logout
-   - Verificar interceptors
-   - Ajustar URLs se necess�rio
+## 🎯 Status Atual - Aguardando Teste
+
+### ✅ **MÓDULO CLIENTES IMPLEMENTADO E FUNCIONANDO:**
+- API completa com 6 endpoints
+- Validações robustas
+- RLS aplicado
+- Documentação completa
+- Logs estruturados
+
+### ⏳ **AGUARDANDO:**
+- Teste do Ricardo com dados reais
+- Feedback e ajustes
+- Autorização para implementar Empresas
+
+### 🚀 **PRÓXIMO PASSO:**
+Após aprovação do módulo Clientes, implementar **Empresas** seguindo o mesmo padrão de qualidade e modularidade.
 
 ---
 
-**�ltima atualiza��o por:** Claude  
-**Status geral:** Backend funcional com autentica��o completa, pronto para implementa��o dos m�dulos de neg�cio.
+**Última atualização por:** Claude  
+**Status geral:** Módulo Clientes completo, aguardando teste e aprovação para continuar com Empresas.

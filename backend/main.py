@@ -188,7 +188,7 @@ async def health_check() -> Dict[str, Any]:
 
 # Importar e registrar routers dos módulos
 from modules.auth import controller as auth_controller
-# from modules.clientes import controller as clientes_controller
+from modules.clientes import controller as clientes_controller
 
 app.include_router(
     auth_controller.router,
@@ -196,11 +196,11 @@ app.include_router(
     tags=["Autenticação"]
 )
 
-# app.include_router(
-#     clientes_controller.router,
-#     prefix=f"{settings.api_prefix}/clientes",
-#     tags=["Clientes"]
-# )
+app.include_router(
+    clientes_controller.router,
+    prefix=f"{settings.api_prefix}/clientes",
+    tags=["Clientes"]
+)
 
 
 # Execução direta (desenvolvimento)
