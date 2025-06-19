@@ -151,4 +151,40 @@
   .layout-container {
     overflow-x: hidden;
   }
+
+  /* ✨ SOLUÇÃO NÍVEL 1: Transições Suaves para Eliminar "Piscar" no F5 */
+  .smooth-fade-in {
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+  }
+
+  .smooth-fade-in.loaded {
+    opacity: 1;
+  }
+
+  /* Transição suave para toda a aplicação */
+  .app-container {
+    transition: opacity 0.15s ease-in-out;
+  }
+
+  .app-container.hydrating {
+    opacity: 0.85;
+  }
+
+  .app-container.hydrated {
+    opacity: 1;
+  }
+
+  /* Transições específicas para componentes que costumam "piscar" */
+  .progress-stepper-container {
+    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+  }
+
+  .sidebar-container {
+    transition: opacity 0.15s ease-in-out;
+  }
+
+  .page-content-container {
+    transition: opacity 0.2s ease-in-out;
+  }
 }

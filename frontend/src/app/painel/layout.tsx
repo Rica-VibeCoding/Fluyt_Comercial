@@ -77,6 +77,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       {/* Sidebar Desktop */}
       <div 
         className={`
+          sidebar-container smooth-fade-in loaded
           hidden md:block fixed left-0 top-0 h-screen overflow-y-auto overflow-x-hidden z-30 border-r
           transition-all duration-300 ease-in-out
           ${isCollapsed ? 'w-16' : 'w-64'}
@@ -99,6 +100,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       {/* Sidebar Mobile */}
       <div 
         className={`
+          sidebar-container smooth-fade-in loaded
           md:hidden fixed left-0 top-0 h-screen overflow-y-auto overflow-x-hidden z-50 border-r
           transition-transform duration-300 ease-in-out
           ${!isCollapsed ? 'translate-x-0' : '-translate-x-full'}
@@ -148,7 +150,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         }}
       >
         <main 
-          className="flex-1 bg-gray-50 transition-all duration-300 overflow-y-auto"
+          className="page-content-container flex-1 bg-gray-50 transition-all duration-300 overflow-y-auto smooth-fade-in loaded"
           style={{ 
             marginTop: shouldShowProgressStepper ? `${progressStepperHeight}px` : '0',
             height: shouldShowProgressStepper ? `calc(100vh - ${progressStepperHeight}px)` : '100vh'
@@ -161,7 +163,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       {/* Container principal - Mobile */}
       <div className="md:hidden h-screen flex flex-col">
         <main 
-          className="flex-1 bg-gray-50 overflow-y-auto"
+          className="page-content-container flex-1 bg-gray-50 overflow-y-auto smooth-fade-in loaded"
           style={{ 
             marginTop: shouldShowProgressStepper ? `${progressStepperHeight + 64}px` : '64px', // +64px para o header mobile
             height: shouldShowProgressStepper ? `calc(100vh - ${progressStepperHeight + 64}px)` : 'calc(100vh - 64px)'

@@ -23,21 +23,9 @@ export function ProgressStepper() {
     isStepCurrent 
   } = useStepper();
 
-  // Durante SSR ou antes da hidratação, mostrar fallback
-  if (!isClient) {
-    return (
-      <div className="bg-white border-b border-gray-200">
-        <div className="px-8 py-6">
-          <div className="flex items-center justify-center">
-            <div className="text-sm text-gray-500">Carregando navegação...</div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  // ✨ SOLUÇÃO NÍVEL 1: Sempre mostrar estrutura, mas com fade-in suave
   return (
-    <div className="bg-white border-b border-gray-200">
+    <div className={`progress-stepper-container bg-white border-b border-gray-200 smooth-fade-in ${isClient ? 'loaded' : ''}`}>
       <div className="px-8 py-6">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-center gap-8">
