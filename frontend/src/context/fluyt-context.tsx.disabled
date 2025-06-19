@@ -1,0 +1,620 @@
+'use client';
+
+import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import { Cliente } from '@/types/cliente';
+import { Ambiente } from '@/types/ambiente';
+
+// ========================================
+// TIPOS UNIFICADOS
+// ========================================
+
+export interface FormaPagamento {
+  id: string;
+  tipo: 'ENTRADA' | 'FINANCEIRA' | 'CARTAO' | 'BOLETO';
+  valor: number;
+  valorRecebido: number;
+  travado: boolean;
+  // Campos específicos por tipo
+  parcelas?: number;
+  taxaJuros?: number;
+  deflacao?: number;
+  jurosAntecipacao?: number;
+  custoCapital?: number;
+  dataVencimento?: string;
+}
+
+export interface OrcamentoData {
+  valorBruto: number;
+  descontoPorcentagem: number; // Desconto aplicado pelo usuário
+  valorNegociado: number; // Bruto - Desconto(%)
+  valorRecebido: number; // Valor deflacionado das taxas
+  descontoReal: number; // (Bruto - Recebido) / Bruto * 100
+  valorRestante: number; // Negociado - soma das formas
+  formasPagamento: FormaPagamento[];
+}
+
+export interface FluytState {
+  // Dados da sessão ativa
+  cliente: Cliente | null;
+  ambientes: Ambiente[];
+  orcamento: OrcamentoData;
+  
+  // Estado de UI
+  loading: boolean;
+  erros: string[];
+}
+
+// ========================================
+// AÇÕES DO REDUCER
+// ========================================
+
+type FluytAction =
+  | { type: 'SET_CLIENTE'; payload: Cliente | null }
+  | { type: 'SET_AMBIENTES'; payload: Ambiente[] }
+  | { type: 'ADD_AMBIENTE'; payload: Ambiente }
+  | { type: 'REMOVE_AMBIENTE'; payload: string }
+  | { type: 'SET_VALOR_BRUTO'; payload: number }
+  | { type: 'SET_DESCONTO_PORCENTAGEM'; payload: number }
+  | { type: 'SET_DESCONTO_REAL'; payload: number }
+  | { type: 'ADD_FORMA_PAGAMENTO'; payload: Omit<FormaPagamento, 'id' | 'valorRecebido'> }
+  | { type: 'REMOVE_FORMA_PAGAMENTO'; payload: string }
+  | { type: 'UPDATE_FORMA_PAGAMENTO'; payload: { id: string; dados: Partial<FormaPagamento> } }
+  | { type: 'TOGGLE_TRAVAMENTO_FORMA'; payload: string }
+  | { type: 'LIMPAR_FORMAS_PAGAMENTO' }
+  | { type: 'RESET_TRAVAMENTOS' }
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'ADD_ERRO'; payload: string }
+  | { type: 'CLEAR_ERROS' }
+  | { type: 'RECALCULAR_ORCAMENTO' };
+
+// ========================================
+// ESTADO INICIAL
+// ========================================
+
+const initialOrcamento: OrcamentoData = {
+  valorBruto: 0,
+  descontoPorcentagem: 0,
+  valorNegociado: 0,
+  valorRecebido: 0,
+  descontoReal: 0,
+  valorRestante: 0,
+  formasPagamento: []
+};
+
+const initialState: FluytState = {
+  cliente: null,
+  ambientes: [],
+  orcamento: initialOrcamento,
+  loading: false,
+  erros: []
+};
+
+// ========================================
+// FUNÇÕES DE CÁLCULO (Regras de Negócio)
+// ========================================
+
+// Prioridade de redistribuição conforme especificado
+const PRIORIDADE_FORMAS = ['ENTRADA', 'FINANCEIRA', 'CARTAO', 'BOLETO'] as const;
+
+function calcularValorRecebidoForma(forma: FormaPagamento): number {
+  switch (forma.tipo) {
+    case 'ENTRADA':
+      // À vista - sem deflação
+      return forma.valor;
+      
+    case 'FINANCEIRA':
+      // Aplicar deflação da financeira
+      const deflacao = forma.deflacao || 5; // %
+      return forma.valor * (1 - deflacao / 100);
+      
+    case 'CARTAO':
+      // Aplicar custo do capital + juros antecipação
+      const custoCapital = forma.custoCapital || 1.5; // %
+      const jurosAntecipacao = forma.jurosAntecipacao || 1.99; // %
+      const custoTotal = custoCapital + jurosAntecipacao;
+      return forma.valor * (1 - custoTotal / 100);
+      
+    case 'BOLETO':
+      // Boleto da loja - valor integral
+      return forma.valor;
+      
+    default:
+      return forma.valor;
+  }
+}
+
+function calcularOrcamento(state: FluytState): OrcamentoData {
+  const { ambientes, orcamento } = state;
+  
+  // 1. Valor Bruto = soma dos ambientes
+  const valorBruto = ambientes.reduce((acc, ambiente) => acc + (ambiente.valorTotal || 0), 0);
+  
+  // 2. Valor Negociado = Bruto - Desconto(%)
+  const valorNegociado = valorBruto * (1 - orcamento.descontoPorcentagem / 100);
+  
+  // 3. Recalcular valorRecebido para cada forma
+  const formasAtualizadas = orcamento.formasPagamento.map(forma => ({
+    ...forma,
+    valorRecebido: calcularValorRecebidoForma(forma)
+  }));
+  
+  // 4. Valor Recebido = soma dos valores recebidos deflacionados
+  const valorRecebido = formasAtualizadas.reduce((acc, forma) => acc + forma.valorRecebido, 0);
+  
+  // 5. Desconto Real = (Bruto - Recebido) / Bruto * 100
+  const descontoReal = valorBruto > 0 ? ((valorBruto - valorRecebido) / valorBruto) * 100 : 0;
+  
+  // 6. Valor Restante = Negociado - soma das formas
+  const somaFormas = formasAtualizadas.reduce((acc, forma) => acc + forma.valor, 0);
+  const valorRestante = valorNegociado - somaFormas;
+  
+  return {
+    valorBruto: Math.round(valorBruto * 100) / 100,
+    descontoPorcentagem: orcamento.descontoPorcentagem,
+    valorNegociado: Math.round(valorNegociado * 100) / 100,
+    valorRecebido: Math.round(valorRecebido * 100) / 100,
+    descontoReal: Math.round(descontoReal * 10) / 10, // 1 casa decimal
+    valorRestante: Math.round(valorRestante * 100) / 100,
+    formasPagamento: formasAtualizadas
+  };
+}
+
+// Algoritmo de busca binária para encontrar valor negociado que atinge desconto real
+function encontrarValorNegociadoParaDesconto(
+  valorBruto: number, 
+  descontoRealAlvo: number, 
+  formasPagamento: FormaPagamento[]
+): number {
+  let min = 0;
+  let max = valorBruto;
+  let melhorValor = valorBruto;
+  const tolerancia = 0.05; // 0.05% de tolerância
+  
+  for (let iteracao = 0; iteracao < 25; iteracao++) {
+    const valorTeste = (min + max) / 2;
+    
+    // Simular distribuição proporcional nas formas
+    const totalFormas = formasPagamento.reduce((acc, forma) => acc + forma.valor, 0);
+    const formasSimuladas = formasPagamento.map(forma => ({
+      ...forma,
+      valor: totalFormas > 0 ? (forma.valor / totalFormas) * valorTeste : valorTeste / formasPagamento.length
+    }));
+    
+    // Calcular valor recebido com valores simulados
+    const valorRecebidoSimulado = formasSimuladas.reduce((acc, forma) => 
+      acc + calcularValorRecebidoForma(forma), 0
+    );
+    
+    const descontoRealSimulado = valorBruto > 0 ? 
+      ((valorBruto - valorRecebidoSimulado) / valorBruto) * 100 : 0;
+    
+    const diferenca = Math.abs(descontoRealSimulado - descontoRealAlvo);
+    
+    if (diferenca <= tolerancia) {
+      melhorValor = valorTeste;
+      break;
+    }
+    
+    if (descontoRealSimulado < descontoRealAlvo) {
+      max = valorTeste;
+    } else {
+      min = valorTeste;
+    }
+  }
+  
+  return melhorValor;
+}
+
+// Redistribuir valores seguindo ordem de prioridade
+function redistribuirValores(
+  valorAlvo: number, 
+  formasPagamento: FormaPagamento[]
+): FormaPagamento[] {
+  const formasOrdenadas = [...formasPagamento].sort((a, b) => 
+    PRIORIDADE_FORMAS.indexOf(a.tipo) - PRIORIDADE_FORMAS.indexOf(b.tipo)
+  );
+  
+  const formasNaoTravadas = formasOrdenadas.filter(forma => !forma.travado);
+  const formasTravadas = formasOrdenadas.filter(forma => forma.travado);
+  
+  if (formasNaoTravadas.length === 0) {
+    throw new Error('Não é possível redistribuir: todas as formas estão travadas');
+  }
+  
+  const valorTravado = formasTravadas.reduce((acc, forma) => acc + forma.valor, 0);
+  const valorParaDistribuir = valorAlvo - valorTravado;
+  
+  if (valorParaDistribuir < 0) {
+    throw new Error('Valor insuficiente: formas travadas excedem o valor alvo');
+  }
+  
+  // Distribuir proporcionalmente nas formas não travadas
+  const totalNaoTravado = formasNaoTravadas.reduce((acc, forma) => acc + forma.valor, 0);
+  
+  const formasAtualizadas = formasPagamento.map(forma => {
+    if (forma.travado) {
+      return forma; // Manter valor travado
+    }
+    
+    // Distribuir proporcionalmente
+    const proporcao = totalNaoTravado > 0 ? forma.valor / totalNaoTravado : 1 / formasNaoTravadas.length;
+    return {
+      ...forma,
+      valor: Math.round(valorParaDistribuir * proporcao * 100) / 100
+    };
+  });
+  
+  return formasAtualizadas;
+}
+
+// ========================================
+// REDUCER
+// ========================================
+
+function fluytReducer(state: FluytState, action: FluytAction): FluytState {
+  switch (action.type) {
+    case 'SET_CLIENTE':
+      return { 
+        ...state, 
+        cliente: action.payload,
+        erros: action.payload ? state.erros.filter(e => !e.includes('cliente')) : state.erros
+      };
+      
+    case 'SET_AMBIENTES':
+      const newState = { ...state, ambientes: action.payload };
+      return { ...newState, orcamento: calcularOrcamento(newState) };
+      
+    case 'ADD_AMBIENTE':
+      const stateWithNewAmbiente = { 
+        ...state, 
+        ambientes: [...state.ambientes, action.payload] 
+      };
+      return { ...stateWithNewAmbiente, orcamento: calcularOrcamento(stateWithNewAmbiente) };
+      
+    case 'REMOVE_AMBIENTE':
+      const stateWithoutAmbiente = {
+        ...state,
+        ambientes: state.ambientes.filter(amb => amb.id !== action.payload)
+      };
+      return { ...stateWithoutAmbiente, orcamento: calcularOrcamento(stateWithoutAmbiente) };
+      
+    case 'SET_DESCONTO_PORCENTAGEM':
+      const stateWithDesconto = {
+        ...state,
+        orcamento: { ...state.orcamento, descontoPorcentagem: action.payload }
+      };
+      return { ...stateWithDesconto, orcamento: calcularOrcamento(stateWithDesconto) };
+      
+    case 'SET_DESCONTO_REAL':
+      try {
+        // Usar busca binária para encontrar valor negociado que atinge o desconto real
+        const valorNegociadoIdeal = encontrarValorNegociadoParaDesconto(
+          state.orcamento.valorBruto,
+          action.payload,
+          state.orcamento.formasPagamento
+        );
+        
+        // Redistribuir formas de pagamento para o novo valor
+        const formasRedistribuidas = redistribuirValores(
+          valorNegociadoIdeal,
+          state.orcamento.formasPagamento
+        );
+        
+        const stateWithNovasFormas = {
+          ...state,
+          orcamento: { ...state.orcamento, formasPagamento: formasRedistribuidas }
+        };
+        
+        return { ...stateWithNovasFormas, orcamento: calcularOrcamento(stateWithNovasFormas) };
+        
+      } catch (error) {
+        return {
+          ...state,
+          erros: [...state.erros, `Erro ao definir desconto real: ${error}`]
+        };
+      }
+      
+    case 'ADD_FORMA_PAGAMENTO':
+      const novaForma: FormaPagamento = {
+        ...action.payload,
+        id: `forma_${Date.now()}`,
+        valorRecebido: calcularValorRecebidoForma(action.payload as FormaPagamento)
+      };
+      
+      const stateWithNovaForma = {
+        ...state,
+        orcamento: {
+          ...state.orcamento,
+          formasPagamento: [...state.orcamento.formasPagamento, novaForma]
+        }
+      };
+      return { ...stateWithNovaForma, orcamento: calcularOrcamento(stateWithNovaForma) };
+      
+    case 'REMOVE_FORMA_PAGAMENTO':
+      const stateWithoutForma = {
+        ...state,
+        orcamento: {
+          ...state.orcamento,
+          formasPagamento: state.orcamento.formasPagamento.filter(forma => forma.id !== action.payload)
+        }
+      };
+      return { ...stateWithoutForma, orcamento: calcularOrcamento(stateWithoutForma) };
+      
+    case 'UPDATE_FORMA_PAGAMENTO':
+      const stateWithUpdatedForma = {
+        ...state,
+        orcamento: {
+          ...state.orcamento,
+          formasPagamento: state.orcamento.formasPagamento.map(forma =>
+            forma.id === action.payload.id 
+              ? { ...forma, ...action.payload.dados }
+              : forma
+          )
+        }
+      };
+      return { ...stateWithUpdatedForma, orcamento: calcularOrcamento(stateWithUpdatedForma) };
+      
+    case 'TOGGLE_TRAVAMENTO_FORMA':
+      const stateWithToggledTravamento = {
+        ...state,
+        orcamento: {
+          ...state.orcamento,
+          formasPagamento: state.orcamento.formasPagamento.map(forma =>
+            forma.id === action.payload 
+              ? { ...forma, travado: !forma.travado }
+              : forma
+          )
+        }
+      };
+      return { ...stateWithToggledTravamento, orcamento: calcularOrcamento(stateWithToggledTravamento) };
+      
+    case 'LIMPAR_FORMAS_PAGAMENTO':
+      const stateWithoutFormas = {
+        ...state,
+        orcamento: { ...state.orcamento, formasPagamento: [] }
+      };
+      return { ...stateWithoutFormas, orcamento: calcularOrcamento(stateWithoutFormas) };
+      
+    case 'RESET_TRAVAMENTOS':
+      const stateWithoutTravamentos = {
+        ...state,
+        orcamento: {
+          ...state.orcamento,
+          formasPagamento: state.orcamento.formasPagamento.map(forma => ({
+            ...forma,
+            travado: false
+          }))
+        }
+      };
+      return { ...stateWithoutTravamentos, orcamento: calcularOrcamento(stateWithoutTravamentos) };
+      
+    case 'RECALCULAR_ORCAMENTO':
+      return { ...state, orcamento: calcularOrcamento(state) };
+      
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload };
+      
+    case 'ADD_ERRO':
+      return { ...state, erros: [...state.erros, action.payload] };
+      
+    case 'CLEAR_ERROS':
+      return { ...state, erros: [] };
+      
+    default:
+      return state;
+  }
+}
+
+// ========================================
+// CONTEXT E PROVIDER
+// ========================================
+
+interface FluytContextType {
+  state: FluytState;
+  dispatch: React.Dispatch<FluytAction>;
+}
+
+const FluytContext = createContext<FluytContextType | undefined>(undefined);
+
+// Persistência simples e confiável
+function loadFromStorage(): Partial<FluytState> {
+  if (typeof window === 'undefined') return {};
+  
+  try {
+    const stored = localStorage.getItem('fluyt_session');
+    return stored ? JSON.parse(stored) : {};
+  } catch (error) {
+    console.warn('Erro ao carregar sessão:', error);
+    return {};
+  }
+}
+
+function saveToStorage(state: FluytState) {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    const toSave = {
+      cliente: state.cliente,
+      ambientes: state.ambientes,
+      orcamento: state.orcamento
+    };
+    localStorage.setItem('fluyt_session', JSON.stringify(toSave));
+  } catch (error) {
+    console.warn('Erro ao salvar sessão:', error);
+  }
+}
+
+export function FluytProvider({ children }: { children: ReactNode }) {
+  const [state, dispatch] = useReducer(fluytReducer, {
+    ...initialState,
+    ...loadFromStorage()
+  });
+  
+  // Persistir automaticamente
+  useEffect(() => {
+    saveToStorage(state);
+  }, [state.cliente, state.ambientes, state.orcamento]);
+  
+  return (
+    <FluytContext.Provider value={{ state, dispatch }}>
+      {children}
+    </FluytContext.Provider>
+  );
+}
+
+// ========================================
+// HOOK PRINCIPAL
+// ========================================
+
+export function useFluyt() {
+  const context = useContext(FluytContext);
+  if (!context) {
+    throw new Error('useFluyt deve ser usado dentro do FluytProvider');
+  }
+  return context;
+}
+
+// ========================================
+// HOOKS ESPECIALIZADOS
+// ========================================
+
+export function useCliente() {
+  const { state, dispatch } = useFluyt();
+  
+  const carregarSessaoCompleta = (clienteId: string) => {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      // Debug: listar todas as chaves do localStorage
+      console.log('🔍 Debug localStorage - Todas as chaves:', Object.keys(localStorage));
+      
+      // Tentar várias possibilidades de chaves
+      const possiveisChaves = [
+        `fluyt_sessao_${clienteId}`,
+        `persistencia_cliente_${clienteId}`,
+        `sessao_${clienteId}`,
+        'fluyt_session',
+        'sessao_ativa',
+        'cliente_selecionado'
+      ];
+      
+      console.log('🔍 Tentando carregar sessão para cliente:', clienteId);
+      
+      for (const chave of possiveisChaves) {
+        const dados = localStorage.getItem(chave);
+        if (dados) {
+          console.log(`📦 Encontrou dados na chave "${chave}":`, dados.substring(0, 100) + '...');
+          
+          try {
+            const sessaoSalva = JSON.parse(dados);
+            
+            // Estrutura da persistência inteligente
+            if (sessaoSalva.data) {
+              const { cliente, ambientes } = sessaoSalva.data;
+              if (cliente && cliente.id === clienteId) {
+                console.log('✅ Carregando cliente:', cliente.nome);
+                dispatch({ type: 'SET_CLIENTE', payload: cliente });
+                if (ambientes && ambientes.length > 0) {
+                  console.log('✅ Carregando ambientes:', ambientes.length);
+                  dispatch({ type: 'SET_AMBIENTES', payload: ambientes });
+                }
+                return;
+              }
+            }
+            
+            // Estrutura direta
+            if (sessaoSalva.cliente) {
+              if (sessaoSalva.cliente.id === clienteId) {
+                console.log('✅ Carregando cliente direto:', sessaoSalva.cliente.nome);
+                dispatch({ type: 'SET_CLIENTE', payload: sessaoSalva.cliente });
+                if (sessaoSalva.ambientes && sessaoSalva.ambientes.length > 0) {
+                  console.log('✅ Carregando ambientes direto:', sessaoSalva.ambientes.length);
+                  dispatch({ type: 'SET_AMBIENTES', payload: sessaoSalva.ambientes });
+                }
+                return;
+              }
+            }
+            
+          } catch (parseError) {
+            console.warn(`Erro ao fazer parse da chave ${chave}:`, parseError);
+          }
+        }
+      }
+      
+      console.log('⚠️ Nenhuma sessão encontrada para cliente:', clienteId);
+      
+    } catch (error) {
+      console.warn('Erro ao carregar sessão:', error);
+    }
+  };
+  
+  return {
+    cliente: state.cliente,
+    temCliente: !!state.cliente,
+    definirCliente: (cliente: Cliente | null) => 
+      dispatch({ type: 'SET_CLIENTE', payload: cliente }),
+    carregarSessaoCompleta,
+    loading: state.loading
+  };
+}
+
+export function useAmbientes() {
+  const { state, dispatch } = useFluyt();
+  
+  return {
+    ambientes: state.ambientes,
+    valorTotal: state.orcamento.valorBruto,
+    definirAmbientes: (ambientes: Ambiente[]) => 
+      dispatch({ type: 'SET_AMBIENTES', payload: ambientes }),
+    adicionarAmbiente: (ambiente: Ambiente) => 
+      dispatch({ type: 'ADD_AMBIENTE', payload: ambiente }),
+    removerAmbiente: (id: string) => 
+      dispatch({ type: 'REMOVE_AMBIENTE', payload: id })
+  };
+}
+
+export function useOrcamento() {
+  const { state, dispatch } = useFluyt();
+  
+  return {
+    orcamento: state.orcamento,
+    definirDescontoPorcentagem: (desconto: number) => 
+      dispatch({ type: 'SET_DESCONTO_PORCENTAGEM', payload: desconto }),
+    definirDescontoReal: (desconto: number) => 
+      dispatch({ type: 'SET_DESCONTO_REAL', payload: desconto }),
+    adicionarFormaPagamento: (forma: Omit<FormaPagamento, 'id' | 'valorRecebido'>) => 
+      dispatch({ type: 'ADD_FORMA_PAGAMENTO', payload: forma }),
+    removerFormaPagamento: (id: string) => 
+      dispatch({ type: 'REMOVE_FORMA_PAGAMENTO', payload: id }),
+    editarFormaPagamento: (id: string, dados: Partial<FormaPagamento>) => 
+      dispatch({ type: 'UPDATE_FORMA_PAGAMENTO', payload: { id, dados } }),
+    alternarTravamento: (id: string) => 
+      dispatch({ type: 'TOGGLE_TRAVAMENTO_FORMA', payload: id }),
+    limparFormas: () => 
+      dispatch({ type: 'LIMPAR_FORMAS_PAGAMENTO' }),
+    resetarTravamentos: () => 
+      dispatch({ type: 'RESET_TRAVAMENTOS' }),
+    recalcular: () => 
+      dispatch({ type: 'RECALCULAR_ORCAMENTO' }),
+    // Validações
+    podeGerarOrcamento: () => 
+      !!state.cliente && state.ambientes.length > 0 && state.orcamento.valorBruto > 0,
+    podeGerarContrato: () => 
+      !!state.cliente && 
+      state.ambientes.length > 0 && 
+      state.orcamento.valorBruto > 0 && 
+      state.orcamento.formasPagamento.length > 0
+  };
+}
+
+export function useErros() {
+  const { state, dispatch } = useFluyt();
+  
+  return {
+    erros: state.erros,
+    adicionarErro: (erro: string) => 
+      dispatch({ type: 'ADD_ERRO', payload: erro }),
+    limparErros: () => 
+      dispatch({ type: 'CLEAR_ERROS' })
+  };
+}

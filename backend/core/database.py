@@ -1,197 +1,151 @@
 """
-Configuração e gerenciamento da conexão com Supabase.
-Implementa RLS (Row Level Security) automático e dependency injection.
+Conexão com Supabase e configuração do cliente
 """
-
 from supabase import create_client, Client
 from typing import Optional, Dict, Any
-from fastapi import Depends, HTTPException, status
-from core.config import get_settings, Settings
-from core.auth import get_current_user
-import asyncio
-from functools import wraps
 import logging
+from functools import lru_cache
+from .config import settings
 
 logger = logging.getLogger(__name__)
 
 
 class SupabaseClient:
-    """
-    Wrapper para o cliente Supabase com funcionalidades específicas do Fluyt.
-    Implementa RLS automático e gerenciamento de sessão.
-    """
+    """Gerenciador de conexão com Supabase"""
     
-    def __init__(self, settings: Settings):
-        self.settings = settings
+    def __init__(self):
         self._client: Optional[Client] = None
-        self._service_client: Optional[Client] = None
+        self._admin_client: Optional[Client] = None
     
     @property
     def client(self) -> Client:
-        """Cliente Supabase com chave anônima (para operações autenticadas)"""
-        if self._client is None:
+        """Cliente com chave anônima (para operações públicas)"""
+        if not self._client:
             self._client = create_client(
-                self.settings.supabase_url,
-                self.settings.supabase_anon_key
+                settings.supabase_url,
+                settings.supabase_anon_key
             )
+            logger.info("Cliente Supabase inicializado (anon key)")
         return self._client
     
     @property
-    def service_client(self) -> Client:
-        """Cliente Supabase com chave de serviço (bypassa RLS - usar com cuidado)"""
-        if self._service_client is None:
-            self._service_client = create_client(
-                self.settings.supabase_url,
-                self.settings.supabase_service_key
+    def admin(self) -> Client:
+        """Cliente com service key (para operações administrativas)"""
+        if not self._admin_client:
+            self._admin_client = create_client(
+                settings.supabase_url,
+                settings.supabase_service_key
             )
-        return self._service_client
+            logger.info("Cliente Supabase Admin inicializado (service key)")
+        return self._admin_client
     
-    def set_auth_token(self, token: str) -> Client:
+    def get_client_with_auth(self, access_token: str) -> Client:
         """
-        Define o token JWT para operações autenticadas.
-        Necessário para RLS funcionar corretamente.
+        Retorna cliente com token de autenticação específico
+        Usado para operações com RLS (Row Level Security)
         """
-        self.client.auth.set_session_from_url(token)
-        return self.client
-    
-    def get_user_client(self, user_data: Dict[str, Any]) -> Client:
-        """
-        Retorna cliente Supabase configurado para um usuário específico.
-        Aplica automaticamente o RLS baseado no loja_id do usuário.
-        """
-        client = self.client
-        
-        # Configura o contexto RLS para o usuário
-        loja_id = user_data.get('loja_id')
-        if loja_id:
-            # Configura variáveis de contexto para RLS
-            client.rpc('set_config', {
-                'setting_name': 'app.current_loja_id',
-                'setting_value': str(loja_id),
-                'is_local': True
-            })
-        
+        client = create_client(
+            settings.supabase_url,
+            settings.supabase_anon_key,
+            options={
+                "headers": {
+                    "Authorization": f"Bearer {access_token}"
+                }
+            }
+        )
         return client
-
-
-# Instância global do Supabase client
-_supabase_client: Optional[SupabaseClient] = None
-
-
-def get_supabase_client(settings: Settings = Depends(get_settings)) -> SupabaseClient:
-    """
-    Dependency injection para obter o cliente Supabase.
-    Cria uma única instância por configuração.
-    """
-    global _supabase_client
     
-    if _supabase_client is None:
-        _supabase_client = SupabaseClient(settings)
-    
-    return _supabase_client
-
-
-def get_database(
-    current_user: Dict[str, Any] = Depends(get_current_user),
-    supabase_client: SupabaseClient = Depends(get_supabase_client)
-) -> Client:
-    """
-    Dependency injection para obter cliente Supabase autenticado.
-    Aplica automaticamente RLS baseado no usuário logado.
-    
-    Args:
-        current_user: Dados do usuário autenticado (do JWT)
-        supabase_client: Cliente Supabase configurado
-    
-    Returns:
-        Cliente Supabase pronto para operações com RLS aplicado
-    """
-    try:
-        return supabase_client.get_user_client(current_user)
-    except Exception as e:
-        logger.error(f"Erro ao configurar cliente database: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro interno ao configurar acesso ao banco de dados"
-        )
-
-
-def get_service_database(
-    supabase_client: SupabaseClient = Depends(get_supabase_client)
-) -> Client:
-    """
-    Dependency injection para operações administrativas.
-    BYPASSA RLS - usar apenas para operações de sistema.
-    
-    ⚠️ ATENÇÃO: Este cliente bypassa RLS. Use apenas para:
-    - Operações de configuração inicial
-    - Logs de auditoria
-    - Processos de background administrativos
-    """
-    return supabase_client.service_client
-
-
-def with_transaction(func):
-    """
-    Decorator para executar operações em transação.
-    Rollback automático em caso de erro.
-    """
-    @wraps(func)
-    async def wrapper(*args, **kwargs):
-        # Implementação simplificada - Supabase gerencia transações automaticamente
-        # Em caso de necessidade futura, pode ser expandido
+    async def health_check(self) -> Dict[str, Any]:
+        """Verifica se a conexão com Supabase está funcionando"""
         try:
-            return await func(*args, **kwargs)
+            # Tenta uma query simples
+            result = self.client.table('c_clientes').select('id').limit(1).execute()
+            return {
+                "status": "healthy",
+                "database": "connected",
+                "message": "Supabase connection successful"
+            }
         except Exception as e:
-            logger.error(f"Erro em transação: {e}")
-            raise
-    
-    return wrapper
+            logger.error(f"Health check failed: {str(e)}")
+            return {
+                "status": "unhealthy",
+                "database": "disconnected",
+                "error": str(e)
+            }
 
 
-class DatabaseException(Exception):
-    """Exceção customizada para erros de banco de dados"""
-    
-    def __init__(self, message: str, code: Optional[str] = None, details: Optional[Dict] = None):
-        self.message = message
-        self.code = code
-        self.details = details or {}
-        super().__init__(self.message)
+# Instância singleton
+_supabase = SupabaseClient()
 
 
-def handle_supabase_error(error: Exception) -> DatabaseException:
+def get_supabase() -> SupabaseClient:
+    """Retorna instância do cliente Supabase"""
+    return _supabase
+
+
+def get_database() -> Client:
     """
-    Converte erros do Supabase em exceções padronizadas.
-    Facilita o tratamento de erros específicos.
-    """
-    error_message = str(error)
+    Dependency para FastAPI - retorna cliente Supabase padrão
     
-    # Mapeamento de erros comuns
-    if "duplicate key" in error_message.lower():
-        return DatabaseException(
-            message="Registro duplicado encontrado",
-            code="DUPLICATE_KEY",
-            details={"original_error": error_message}
-        )
-    elif "foreign key" in error_message.lower():
-        return DatabaseException(
-            message="Referência inválida entre registros",
-            code="FOREIGN_KEY_VIOLATION",
-            details={"original_error": error_message}
-        )
-    elif "not found" in error_message.lower():
-        return DatabaseException(
-            message="Registro não encontrado",
-            code="NOT_FOUND",
-            details={"original_error": error_message}
-        )
-    else:
-        return DatabaseException(
-            message="Erro interno do banco de dados",
-            code="INTERNAL_ERROR",
-            details={"original_error": error_message}
-        )
+    Uso:
+    ```python
+    @router.get("/")
+    async def list_items(db: Client = Depends(get_database)):
+        result = db.table('items').select('*').execute()
+        return result.data
+    ```
+    """
+    return _supabase.client
 
 
-# Configuração de logging para operações de banco
-logging.getLogger("supabase").setLevel(logging.INFO) 
+def get_admin_database() -> Client:
+    """
+    Dependency para FastAPI - retorna cliente admin
+    Use apenas para operações administrativas que bypassam RLS
+    """
+    return _supabase.admin
+
+
+async def get_database_with_rls(token: str) -> Client:
+    """
+    Retorna cliente com RLS baseado no token do usuário
+    
+    Uso:
+    ```python
+    db = await get_database_with_rls(current_user.access_token)
+    # Queries agora respeitam RLS do usuário
+    ```
+    """
+    return _supabase.get_client_with_auth(token)
+
+
+# Funções auxiliares para queries comuns
+class DatabaseUtils:
+    """Utilitários para operações comuns no banco"""
+    
+    @staticmethod
+    def apply_pagination(query, page: int = 1, limit: int = None):
+        """Aplica paginação a uma query"""
+        if limit is None:
+            limit = settings.default_items_per_page
+        
+        offset = (page - 1) * limit
+        return query.limit(limit).offset(offset)
+    
+    @staticmethod
+    def apply_ordering(query, order_by: str, order_desc: bool = False):
+        """Aplica ordenação a uma query"""
+        return query.order(order_by, desc=order_desc)
+    
+    @staticmethod
+    def apply_filters(query, filters: Dict[str, Any]):
+        """Aplica filtros dinâmicos a uma query"""
+        for field, value in filters.items():
+            if value is not None:
+                if isinstance(value, str) and '%' in value:
+                    # Se tem %, usa LIKE
+                    query = query.like(field, value)
+                else:
+                    # Senão, usa igualdade
+                    query = query.eq(field, value)
+        return query

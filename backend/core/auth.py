@@ -1,286 +1,295 @@
 """
-Sistema de autenticação e autorização do Fluyt Comercial.
-Implementa JWT com Supabase Auth e middleware para RLS.
+Sistema de autenticação e autorização usando JWT e Supabase Auth
 """
-
-from fastapi import Depends, HTTPException, status, Request
+from datetime import datetime, timedelta, timezone
+from typing import Optional, Dict, Any
+from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
-from typing import Dict, Any, Optional, List
-from core.config import get_settings, Settings
-from enum import Enum
+from pydantic import BaseModel
 import logging
+
+from .config import settings
+from .database import get_supabase
 
 logger = logging.getLogger(__name__)
 
-# Esquema de autenticação Bearer
+# Security scheme
 security = HTTPBearer()
 
 
-class PerfilUsuario(str, Enum):
-    """Enum dos perfis de usuário no sistema"""
-    VENDEDOR = "VENDEDOR"
-    GERENTE = "GERENTE"
-    MEDIDOR = "MEDIDOR"
-    ADMIN_MASTER = "ADMIN_MASTER"
+class TokenData(BaseModel):
+    """Dados extraídos do token JWT"""
+    sub: str  # user_id do Supabase
+    email: Optional[str] = None
+    role: Optional[str] = None
+    loja_id: Optional[str] = None
+    empresa_id: Optional[str] = None
+    exp: Optional[int] = None
 
 
-class AuthException(Exception):
-    """Exceção customizada para erros de autenticação"""
-    
-    def __init__(self, message: str, code: str = "AUTH_ERROR"):
-        self.message = message
-        self.code = code
-        super().__init__(self.message)
+class User(BaseModel):
+    """Modelo do usuário autenticado"""
+    id: str
+    email: str
+    perfil: str  # ADMIN_MASTER, ADMIN, USUARIO
+    loja_id: Optional[str] = None
+    empresa_id: Optional[str] = None
+    nome: Optional[str] = None
+    ativo: bool = True
+    metadata: Dict[str, Any] = {}
 
 
-def decode_jwt_token(token: str, settings: Settings) -> Dict[str, Any]:
-    """
-    Decodifica e valida um token JWT.
+class AuthResponse(BaseModel):
+    """Resposta de autenticação"""
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    user: User
+
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """Cria um token JWT de acesso"""
+    to_encode = data.copy()
     
-    Args:
-        token: Token JWT para decodificar
-        settings: Configurações da aplicação
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(
+            minutes=settings.jwt_access_token_expire_minutes
+        )
     
-    Returns:
-        Payload decodificado do token
-    
-    Raises:
-        AuthException: Se o token for inválido
-    """
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(
+        to_encode, 
+        settings.jwt_secret_key, 
+        algorithm=settings.jwt_algorithm
+    )
+    return encoded_jwt
+
+
+def verify_token(token: str) -> TokenData:
+    """Verifica e decodifica um token JWT"""
     try:
         payload = jwt.decode(
-            token,
-            settings.jwt_secret_key,
+            token, 
+            settings.jwt_secret_key, 
             algorithms=[settings.jwt_algorithm]
         )
         
-        # Validações básicas
-        if payload.get("exp") is None:
-            raise AuthException("Token sem data de expiração")
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token inválido",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         
-        user_id = payload.get("sub")
-        if not user_id:
-            raise AuthException("Token sem identificação de usuário")
-        
-        return payload
-        
+        return TokenData(**payload)
+    
     except JWTError as e:
-        logger.warning(f"Token JWT inválido: {e}")
-        raise AuthException("Token inválido ou expirado")
-    except Exception as e:
-        logger.error(f"Erro ao decodificar token: {e}")
-        raise AuthException("Erro interno de autenticação")
+        logger.error(f"JWT verification failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token inválido ou expirado",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    settings: Settings = Depends(get_settings)
-) -> Dict[str, Any]:
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+) -> User:
     """
-    Dependency injection para obter o usuário autenticado.
-    Valida o token JWT e retorna os dados do usuário.
+    Dependency que extrai e valida o usuário do token JWT
     
-    Returns:
-        Dados do usuário autenticado incluindo:
-        - user_id: UUID do usuário
-        - loja_id: UUID da loja (para RLS)
-        - perfil: Perfil do usuário
-        - email: Email do usuário
-    
-    Raises:
-        HTTPException: Se a autenticação falhar
+    Uso:
+    ```python
+    @router.get("/profile")
+    async def get_profile(current_user: User = Depends(get_current_user)):
+        return current_user
+    ```
     """
+    token = credentials.credentials
+    token_data = verify_token(token)
+    
+    # Busca dados completos do usuário
+    supabase = get_supabase()
+    
     try:
-        token = credentials.credentials
-        payload = decode_jwt_token(token, settings)
+        # Busca na tabela de equipe
+        result = supabase.admin.table('c_equipe').select(
+            "*, c_lojas!inner(id, nome, empresa_id)"
+        ).eq('usuario_id', token_data.sub).single().execute()
         
-        # Extrai dados essenciais do payload
-        user_data = {
-            "user_id": payload.get("sub"),
-            "loja_id": payload.get("loja_id"),
-            "perfil": payload.get("perfil"),
-            "email": payload.get("email"),
-            "nome": payload.get("nome", ""),
-            "token": token  # Mantém token para operações com Supabase
-        }
-        
-        # Validações obrigatórias
-        if not user_data["loja_id"]:
-            raise AuthException("Usuário sem loja associada")
-        
-        if not user_data["perfil"]:
-            raise AuthException("Usuário sem perfil definido")
-        
-        return user_data
-        
-    except AuthException as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=e.message,
-            headers={"WWW-Authenticate": "Bearer"}
-        )
-    except Exception as e:
-        logger.error(f"Erro inesperado na autenticação: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro interno de autenticação"
-        )
-
-
-def require_perfil(perfis_permitidos: List[PerfilUsuario]):
-    """
-    Decorator para restringir acesso por perfil de usuário.
-    
-    Args:
-        perfis_permitidos: Lista de perfis que podem acessar o endpoint
-    
-    Returns:
-        Dependency function para usar em rotas FastAPI
-    """
-    def perfil_dependency(
-        current_user: Dict[str, Any] = Depends(get_current_user)
-    ) -> Dict[str, Any]:
-        user_perfil = current_user.get("perfil")
-        
-        if user_perfil not in [p.value for p in perfis_permitidos]:
+        if not result.data:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Acesso negado. Perfis permitidos: {[p.value for p in perfis_permitidos]}"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Usuário não encontrado"
             )
         
-        return current_user
+        user_data = result.data
+        loja_data = user_data.get('c_lojas', {})
+        
+        user = User(
+            id=token_data.sub,
+            email=token_data.email or user_data.get('email', ''),
+            perfil=user_data.get('perfil', 'USUARIO'),
+            loja_id=loja_data.get('id'),
+            empresa_id=loja_data.get('empresa_id'),
+            nome=user_data.get('nome'),
+            ativo=user_data.get('ativo', True),
+            metadata={
+                'funcao': user_data.get('funcao'),
+                'comissao_padrao': user_data.get('comissao_padrao'),
+                'minimo_garantido': user_data.get('minimo_garantido')
+            }
+        )
+        
+        if not user.ativo:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Usuário inativo"
+            )
+        
+        return user
     
-    return perfil_dependency
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching user data: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao buscar dados do usuário"
+        )
 
 
+async def get_current_active_user(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    """Garante que o usuário está ativo"""
+    if not current_user.ativo:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuário inativo"
+        )
+    return current_user
+
+
+# Funções de autorização por perfil
 def require_admin():
-    """Dependency que exige perfil ADMIN_MASTER"""
-    return require_perfil([PerfilUsuario.ADMIN_MASTER])
+    """Dependency que requer perfil ADMIN ou superior"""
+    async def verify_admin(current_user: User = Depends(get_current_user)):
+        if current_user.perfil not in ["ADMIN", "ADMIN_MASTER"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Acesso restrito a administradores"
+            )
+        return current_user
+    return verify_admin
 
 
-def require_gerente_ou_admin():
-    """Dependency que exige perfil GERENTE ou ADMIN_MASTER"""
-    return require_perfil([PerfilUsuario.GERENTE, PerfilUsuario.ADMIN_MASTER])
+def require_admin_master():
+    """Dependency que requer perfil ADMIN_MASTER"""
+    async def verify_admin_master(current_user: User = Depends(get_current_user)):
+        if current_user.perfil != "ADMIN_MASTER":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Acesso restrito ao Admin Master"
+            )
+        return current_user
+    return verify_admin_master
 
 
 def require_vendedor_ou_superior():
-    """Dependency que exige qualquer perfil exceto MEDIDOR"""
-    return require_perfil([
-        PerfilUsuario.VENDEDOR,
-        PerfilUsuario.GERENTE,
-        PerfilUsuario.ADMIN_MASTER
-    ])
+    """Dependency que permite VENDEDOR ou superior"""
+    async def verify_vendedor(current_user: User = Depends(get_current_user)):
+        # Todos os perfis têm acesso (USUARIO inclui vendedores)
+        return current_user
+    return verify_vendedor
 
 
-class AuthMiddleware:
-    """
-    Middleware de autenticação para configurar contexto de usuário.
-    Prepara dados necessários para RLS automático.
-    """
+# Serviço de autenticação
+class AuthService:
+    """Serviço para operações de autenticação"""
     
-    def __init__(self, app):
-        self.app = app
-    
-    async def __call__(self, scope, receive, send):
-        if scope["type"] == "http":
-            request = Request(scope, receive)
-            
-            # Extrai token se presente
-            auth_header = request.headers.get("authorization")
-            if auth_header and auth_header.startswith("Bearer "):
-                token = auth_header.split(" ")[1]
-                
-                try:
-                    settings = get_settings()
-                    payload = decode_jwt_token(token, settings)
-                    
-                    # Adiciona dados do usuário ao escopo da requisição
-                    scope["user"] = {
-                        "user_id": payload.get("sub"),
-                        "loja_id": payload.get("loja_id"),
-                        "perfil": payload.get("perfil"),
-                        "token": token
-                    }
-                    
-                except AuthException:
-                    # Token inválido - continua sem usuário
-                    scope["user"] = None
+    @staticmethod
+    async def login(email: str, password: str) -> AuthResponse:
+        """Realiza login usando Supabase Auth"""
+        supabase = get_supabase()
         
-        await self.app(scope, receive, send)
-
-
-def get_optional_user(request: Request) -> Optional[Dict[str, Any]]:
-    """
-    Obtém usuário opcional (não obrigatório).
-    Útil para endpoints que funcionam com ou sem autenticação.
-    """
-    return getattr(request.scope, "user", None)
-
-
-def create_access_token(user_data: Dict[str, Any], settings: Settings) -> str:
-    """
-    Cria um token JWT para um usuário.
+        try:
+            # Login via Supabase Auth
+            response = supabase.client.auth.sign_in_with_password({
+                "email": email,
+                "password": password
+            })
+            
+            if not response.user:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Email ou senha inválidos"
+                )
+            
+            # Busca dados completos do usuário
+            user_data = await get_current_user(
+                HTTPAuthorizationCredentials(
+                    scheme="Bearer",
+                    credentials=response.session.access_token
+                )
+            )
+            
+            return AuthResponse(
+                access_token=response.session.access_token,
+                refresh_token=response.session.refresh_token,
+                expires_in=settings.jwt_access_token_expire_minutes * 60,
+                user=user_data
+            )
+        
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Login failed: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Erro ao realizar login"
+            )
     
-    Args:
-        user_data: Dados do usuário para incluir no token
-        settings: Configurações da aplicação
-    
-    Returns:
-        Token JWT codificado
-    """
-    from datetime import datetime, timedelta
-    
-    # Dados obrigatórios no token
-    payload = {
-        "sub": str(user_data["user_id"]),
-        "loja_id": str(user_data["loja_id"]),
-        "perfil": user_data["perfil"],
-        "email": user_data["email"],
-        "nome": user_data.get("nome", ""),
-        "iat": datetime.utcnow(),
-        "exp": datetime.utcnow() + timedelta(minutes=settings.jwt_access_token_expire_minutes)
-    }
-    
-    return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
-
-
-# Função para verificar se usuário pode acessar loja específica
-def verificar_acesso_loja(current_user: Dict[str, Any], loja_id: str) -> bool:
-    """
-    Verifica se o usuário tem acesso a uma loja específica.
-    
-    Args:
-        current_user: Dados do usuário autenticado
-        loja_id: ID da loja a verificar
-    
-    Returns:
-        True se tem acesso, False caso contrário
-    """
-    user_loja_id = current_user.get("loja_id")
-    user_perfil = current_user.get("perfil")
-    
-    # Admin Master tem acesso a todas as lojas
-    if user_perfil == PerfilUsuario.ADMIN_MASTER.value:
-        return True
-    
-    # Outros perfis só acessam sua própria loja
-    return str(user_loja_id) == str(loja_id)
-
-
-def assert_acesso_loja(current_user: Dict[str, Any], loja_id: str) -> None:
-    """
-    Valida acesso à loja ou lança exceção.
-    
-    Args:
-        current_user: Dados do usuário autenticado
-        loja_id: ID da loja a verificar
-    
-    Raises:
-        HTTPException: Se não tem acesso à loja
-    """
-    if not verificar_acesso_loja(current_user, loja_id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Acesso negado a esta loja"
-        )
+    @staticmethod
+    async def refresh_token(refresh_token: str) -> AuthResponse:
+        """Renova o token de acesso usando refresh token"""
+        supabase = get_supabase()
+        
+        try:
+            # Refresh via Supabase Auth
+            response = supabase.client.auth.refresh_session(refresh_token)
+            
+            if not response.user:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Refresh token inválido"
+                )
+            
+            # Busca dados atualizados do usuário
+            user_data = await get_current_user(
+                HTTPAuthorizationCredentials(
+                    scheme="Bearer",
+                    credentials=response.session.access_token
+                )
+            )
+            
+            return AuthResponse(
+                access_token=response.session.access_token,
+                refresh_token=response.session.refresh_token,
+                expires_in=settings.jwt_access_token_expire_minutes * 60,
+                user=user_data
+            )
+        
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Token refresh failed: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Erro ao renovar token"
+            )
