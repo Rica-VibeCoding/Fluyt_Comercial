@@ -187,20 +187,30 @@ class AuthService:
             NotFoundException: Usuário não encontrado
         """
         try:
-            # Buscar APENAS na tabela usuarios
+            # Buscar na tabela usuarios
             result = self.supabase_admin.table('usuarios').select('*').eq('user_id', user_id).single().execute()
             
             if result.data:
                 user_data = result.data
+                
+                # Mapear função baseada no perfil
+                funcao_map = {
+                    'SUPER_ADMIN': 'Administrador Master',
+                    'ADMIN': 'Administrador',
+                    'GERENTE': 'Gerente',
+                    'VENDEDOR': 'Vendedor',
+                    'USER': 'Usuário'
+                }
+                
                 return {
                     'nome': user_data.get('nome'),
                     'email': user_data.get('email'),
                     'perfil': user_data.get('perfil', 'USER'),
                     'ativo': user_data.get('ativo', True),
-                    'funcao': 'Usuário',
-                    'loja_id': None,  # Por enquanto
-                    'loja_nome': None,
-                    'empresa_id': None,
+                    'funcao': funcao_map.get(user_data.get('perfil', 'USER'), 'Usuário'),
+                    'loja_id': user_data.get('loja_id'),
+                    'loja_nome': None,  # Por enquanto sem join
+                    'empresa_id': user_data.get('empresa_id'),
                     'empresa_nome': None,
                 }
             else:

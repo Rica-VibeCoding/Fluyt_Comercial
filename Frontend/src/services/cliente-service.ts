@@ -14,6 +14,7 @@ import {
 } from './api-client';
 import { ClienteStore } from '@/lib/store/cliente-store';
 import { FRONTEND_CONFIG, logConfig } from '@/lib/config';
+import { debugAPI } from '@/lib/debug-api';
 import type { Cliente, ClienteFormData, FiltrosCliente } from '@/types/cliente';
 
 // ============= INTERFACE UNIFICADA =============
@@ -40,7 +41,7 @@ class ClienteService {
   private forcarMock: boolean = false;
   private ultimaConectividade: boolean | null = null;
   private ultimoTesteConectividade: number = 0;
-  private readonly CACHE_CONECTIVIDADE = 30000; // 30 segundos
+  private readonly CACHE_CONECTIVIDADE = 60000; // 60 segundos para evitar verificações desnecessárias
 
   constructor() {
     // Verificar feature flag
@@ -91,14 +92,21 @@ class ClienteService {
 
   // Listar clientes
   async listarClientes(filtros?: FiltrosCliente): Promise<ClienteServiceResponse<ClienteListResponse>> {
+    debugAPI('ClienteService.listarClientes - INÍCIO', { filtros });
+    
     const conectado = await this.verificarConectividade();
+    debugAPI('ClienteService.listarClientes - Conectividade', { conectado });
 
     if (conectado) {
       try {
+        const startTime = Date.now();
         logConfig('📡 Listando clientes via API...');
         const response = await apiClient.listarClientes(filtros);
         
         if (response.success && response.data) {
+          const responseTime = Date.now() - startTime;
+          logConfig(`✅ Clientes carregados via API em ${responseTime}ms`);
+          
           const clientesConvertidos = response.data.items.map(converterClienteBackendParaFrontend);
           
           return {
@@ -116,42 +124,35 @@ class ClienteService {
         } else {
           throw new Error(response.error || 'Erro na API');
         }
-      } catch (error) {
-        logConfig('❌ Erro na API, usando fallback para mock', error);
-        // Fallback automático para mock
+      } catch (error: any) {
+        const errorMsg = error.message || 'Erro desconhecido';
+        logConfig('❌ Erro na API:', errorMsg);
+        
+        // Mensagem mais específica baseada no tipo de erro
+        let userMessage = 'Não foi possível conectar ao servidor.';
+        if (errorMsg.includes('timeout') || errorMsg.includes('Timeout')) {
+          userMessage = 'O servidor demorou muito para responder. Tente novamente.';
+        } else if (errorMsg.includes('Network') || errorMsg.includes('fetch')) {
+          userMessage = 'Erro de conexão. Verifique se o backend está rodando em http://localhost:8000';
+        }
+        
+        return {
+          success: false,
+          error: userMessage,
+          source: 'api',
+          timestamp: new Date().toISOString(),
+        };
       }
     }
 
-    // Usar mock como fallback
-    logConfig('📦 Listando clientes via Mock (fallback)...');
-    try {
-      const clientesMock = await ClienteStore.buscarComFiltros({
-        busca: filtros?.busca,
-        tipo_venda: filtros?.tipo_venda,
-        procedencia: filtros?.procedencia_id,
-        vendedor_id: filtros?.vendedor_id,
-      });
-
-      return {
-        success: true,
-        data: {
-          items: clientesMock,
-          total: clientesMock.length,
-          page: 1,
-          limit: 50,
-          pages: 1,
-        },
-        source: 'mock',
-        timestamp: new Date().toISOString(),
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Erro no mock',
-        source: 'mock',
-        timestamp: new Date().toISOString(),
-      };
-    }
+    // Se não está conectado, retornar erro
+    logConfig('⚠️  Backend não disponível - verificação de conectividade falhou');
+    return {
+      success: false,
+      error: 'Backend não disponível. Verifique se o servidor está rodando em http://localhost:8000',
+      source: 'api',
+      timestamp: new Date().toISOString(),
+    };
   }
 
   // Buscar cliente por ID
@@ -175,40 +176,35 @@ class ClienteService {
         } else {
           throw new Error(response.error || 'Cliente não encontrado na API');
         }
-      } catch (error) {
-        logConfig('❌ Erro na API, usando fallback para mock', error);
-        // Fallback automático para mock
+      } catch (error: any) {
+        const errorMsg = error.message || 'Erro desconhecido';
+        logConfig('❌ Erro na API:', errorMsg);
+        
+        // Mensagem mais específica baseada no tipo de erro
+        let userMessage = 'Não foi possível conectar ao servidor.';
+        if (errorMsg.includes('timeout') || errorMsg.includes('Timeout')) {
+          userMessage = 'O servidor demorou muito para responder. Tente novamente.';
+        } else if (errorMsg.includes('Network') || errorMsg.includes('fetch')) {
+          userMessage = 'Erro de conexão. Verifique se o backend está rodando em http://localhost:8000';
+        }
+        
+        return {
+          success: false,
+          error: userMessage,
+          source: 'api',
+          timestamp: new Date().toISOString(),
+        };
       }
     }
 
-    // Usar mock como fallback
-    logConfig('📦 Buscando cliente via Mock (fallback)...', { id });
-    try {
-      const clienteMock = await ClienteStore.buscarPorId(id);
-      
-      if (clienteMock) {
-        return {
-          success: true,
-          data: clienteMock,
-          source: 'mock',
-          timestamp: new Date().toISOString(),
-        };
-      } else {
-        return {
-          success: false,
-          error: 'Cliente não encontrado',
-          source: 'mock',
-          timestamp: new Date().toISOString(),
-        };
-      }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Erro no mock',
-        source: 'mock',
-        timestamp: new Date().toISOString(),
-      };
-    }
+    // Se não está conectado, retornar erro
+    logConfig('⚠️  Backend não disponível - verificação de conectividade falhou');
+    return {
+      success: false,
+      error: 'Backend não disponível. Verifique se o servidor está rodando em http://localhost:8000',
+      source: 'api',
+      timestamp: new Date().toISOString(),
+    };
   }
 
   // Criar cliente
@@ -233,31 +229,34 @@ class ClienteService {
         } else {
           throw new Error(response.error || 'Erro ao criar cliente na API');
         }
-      } catch (error) {
-        logConfig('❌ Erro na API, usando fallback para mock', error);
-        // Fallback automático para mock
+      } catch (error: any) {
+        const errorMsg = error.message || 'Erro desconhecido';
+        logConfig('❌ Erro na API:', errorMsg);
+        
+        // Mensagem mais específica baseada no tipo de erro
+        let userMessage = 'Não foi possível conectar ao servidor.';
+        if (errorMsg.includes('timeout') || errorMsg.includes('Timeout')) {
+          userMessage = 'O servidor demorou muito para responder. Tente novamente.';
+        } else if (errorMsg.includes('Network') || errorMsg.includes('fetch')) {
+          userMessage = 'Erro de conexão. Verifique se o backend está rodando em http://localhost:8000';
+        }
+        
+        return {
+          success: false,
+          error: userMessage,
+          source: 'api',
+          timestamp: new Date().toISOString(),
+        };
       }
     }
 
-    // Usar mock como fallback
-    logConfig('📦 Criando cliente via Mock (fallback)...', { nome: dados.nome });
-    try {
-      const clienteMock = await ClienteStore.criar(dados);
-      
-      return {
-        success: true,
-        data: clienteMock,
-        source: 'mock',
-        timestamp: new Date().toISOString(),
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Erro no mock',
-        source: 'mock',
-        timestamp: new Date().toISOString(),
-      };
-    }
+    // Se não está conectado, retornar erro
+    return {
+      success: false,
+      error: 'Backend não disponível. Não é possível criar clientes sem conexão com o servidor.',
+      source: 'api',
+      timestamp: new Date().toISOString(),
+    };
   }
 
   // Atualizar cliente
@@ -282,40 +281,34 @@ class ClienteService {
         } else {
           throw new Error(response.error || 'Erro ao atualizar cliente na API');
         }
-      } catch (error) {
-        logConfig('❌ Erro na API, usando fallback para mock', error);
-        // Fallback automático para mock
+      } catch (error: any) {
+        const errorMsg = error.message || 'Erro desconhecido';
+        logConfig('❌ Erro na API:', errorMsg);
+        
+        // Mensagem mais específica baseada no tipo de erro
+        let userMessage = 'Não foi possível conectar ao servidor.';
+        if (errorMsg.includes('timeout') || errorMsg.includes('Timeout')) {
+          userMessage = 'O servidor demorou muito para responder. Tente novamente.';
+        } else if (errorMsg.includes('Network') || errorMsg.includes('fetch')) {
+          userMessage = 'Erro de conexão. Verifique se o backend está rodando em http://localhost:8000';
+        }
+        
+        return {
+          success: false,
+          error: userMessage,
+          source: 'api',
+          timestamp: new Date().toISOString(),
+        };
       }
     }
 
-    // Usar mock como fallback
-    logConfig('📦 Atualizando cliente via Mock (fallback)...', { id });
-    try {
-      const clienteAtualizado = await ClienteStore.atualizar(id, dados);
-      
-      if (clienteAtualizado) {
-        return {
-          success: true,
-          data: clienteAtualizado,
-          source: 'mock',
-          timestamp: new Date().toISOString(),
-        };
-      } else {
-        return {
-          success: false,
-          error: 'Cliente não encontrado para atualização',
-          source: 'mock',
-          timestamp: new Date().toISOString(),
-        };
-      }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Erro no mock',
-        source: 'mock',
-        timestamp: new Date().toISOString(),
-      };
-    }
+    // Se não está conectado, retornar erro
+    return {
+      success: false,
+      error: 'Backend não disponível. Não é possível atualizar clientes sem conexão com o servidor.',
+      source: 'api',
+      timestamp: new Date().toISOString(),
+    };
   }
 
   // Deletar cliente
@@ -336,30 +329,34 @@ class ClienteService {
         } else {
           throw new Error(response.error || 'Erro ao deletar cliente na API');
         }
-      } catch (error) {
-        logConfig('❌ Erro na API, usando fallback para mock', error);
-        // Fallback automático para mock
+      } catch (error: any) {
+        const errorMsg = error.message || 'Erro desconhecido';
+        logConfig('❌ Erro na API:', errorMsg);
+        
+        // Mensagem mais específica baseada no tipo de erro
+        let userMessage = 'Não foi possível conectar ao servidor.';
+        if (errorMsg.includes('timeout') || errorMsg.includes('Timeout')) {
+          userMessage = 'O servidor demorou muito para responder. Tente novamente.';
+        } else if (errorMsg.includes('Network') || errorMsg.includes('fetch')) {
+          userMessage = 'Erro de conexão. Verifique se o backend está rodando em http://localhost:8000';
+        }
+        
+        return {
+          success: false,
+          error: userMessage,
+          source: 'api',
+          timestamp: new Date().toISOString(),
+        };
       }
     }
 
-    // Usar mock como fallback
-    logConfig('📦 Deletando cliente via Mock (fallback)...', { id });
-    try {
-      await ClienteStore.deletar(id);
-      
-      return {
-        success: true,
-        source: 'mock',
-        timestamp: new Date().toISOString(),
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Erro no mock',
-        source: 'mock',
-        timestamp: new Date().toISOString(),
-      };
-    }
+    // Se não está conectado, retornar erro
+    return {
+      success: false,
+      error: 'Backend não disponível. Não é possível deletar clientes sem conexão com o servidor.',
+      source: 'api',
+      timestamp: new Date().toISOString(),
+    };
   }
 
   // ============= MÉTODOS AUXILIARES =============
@@ -397,5 +394,6 @@ export const clienteService = new ClienteService();
 // ============= LOGS DE INICIALIZAÇÃO =============
 
 logConfig('🚀 ClienteService carregado e configurado');
-logConfig('🔀 Estratégia: API-first com fallback automático para mock');
+logConfig('🔀 Estratégia: API-first SEM fallback para mock');
 logConfig('🎯 Feature USE_REAL_API:', FRONTEND_CONFIG.FEATURES.USE_REAL_API);
+logConfig('⚠️  Dados mock desabilitados - apenas conexão real com backend');

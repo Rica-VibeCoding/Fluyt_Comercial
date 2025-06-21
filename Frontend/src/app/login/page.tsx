@@ -8,11 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, LogIn, WifiOff, RefreshCw } from 'lucide-react';
+import { ApiClientStable } from '@/lib/api-client-stable';
 import { apiClient } from '@/services/api-client';
 
-// Configuração local
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 1000; // 1 segundo
+// ApiClientStable gerencia retries e fallback automaticamente
 
 interface LoginResponse {
   success: boolean;
@@ -35,36 +34,8 @@ interface LoginResponse {
   };
 }
 
-// Função para fazer fetch com retry
-async function fetchWithRetry(url: string, options: RequestInit, retries = MAX_RETRIES): Promise<Response> {
-  for (let i = 0; i <= retries; i++) {
-    try {
-      console.log(`🔄 Tentativa ${i + 1} de ${retries + 1}...`);
-      const response = await fetch(url, options);
-      return response;
-    } catch (error: any) {
-      console.error(`❌ Erro na tentativa ${i + 1}:`, error.message);
-      
-      // Se for o último retry, lança o erro
-      if (i === retries) {
-        throw error;
-      }
-      
-      // Se for erro de rede, espera antes de tentar novamente
-      if (error.message.includes('Failed to fetch') || 
-          error.message.includes('NetworkError') || 
-          error.message.includes('ERR_NETWORK_CHANGED')) {
-        console.log(`⏳ Aguardando ${RETRY_DELAY}ms antes de tentar novamente...`);
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-      } else {
-        // Para outros erros, não faz retry
-        throw error;
-      }
-    }
-  }
-  
-  throw new Error('Falha após múltiplas tentativas');
-}
+// ApiClientStable já possui retry e fallback automáticos
+// Removendo função fetchWithRetry duplicada
 
 export default function LoginPage() {
   const router = useRouter();
@@ -84,80 +55,48 @@ export default function LoginPage() {
     console.log('📧 Email:', email);
 
     try {
-      // Usar URL relativa para aproveitar o proxy reverso do Next.js
-      const loginUrl = '/api/v1/auth/login';
-      console.log('🔗 URL de login (proxy reverso):', loginUrl);
-      console.log('💡 Usando proxy reverso do Next.js para evitar CORS');
-
-      const startTime = Date.now();
+      // Usar ApiClientStable com fallback automático
+      console.log('🔐 Usando ApiClientStable com fallback automático');
       
-      // Usar fetchWithRetry ao invés de fetch direto
-      const response = await fetchWithRetry(loginUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({ 
-          email: email.trim(), 
-          password: password 
-        }),
+      const startTime = Date.now();
+      const result = await ApiClientStable.post<LoginResponse>('/auth/login', {
+        email: email.trim(),
+        password: password
       });
-
+      
       const responseTime = Date.now() - startTime;
       console.log(`⏱️ Tempo de resposta: ${responseTime}ms`);
-
-      // Log detalhado da resposta
-      console.log('📡 Resposta recebida:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-        type: response.type,
-        url: response.url
-      });
-
-      // Tentar ler o corpo da resposta
-      let responseData: any;
-      const contentType = response.headers.get('content-type');
+      console.log(`📡 Fonte da resposta: ${result.source}`);
       
-      try {
-        if (contentType && contentType.includes('application/json')) {
-          responseData = await response.json();
-          console.log('📦 Dados da resposta:', responseData);
-        } else {
-          const textResponse = await response.text();
-          console.log('📄 Resposta em texto:', textResponse);
-          responseData = { detail: textResponse || 'Resposta vazia do servidor' };
-        }
-      } catch (parseError) {
-        console.error('❌ Erro ao processar resposta:', parseError);
-        responseData = { detail: 'Erro ao processar resposta do servidor' };
-      }
-
-      // Verificar se a resposta foi bem-sucedida
-      if (!response.ok) {
-        let errorMessage = 'Erro ao fazer login';
+      if (!result.success) {
+        // Mapear erros específicos
+        let errorMessage = result.error || 'Erro ao fazer login';
         
-        switch (response.status) {
-          case 401:
-            errorMessage = 'Email ou senha incorretos';
-            break;
-          case 422:
-            errorMessage = responseData.detail || 'Dados inválidos. Verifique o email e senha';
-            break;
-          case 500:
-            errorMessage = 'Erro interno do servidor. Tente novamente mais tarde';
-            break;
-          default:
-            errorMessage = responseData.detail || responseData.message || `Erro ${response.status}`;
+        // Se tiver dados adicionais do erro
+        if (result.data) {
+          const errorData = result.data as any;
+          if (errorData.detail) {
+            errorMessage = errorData.detail;
+          }
+        }
+        
+        // Mensagens amigáveis para erros comuns
+        if (errorMessage.includes('Invalid credentials') || errorMessage.includes('401')) {
+          errorMessage = 'Email ou senha incorretos';
+        } else if (errorMessage.includes('422')) {
+          errorMessage = 'Dados inválidos. Verifique o email e senha';
+        } else if (errorMessage.includes('500')) {
+          errorMessage = 'Erro interno do servidor. Tente novamente';
+        } else if (errorMessage.includes('conectar ao servidor')) {
+          errorMessage = 'Não foi possível conectar ao servidor. Verifique se o backend está rodando.';
         }
         
         setError(errorMessage);
         return;
       }
-
-      // Validar resposta de sucesso
-      const data = responseData as LoginResponse;
+      
+      // Resposta bem-sucedida
+      const data = result.data as LoginResponse;
       
       if (!data.access_token) {
         console.error('❌ Resposta sem token:', data);
@@ -307,32 +246,7 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          {/* Informações importantes */}
-          <div className="mt-6 space-y-3">
-            <Alert className="bg-amber-50 border-amber-200">
-              <AlertDescription className="text-sm">
-                <strong>⚠️ Backend necessário:</strong><br />
-                Certifique-se de que o backend está rodando em http://localhost:8000<br />
-                <code className="text-xs bg-gray-100 px-1 rounded">cd backend && python main.py</code>
-              </AlertDescription>
-            </Alert>
-            
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <p className="text-sm text-gray-600 font-medium mb-2">
-                Credenciais de teste:
-              </p>
-              <div className="text-sm text-gray-600 space-y-1">
-                <p>📧 Email: ricardo.nilton@hotmail.com</p>
-                <p>🔑 Senha: 123456</p>
-              </div>
-            </div>
-            
-            {/* Status de conexão */}
-            <div className="text-center text-xs text-gray-500">
-              <p>Backend: http://localhost:8000</p>
-              {isLoading && <p className="mt-1">🔄 Conectando...</p>}
-            </div>
-          </div>
+          {/* Remover informações de teste e debug */}
         </CardContent>
       </Card>
     </div>

@@ -74,9 +74,14 @@ class ClienteService:
             if filtros.data_fim:
                 filtros_dict['data_fim'] = filtros.data_fim
             
+            # Define loja_id baseado no perfil
+            # SUPER_ADMIN vê todos os clientes
+            # Outros usuários veem apenas da sua loja
+            loja_id = None if user.perfil == "SUPER_ADMIN" else user.loja_id
+            
             # Busca no repository
             resultado = await repository.listar(
-                loja_id=user.loja_id,
+                loja_id=loja_id,
                 filtros=filtros_dict,
                 page=pagination.page,
                 limit=pagination.limit
@@ -109,16 +114,19 @@ class ClienteService:
             Dados completos do cliente
         """
         try:
-            # Verifica se usuário tem loja associada
-            if not user.loja_id:
+            # Verifica se usuário tem loja associada (exceto SUPER_ADMIN)
+            if not user.loja_id and user.perfil != "SUPER_ADMIN":
                 raise ValidationException("Usuário não possui loja associada")
+            
+            # Define loja_id baseado no perfil
+            loja_id = None if user.perfil == "SUPER_ADMIN" else user.loja_id
             
             # Conecta com o banco
             db = get_database()
             repository = ClienteRepository(db)
             
             # Busca o cliente
-            cliente_data = await repository.buscar_por_id(cliente_id, user.loja_id)
+            cliente_data = await repository.buscar_por_id(cliente_id, loja_id)
             
             return ClienteResponse(**cliente_data)
         
@@ -270,16 +278,19 @@ class ClienteService:
             True se disponível, False se já existe
         """
         try:
-            # Verifica se usuário tem loja associada
-            if not user.loja_id:
+            # Verifica se usuário tem loja associada (exceto SUPER_ADMIN)
+            if not user.loja_id and user.perfil != "SUPER_ADMIN":
                 raise ValidationException("Usuário não possui loja associada")
+            
+            # Define loja_id baseado no perfil
+            loja_id = None if user.perfil == "SUPER_ADMIN" else user.loja_id
             
             # Conecta com o banco
             db = get_database()
             repository = ClienteRepository(db)
             
             # Busca cliente com esse CPF/CNPJ
-            cliente_existente = await repository.buscar_por_cpf_cnpj(cpf_cnpj, user.loja_id)
+            cliente_existente = await repository.buscar_por_cpf_cnpj(cpf_cnpj, loja_id)
             
             # Se não encontrou, está disponível
             if not cliente_existente:

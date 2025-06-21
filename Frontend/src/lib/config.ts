@@ -9,7 +9,7 @@ export const API_CONFIG = {
   API_VERSION: 'v1',
   
   // Timeouts
-  REQUEST_TIMEOUT: 10000, // 10 segundos
+  REQUEST_TIMEOUT: 60000, // 60 segundos - tempo suficiente para backend processar
   
   // Headers padrão
   DEFAULT_HEADERS: {
@@ -35,7 +35,7 @@ export const FRONTEND_CONFIG = {
   FEATURES: {
     USE_REAL_API: process.env.NEXT_PUBLIC_USE_REAL_API === 'true',
     ENABLE_LOGS: process.env.NODE_ENV === 'development',
-    MOCK_FALLBACK: true, // Fallback para mocks se API falhar
+    MOCK_FALLBACK: false, // Desabilitado - usar apenas dados reais
     DEBUG_API: process.env.NODE_ENV === 'development', // Logs detalhados de API
   },
   

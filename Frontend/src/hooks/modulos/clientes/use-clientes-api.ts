@@ -52,12 +52,9 @@ export function useClientesApi() {
         setClientes(response.data.items);
         setUltimaFonte(response.source);
         
-        // Toast informativo sobre a fonte
+        // Se usar mock, lançar erro ao invés de mostrar toast
         if (response.source === 'mock') {
-          toast({
-            title: "Modo Offline",
-            description: "Usando dados locais. Backend não disponível.",
-          });
+          throw new Error('Backend não disponível. Verifique se o servidor está rodando.');
         }
         
         logConfig('useClientesApi: Clientes carregados com sucesso', {
@@ -69,9 +66,10 @@ export function useClientesApi() {
       }
     } catch (error) {
       console.error('❌ useClientesApi: Erro ao carregar clientes:', error);
+      const mensagemErro = error instanceof Error ? error.message : "Não foi possível carregar a lista de clientes.";
       toast({
         title: "Erro ao carregar clientes",
-        description: "Não foi possível carregar a lista de clientes.",
+        description: mensagemErro,
         variant: "destructive"
       });
       setClientes([]);
@@ -139,13 +137,14 @@ export function useClientesApi() {
         // Recarregar lista
         await carregarClientes();
         
-        const mensagem = response.source === 'api' ? 
-          `${response.data.nome} foi adicionado via API.` :
-          `${response.data.nome} foi adicionado localmente.`;
+        // Se foi salvo em mock, lançar erro
+        if (response.source === 'mock') {
+          throw new Error('Não foi possível conectar ao servidor. As alterações não foram salvas.');
+        }
         
         toast({
           title: "Cliente cadastrado com sucesso!",
-          description: mensagem,
+          description: `${response.data.nome} foi adicionado.`,
         });
         
         logConfig('useClientesApi: Cliente criado com sucesso', { 
@@ -159,9 +158,10 @@ export function useClientesApi() {
       }
     } catch (error) {
       console.error('❌ useClientesApi: Erro ao criar cliente:', error);
+      const mensagemErro = error instanceof Error ? error.message : "Verifique os dados e tente novamente.";
       toast({
         title: "Erro ao cadastrar cliente",
-        description: "Verifique os dados e tente novamente.",
+        description: mensagemErro,
         variant: "destructive"
       });
       return null;
@@ -182,13 +182,14 @@ export function useClientesApi() {
         // Recarregar lista
         await carregarClientes();
         
-        const mensagem = response.source === 'api' ? 
-          "Alterações sincronizadas com o servidor." :
-          "Alterações salvas localmente.";
+        // Se foi salvo em mock, lançar erro
+        if (response.source === 'mock') {
+          throw new Error('Não foi possível conectar ao servidor. As alterações não foram salvas.');
+        }
         
         toast({
           title: "Cliente atualizado com sucesso!",
-          description: mensagem,
+          description: "Alterações sincronizadas com o servidor.",
         });
         
         logConfig('useClientesApi: Cliente atualizado com sucesso', { 
@@ -202,9 +203,10 @@ export function useClientesApi() {
       }
     } catch (error) {
       console.error('❌ useClientesApi: Erro ao atualizar cliente:', error);
+      const mensagemErro = error instanceof Error ? error.message : "Tente novamente em alguns instantes.";
       toast({
         title: "Erro ao atualizar cliente",
-        description: "Tente novamente em alguns instantes.",
+        description: mensagemErro,
         variant: "destructive"
       });
       return null;
@@ -225,13 +227,14 @@ export function useClientesApi() {
         // Recarregar lista
         await carregarClientes();
         
-        const mensagem = response.source === 'api' ? 
-          "Cliente removido do servidor." :
-          "Cliente removido localmente.";
+        // Se foi removido em mock, lançar erro
+        if (response.source === 'mock') {
+          throw new Error('Não foi possível conectar ao servidor. A remoção não foi efetivada.');
+        }
         
         toast({
           title: "Cliente removido",
-          description: mensagem,
+          description: "Cliente removido do servidor.",
         });
         
         logConfig('useClientesApi: Cliente removido com sucesso', { 
@@ -245,9 +248,10 @@ export function useClientesApi() {
       }
     } catch (error) {
       console.error('❌ useClientesApi: Erro ao remover cliente:', error);
+      const mensagemErro = error instanceof Error ? error.message : "Tente novamente em alguns instantes.";
       toast({
         title: "Erro ao remover cliente",
-        description: "Tente novamente em alguns instantes.",
+        description: mensagemErro,
         variant: "destructive"
       });
       return false;
