@@ -32,7 +32,7 @@ class User(BaseModel):
     """Modelo do usuário autenticado"""
     id: str
     email: str
-    perfil: str  # ADMIN_MASTER, ADMIN, USUARIO
+    perfil: str  # SUPER_ADMIN, ADMIN, USUARIO
     loja_id: Optional[str] = None
     empresa_id: Optional[str] = None
     nome: Optional[str] = None
@@ -208,7 +208,7 @@ async def get_current_active_user(
 def require_admin():
     """Dependency que requer perfil ADMIN ou superior"""
     async def verify_admin(current_user: User = Depends(get_current_user)):
-        if current_user.perfil not in ["ADMIN", "ADMIN_MASTER"]:
+        if current_user.perfil not in ["ADMIN", "SUPER_ADMIN"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Acesso restrito a administradores"
@@ -217,16 +217,16 @@ def require_admin():
     return verify_admin
 
 
-def require_admin_master():
-    """Dependency que requer perfil ADMIN_MASTER"""
-    async def verify_admin_master(current_user: User = Depends(get_current_user)):
-        if current_user.perfil != "ADMIN_MASTER":
+def require_super_admin():
+    """Dependency que requer perfil SUPER_ADMIN"""
+    async def verify_super_admin(current_user: User = Depends(get_current_user)):
+        if current_user.perfil != "SUPER_ADMIN":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Acesso restrito ao Admin Master"
+                detail="Acesso restrito ao Super Admin"
             )
         return current_user
-    return verify_admin_master
+    return verify_super_admin
 
 
 def require_vendedor_ou_superior():

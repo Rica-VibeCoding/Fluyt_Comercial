@@ -9,7 +9,6 @@ export { useIsMobile } from './globais/use-mobile';
 export { usePersistenciaSessao } from './globais/use-persistencia-sessao';
 export { useStepper } from './globais/use-stepper';
 export { useToast } from './globais/use-toast';
-export { useClienteSelecionadoRealista } from './globais/use-cliente-selecionado-realista';
 export { useClienteSelecionado } from './globais/use-cliente-selecionado';
 
 // Hooks de módulos - Clientes

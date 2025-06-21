@@ -20,7 +20,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { useClientesApi } from "@/hooks/modulos/clientes/use-clientes-api"
-import { useClienteSelecionadoRealista } from "@/hooks/globais/use-cliente-selecionado-realista"
+import { useClienteSelecionado } from "@/hooks/globais/use-cliente-selecionado"
 import { useSessao } from "@/store/sessao-store"
 
 interface ClienteSelectorUniversalProps {
@@ -37,7 +37,8 @@ export function ClienteSelectorUniversal({
   const [open, setOpen] = useState(false)
   const router = useRouter()
   const { clientes, isLoading: clientesLoading } = useClientesApi()
-  const { clienteSelecionado, isLoading: clienteLoading } = useClienteSelecionadoRealista()
+  const { clienteSelecionado } = useClienteSelecionado()
+  const clienteLoading = false // Simplificado - useClienteSelecionado não tem isLoading
   const { cliente: clienteSessao, definirCliente } = useSessao()
 
   const handleSelectCliente = (clienteId: string, clienteNome: string) => {

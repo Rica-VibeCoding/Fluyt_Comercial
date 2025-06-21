@@ -51,8 +51,8 @@ class ClienteService:
             Lista paginada de clientes
         """
         try:
-            # Verifica se usuário tem loja associada
-            if not user.loja_id:
+            # Verifica se usuário tem loja associada (exceto SUPER_ADMIN)
+            if not user.loja_id and user.perfil != "SUPER_ADMIN":
                 raise ValidationException("Usuário não possui loja associada")
             
             # Conecta com o banco
@@ -75,7 +75,7 @@ class ClienteService:
                 filtros_dict['data_fim'] = filtros.data_fim
             
             # Define loja_id baseado no perfil
-            # SUPER_ADMIN vê todos os clientes
+            # SUPER_ADMIN vê todos os clientes de todas as lojas
             # Outros usuários veem apenas da sua loja
             loja_id = None if user.perfil == "SUPER_ADMIN" else user.loja_id
             
@@ -241,7 +241,7 @@ class ClienteService:
                 raise ValidationException("Usuário não possui loja associada")
             
             # Apenas admins podem excluir clientes
-            if user.perfil not in ['ADMIN', 'ADMIN_MASTER']:
+            if user.perfil not in ['ADMIN', 'SUPER_ADMIN']:
                 raise ValidationException("Apenas administradores podem excluir clientes")
             
             # Conecta com o banco
@@ -278,12 +278,12 @@ class ClienteService:
             True se disponível, False se já existe
         """
         try:
-            # Verifica se usuário tem loja associada (exceto SUPER_ADMIN)
-            if not user.loja_id and user.perfil != "SUPER_ADMIN":
+            # Verifica se usuário tem loja associada (exceto ADMIN_MASTER)
+            if not user.loja_id and user.perfil != "ADMIN_MASTER":
                 raise ValidationException("Usuário não possui loja associada")
             
             # Define loja_id baseado no perfil
-            loja_id = None if user.perfil == "SUPER_ADMIN" else user.loja_id
+            loja_id = None if user.perfil == "ADMIN_MASTER" else user.loja_id
             
             # Conecta com o banco
             db = get_database()

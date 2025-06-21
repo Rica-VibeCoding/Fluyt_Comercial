@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
-import { useClienteSelecionadoRealista } from '../../../hooks/globais/use-cliente-selecionado-realista';
+import { useClienteSelecionado } from '../../../hooks/globais/use-cliente-selecionado';
 import { useSessao } from '../../../store/sessao-store';
 import { Button } from '../../ui/button';
 import { Badge } from '../../ui/badge';
@@ -19,7 +19,9 @@ import { ClienteSelectorUniversal } from '../../shared/cliente-selector-universa
 export function AmbientePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { clienteId, cliente: clienteCarregado, isLoading: clienteLoading } = useClienteSelecionadoRealista();
+  const { clienteId, clienteNome } = useClienteSelecionado();
+  const clienteCarregado = clienteId && clienteNome ? { nome: clienteNome } : null;
+  const clienteLoading = false; // Simplificado - useClienteSelecionado não tem isLoading
   
   // Verificar se deve forçar troca de cliente
   const forcarTroca = searchParams.get('forcar') === 'true';
