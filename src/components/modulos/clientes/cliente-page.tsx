@@ -5,6 +5,7 @@ import { ClienteHeader } from './cliente-header';
 import { ClienteFiltrosModerno } from './cliente-filtros-moderno';
 import { ClienteTabela } from './cliente-tabela';
 import { ClienteModal } from './cliente-modal';
+import { TesteIntegracaoClientes } from '../../debug/teste-integracao-clientes';
 import { useClientesApi } from '../../../hooks/modulos/clientes/use-clientes-api';
 import { Cliente } from '../../../types/cliente';
 import { Wifi, WifiOff } from 'lucide-react';
@@ -107,6 +108,9 @@ export function ClientePage() {
           onSalvar={handleSalvarCliente}
           isLoading={isLoading}
         />
+        
+        {/* Componente de Debug - só aparece em desenvolvimento */}
+        <TesteIntegracaoClientes />
       </div>
     </div>
   );
