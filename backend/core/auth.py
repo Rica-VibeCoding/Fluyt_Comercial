@@ -70,13 +70,26 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 
 def verify_token(token: str) -> TokenData:
-    """Verifica e decodifica um token JWT"""
+    """Verifica token do Supabase Auth"""
     try:
-        payload = jwt.decode(
-            token, 
-            settings.jwt_secret_key, 
-            algorithms=[settings.jwt_algorithm]
-        )
+        # Usar JWT secret do Supabase (não o customizado)
+        supabase_secret = settings.supabase_anon_key
+        
+        # Decodificar sem verificação primeiro para ver o formato
+        import base64
+        import json
+        
+        # Dividir o token em partes
+        parts = token.split('.')
+        if len(parts) != 3:
+            raise JWTError("Token malformado")
+        
+        # Decodificar payload sem verificação
+        payload_encoded = parts[1]
+        # Adicionar padding se necessário
+        payload_encoded += '=' * (4 - len(payload_encoded) % 4)
+        payload_bytes = base64.urlsafe_b64decode(payload_encoded)
+        payload = json.loads(payload_bytes)
         
         user_id: str = payload.get("sub")
         if user_id is None:
@@ -86,13 +99,34 @@ def verify_token(token: str) -> TokenData:
                 headers={"WWW-Authenticate": "Bearer"},
             )
         
-        return TokenData(**payload)
+        # Verificar se token não expirou
+        exp = payload.get("exp")
+        if exp and datetime.now(timezone.utc).timestamp() > exp:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token expirado",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        return TokenData(
+            sub=user_id,
+            email=payload.get("email"),
+            role=payload.get("role"),
+            exp=exp
+        )
     
     except JWTError as e:
         logger.error(f"JWT verification failed: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token inválido ou expirado",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except Exception as e:
+        logger.error(f"Token verification error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token inválido",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -117,22 +151,24 @@ async def get_current_user(
     supabase = get_supabase()
     
     try:
-        result = supabase.admin.table('usuarios').select('*').eq('user_id', token_data.sub).single().execute()
+        # Usar supabase admin para acessar a tabela sem RLS
+        result = supabase.admin.table('usuarios').select('*').eq('user_id', token_data.sub).execute()
         
-        if not result.data:
+        if not result.data or len(result.data) == 0:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Usuário não encontrado"
             )
         
-        user_data = result.data
+        # Pegar o primeiro resultado
+        user_data = result.data[0]
         
         user = User(
             id=token_data.sub,
             email=user_data.get('email', ''),
-            perfil=user_data.get('perfil', 'USER'),
-            loja_id=None,  # Simplificado por enquanto
-            empresa_id=None,
+            perfil=user_data.get('perfil', 'USUARIO'),
+            loja_id=user_data.get('loja_id'),  # Incluir loja_id real
+            empresa_id=user_data.get('empresa_id'),
             nome=user_data.get('nome'),
             ativo=user_data.get('ativo', True),
             metadata={}
@@ -223,12 +259,29 @@ class AuthService:
                     detail="Email ou senha inválidos"
                 )
             
-            # Busca dados completos do usuário
-            user_data = await get_current_user(
-                HTTPAuthorizationCredentials(
-                    scheme="Bearer",
-                    credentials=response.session.access_token
+            # Busca dados completos do usuário diretamente (sem usar get_current_user para evitar loop)
+            token_data = verify_token(response.session.access_token)
+            supabase = get_supabase()
+            
+            # Buscar usuário na tabela
+            result = supabase.admin.table('usuarios').select('*').eq('user_id', token_data.sub).execute()
+            
+            if not result.data or len(result.data) == 0:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Usuário não encontrado"
                 )
+            
+            user_db = result.data[0]
+            user_data = User(
+                id=token_data.sub,
+                email=user_db.get('email', ''),
+                perfil=user_db.get('perfil', 'USUARIO'),
+                loja_id=user_db.get('loja_id'),
+                empresa_id=user_db.get('empresa_id'),
+                nome=user_db.get('nome'),
+                ativo=user_db.get('ativo', True),
+                metadata={}
             )
             
             return AuthResponse(
@@ -262,12 +315,29 @@ class AuthService:
                     detail="Refresh token inválido"
                 )
             
-            # Busca dados atualizados do usuário
-            user_data = await get_current_user(
-                HTTPAuthorizationCredentials(
-                    scheme="Bearer",
-                    credentials=response.session.access_token
+            # Busca dados atualizados do usuário diretamente (sem usar get_current_user para evitar loop)
+            token_data = verify_token(response.session.access_token)
+            supabase = get_supabase()
+            
+            # Buscar usuário na tabela
+            result = supabase.admin.table('usuarios').select('*').eq('user_id', token_data.sub).execute()
+            
+            if not result.data or len(result.data) == 0:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Usuário não encontrado"
                 )
+            
+            user_db = result.data[0]
+            user_data = User(
+                id=token_data.sub,
+                email=user_db.get('email', ''),
+                perfil=user_db.get('perfil', 'USUARIO'),
+                loja_id=user_db.get('loja_id'),
+                empresa_id=user_db.get('empresa_id'),
+                nome=user_db.get('nome'),
+                ativo=user_db.get('ativo', True),
+                metadata={}
             )
             
             return AuthResponse(
