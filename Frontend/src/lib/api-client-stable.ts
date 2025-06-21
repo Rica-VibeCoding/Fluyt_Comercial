@@ -26,8 +26,10 @@ export class ApiClientStable {
     const baseUrl = useProxy ? API_URLS.proxy : API_URLS.direct;
     const url = `${baseUrl}${endpoint}`;
     
+    // Declarar startTime ANTES do try para estar disponível no catch
+    const startTime = Date.now();
+    
     try {
-      const startTime = Date.now();
       console.log(`🔗 Tentando ${useProxy ? 'primeira conexão' : 'segunda tentativa'}: ${url}`);
       
       const response = await fetch(url, {

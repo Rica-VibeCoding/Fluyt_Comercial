@@ -13,8 +13,7 @@ export { useClienteSelecionadoRealista } from './globais/use-cliente-selecionado
 export { useClienteSelecionado } from './globais/use-cliente-selecionado';
 
 // Hooks de módulos - Clientes
-export { useClientes } from './modulos/clientes/use-clientes';
-export { useClientesRealista } from './modulos/clientes/use-clientes-realista';
+export { useClientesApi } from './modulos/clientes/use-clientes-api';
 export { useClienteForm } from './modulos/clientes/use-cliente-form';
 
 // Hooks de módulos - Ambientes

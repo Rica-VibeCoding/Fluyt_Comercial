@@ -39,7 +39,7 @@ export function SkeletonTable({ columns, rows = 5, className = "" }: SkeletonTab
                     <div 
                       className="h-4 bg-slate-200 rounded"
                       style={{
-                        width: `${60 + Math.random() * 40}%` // Largura variável realística
+                        width: `${70 + (colIndex % 3) * 10}%` // Larguras: 70%, 80%, 90%, repete...
                       }}
                     ></div>
                   </div>

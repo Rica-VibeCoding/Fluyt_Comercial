@@ -3,7 +3,7 @@ Controller de autenticação - Rotas e endpoints
 """
 import logging
 from typing import Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPAuthorizationCredentials
 
 from core.auth import get_current_user, security, User
@@ -30,7 +30,7 @@ auth_service = AuthService()
 
 
 @router.post("/login", response_model=LoginResponse)
-async def login(credentials: LoginRequest) -> LoginResponse:
+async def login(request: Request, credentials: LoginRequest) -> LoginResponse:
     """
     Endpoint de login
     
@@ -64,11 +64,32 @@ async def login(credentials: LoginRequest) -> LoginResponse:
     }
     ```
     """
+    # Rate limiting simples
+    from core.simple_rate_limit import rate_limiter
+    
+    # Pega IP do cliente (funciona atrás de proxy também)
+    client_ip = request.client.host
+    if request.headers.get("X-Forwarded-For"):
+        client_ip = request.headers.get("X-Forwarded-For").split(",")[0].strip()
+    
+    # Verifica limite por IP
+    if not rate_limiter.verificar_limite(client_ip):
+        tempo_espera = rate_limiter.tempo_restante(client_ip)
+        minutos = tempo_espera // 60
+        segundos = tempo_espera % 60
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Muitas tentativas de login. Tente novamente em {minutos}m {segundos}s"
+        )
+    
     try:
         result = await auth_service.login(
             email=credentials.email,
             password=credentials.password
         )
+        
+        # Login bem-sucedido - reseta o contador
+        rate_limiter.resetar(client_ip)
         
         logger.info(f"Login successful for user: {credentials.email}")
         return result

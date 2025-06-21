@@ -10,7 +10,7 @@ import { Badge } from '../../ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import { Download, Plus, Upload, User, Home, ArrowLeft, ArrowRight, Trash2 } from 'lucide-react';
 import { useAmbientes } from '../../../hooks/modulos/ambientes/use-ambientes';
-import { useClientesRealista } from '../../../hooks/modulos/clientes/use-clientes-realista';
+import { useClientesApi } from '../../../hooks/modulos/clientes/use-clientes-api';
 import { useSessaoSimples } from '../../../hooks/globais/use-sessao-simples';
 import { AmbienteModal } from './ambiente-modal';
 import { AmbienteCard } from './ambiente-card';
@@ -28,7 +28,7 @@ export function AmbientePage() {
   useEffect(() => {
     console.log('🔍 AmbientePage: clienteId mudou para:', clienteId, { forcarTroca });
   }, [clienteId, forcarTroca]);
-  const { clientes } = useClientesRealista();
+  const { clientes } = useClientesApi();
   const {
     cliente,
     ambientes: ambientesSessao,

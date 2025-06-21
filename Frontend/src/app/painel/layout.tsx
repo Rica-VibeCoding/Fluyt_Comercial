@@ -175,7 +175,9 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       >
         <main 
           className="page-content-smooth flex-1 bg-gray-50 transition-all duration-300 overflow-y-auto component-fade-in visible"
-          style={{ paddingTop: '1rem' }}
+          style={{ 
+            paddingTop: shouldShowProgressStepper ? '65px' : '1rem' // 140px para espaçamento uniforme entre cards no desktop
+          }}
         >
           <div className="max-w-7xl mx-auto p-4 md:p-6">
             {children}
@@ -187,7 +189,9 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       <div className="md:hidden h-screen flex flex-col">
         <main 
           className="page-content-smooth flex-1 bg-gray-50 overflow-y-auto component-fade-in visible"
-          style={{ paddingTop: '1rem' }}
+          style={{ 
+            paddingTop: shouldShowProgressStepper ? '128px' : '1rem' // 128px otimizado para mobile seguindo múltiplos de 8px
+          }}
         >
           <div className="max-w-7xl mx-auto p-4 md:p-6">
             {children}

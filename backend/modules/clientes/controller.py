@@ -4,7 +4,7 @@ Define todas as rotas HTTP para gerenciar clientes
 """
 import logging
 from typing import Optional
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, status, HTTPException
 
 from core.auth import get_current_user, User
 from core.dependencies import (
@@ -308,7 +308,7 @@ async def verificar_cpf_cnpj(
         raise
 
 
-@router.get("/test/public", response_model=dict)
+@router.get("/test/public", response_model=dict, include_in_schema=False)
 async def test_clientes_publico() -> dict:
     """
     Endpoint público para teste de conectividade
@@ -326,6 +326,9 @@ async def test_clientes_publico() -> dict:
     }
     ```
     """
+    from core.config import settings
+    if not settings.is_development:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Endpoint não encontrado")
     try:
         # Teste básico de conectividade com o serviço
         # Usar um método do serviço que não dependa de autenticação
@@ -356,7 +359,7 @@ async def test_clientes_publico() -> dict:
         }
 
 
-@router.get("/test/debug", response_model=dict)
+@router.get("/test/debug", response_model=dict, include_in_schema=False)
 async def debug_clientes() -> dict:
     """
     Endpoint de debug detalhado para verificar tabela de clientes
@@ -364,6 +367,10 @@ async def debug_clientes() -> dict:
     **APENAS PARA DESENVOLVIMENTO**
     Mostra informações detalhadas sobre a tabela e dados
     """
+    from core.config import settings
+    if not settings.is_development:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Endpoint não encontrado")
+    
     try:
         from .repository import ClienteRepository
         from core.database import get_admin_database
