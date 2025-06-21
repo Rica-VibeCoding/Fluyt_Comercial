@@ -21,7 +21,7 @@ import {
   XCircle 
 } from 'lucide-react';
 import { clienteService } from '@/services/cliente-service';
-import { testBackendConnection } from '@/lib/health-check';
+import { testBackendConnection, testClientesPublico } from '@/lib/health-check';
 import { FRONTEND_CONFIG } from '@/lib/config';
 
 interface StatusConectividade {
@@ -37,15 +37,15 @@ export function TesteIntegracaoClientes() {
   const [ultimoTeste, setUltimoTeste] = useState<any>(null);
   const [logs, setLogs] = useState<string[]>([]);
 
-  // Só mostrar em desenvolvimento
-  if (process.env.NODE_ENV !== 'development') {
-    return null;
-  }
-
   // Carregar status inicial
   useEffect(() => {
     carregarStatus();
   }, []);
+
+  // Só mostrar em desenvolvimento
+  if (process.env.NODE_ENV !== 'development') {
+    return null;
+  }
 
   const carregarStatus = async () => {
     try {
@@ -101,6 +101,31 @@ export function TesteIntegracaoClientes() {
       await carregarStatus();
     } catch (error) {
       setLogs(prev => [...prev, `💥 Erro no service: ${error}`]);
+    } finally {
+      setTestando(false);
+    }
+  };
+
+  const testarEndpointPublico = async () => {
+    setTestando(true);
+    setLogs(['🌐 Testando endpoint público de clientes...']);
+    
+    try {
+      // Teste direto do endpoint público (sem autenticação)
+      const resultado = await testClientesPublico();
+      setUltimoTeste(resultado);
+      
+      if (resultado.success) {
+        setLogs(prev => [...prev, '✅ Endpoint público funcionando']);
+        setLogs(prev => [...prev, `📊 Total clientes no banco: ${resultado.data?.total_clientes || 0}`]);
+        setLogs(prev => [...prev, `🏷️ Ambiente: ${resultado.data?.ambiente || 'N/A'}`]);
+      } else {
+        setLogs(prev => [...prev, '❌ Endpoint público com erro']);
+        setLogs(prev => [...prev, `🚫 Erro: ${resultado.error}`]);
+      }
+      
+    } catch (error) {
+      setLogs(prev => [...prev, `💥 Erro no teste público: ${error}`]);
     } finally {
       setTestando(false);
     }
@@ -245,6 +270,20 @@ export function TesteIntegracaoClientes() {
                     <Database className="h-4 w-4 mr-2" />
                   )}
                   Testar Cliente Service
+                </Button>
+                
+                <Button 
+                  onClick={testarEndpointPublico}
+                  disabled={testando}
+                  variant="outline"
+                  className="w-full justify-start"
+                >
+                  {testando ? (
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                  )}
+                  Testar API Público
                 </Button>
               </div>
               

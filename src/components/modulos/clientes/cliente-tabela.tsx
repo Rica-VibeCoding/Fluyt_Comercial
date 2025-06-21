@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState } from 'react';
 import {
   Table,
@@ -12,6 +14,7 @@ import { Badge } from '../../ui/badge';
 import { Edit, Phone, Mail, MapPin, Users, FileText, ChevronDown, ChevronRight } from 'lucide-react';
 import { Cliente } from '../../../types/cliente';
 import { ClienteActionsMenu } from './cliente-actions-menu';
+import { SkeletonTable } from '../../ui/skeleton-table';
 
 interface ClienteTabelaProps {
   clientes: Cliente[];
@@ -47,17 +50,13 @@ export function ClienteTabela({
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
-  // Loading State
+  // ✨ LOADING STATE COM SKELETON - Imita visualmente a tabela real
   if (isLoading) {
     return (
-      <div className="rounded-lg border-0 bg-blue-50/30 shadow-md">
-        <div className="flex items-center justify-center py-8">
-          <div className="flex items-center gap-2 text-gray-500">
-            <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
-            Carregando clientes...
-          </div>
-        </div>
-      </div>
+      <SkeletonTable 
+        columns={['', 'Pedido', 'Cliente', 'Contato', 'Tipo', 'Vendedor', 'Data de Cadastro', 'Status', 'Ações']}
+        rows={6}
+      />
     );
   }
 

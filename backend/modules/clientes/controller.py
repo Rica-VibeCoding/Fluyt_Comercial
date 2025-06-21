@@ -306,3 +306,104 @@ async def verificar_cpf_cnpj(
     except Exception as e:
         logger.error(f"Erro ao verificar CPF/CNPJ {cpf_cnpj}: {str(e)}")
         raise
+
+
+@router.get("/test/public", response_model=dict)
+async def test_clientes_publico() -> dict:
+    """
+    Endpoint público para teste de conectividade
+    
+    **APENAS PARA DESENVOLVIMENTO**
+    Permite testar se a API está funcionando sem necessidade de autenticação
+    
+    **Response:**
+    ```json
+    {
+        "success": true,
+        "message": "API de clientes funcionando",
+        "total_clientes": 5,
+        "ambiente": "development"
+    }
+    ```
+    """
+    try:
+        # Teste básico de conectividade com o serviço
+        # Usar um método do serviço que não dependa de autenticação
+        from .repository import ClienteRepository
+        from core.database import get_database
+        
+        db = get_database()
+        repo = ClienteRepository(db)
+        # Contagem básica de clientes (sem filtros de loja)
+        total = await repo.contar_total_publico()
+        
+        logger.info("Teste público de conectividade da API de clientes executado")
+        
+        return {
+            "success": True,
+            "message": "API de clientes funcionando",
+            "total_clientes": total,
+            "ambiente": "development"
+        }
+    
+    except Exception as e:
+        logger.error(f"Erro no teste público: {str(e)}")
+        return {
+            "success": False,
+            "message": f"Erro na API: {str(e)}",
+            "total_clientes": 0,
+            "ambiente": "development"
+        }
+
+
+@router.get("/test/debug", response_model=dict)
+async def debug_clientes() -> dict:
+    """
+    Endpoint de debug detalhado para verificar tabela de clientes
+    
+    **APENAS PARA DESENVOLVIMENTO**
+    Mostra informações detalhadas sobre a tabela e dados
+    """
+    try:
+        from .repository import ClienteRepository
+        from core.database import get_admin_database
+        
+        # Usa admin database para bypassar RLS
+        db = get_admin_database()
+        
+        # Testa conexão básica
+        logger.info("=== DEBUG CLIENTES ===")
+        logger.info(f"Database client criado: {type(db)}")
+        
+        # Tenta query simples
+        result = db.table('c_clientes').select('*').limit(5).execute()
+        
+        logger.info(f"Query executada com sucesso")
+        logger.info(f"Dados retornados: {result.data}")
+        
+        # Conta total
+        count_result = db.table('c_clientes').select('id', count='exact').execute()
+        total = count_result.count or 0
+        
+        return {
+            "success": True,
+            "message": "Debug executado",
+            "total_clientes": total,
+            "primeiros_5": result.data if result.data else [],
+            "info": {
+                "tabela": "c_clientes",
+                "database": "admin (bypass RLS)",
+                "tem_dados": len(result.data) > 0 if result.data else False
+            }
+        }
+    
+    except Exception as e:
+        logger.error(f"Erro no debug: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        
+        return {
+            "success": False,
+            "message": f"Erro no debug: {str(e)}",
+            "traceback": traceback.format_exc()
+        }

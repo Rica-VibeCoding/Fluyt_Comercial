@@ -5,80 +5,82 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 240 10% 3.9%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 240 10% 3.9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 240 10% 3.9%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 240 9% 9%;
+    --primary-foreground: 0 0% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
 
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 10% 3.9%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* ✨ SIDEBAR: Valores alinhados com tema "Azul Clarinho" para evitar piscar */
+    /* IMPORTANTE: Estes valores DEVEM ser idênticos aos do theme-config.ts */
+    /* para eliminar mudança de cor durante hidratação no F5 */
+    --sidebar-background: 207 44% 49%;      /* Azul médio - mesmo do tema */
+    --sidebar-foreground: 0 0% 98%;         /* Branco - mesmo do tema */
+    --sidebar-primary: 207 44% 49%;         /* Azul médio - mesmo do tema */
+    --sidebar-primary-foreground: 0 0% 98%; /* Branco - mesmo do tema */
+    --sidebar-accent: 207 54% 39%;          /* Azul escuro - mesmo do tema */
+    --sidebar-accent-foreground: 0 0% 98%;  /* Branco - mesmo do tema */
+    --sidebar-border: 207 44% 49%;          /* Azul médio para borda */
+    --sidebar-ring: 217.2 91.2% 59.8%;     /* Mantido - cor de foco */
 
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 9% 9%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
 
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -87,6 +89,12 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
   }
 }
 
@@ -104,7 +112,7 @@
   }
 
   body {
-    @apply bg-gray-50 text-foreground;
+    @apply bg-background text-foreground;
     /* Previne overflow horizontal desnecessário */
     overflow-x: hidden;
   }
@@ -150,5 +158,73 @@
   /* Previne scroll horizontal em elementos de layout */
   .layout-container {
     overflow-x: hidden;
+  }
+
+  /* ✨ SISTEMA DE TRANSIÇÕES SUAVES PARA ELIMINAR "PISCAR" NO F5 */
+  
+  /* Transição suave para toda a aplicação */
+  .app-smooth-transition {
+    transition: opacity 0.15s ease-in-out;
+  }
+
+  .app-smooth-transition.loading {
+    opacity: 0.85;
+  }
+
+  .app-smooth-transition.loaded {
+    opacity: 1;
+  }
+
+  /* Fade-in suave para componentes individuais */
+  .component-fade-in {
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+  }
+
+  .component-fade-in.visible {
+    opacity: 1;
+  }
+
+  /* Transições específicas para elementos que costumam "piscar" */
+  .progress-stepper-smooth {
+    transition: opacity 0.2s ease-in-out, transform 0.1s ease-in-out;
+  }
+
+  .sidebar-smooth {
+    transition: opacity 0.15s ease-in-out;
+  }
+
+  .table-smooth {
+    transition: opacity 0.25s ease-in-out;
+  }
+
+  .page-content-smooth {
+    transition: opacity 0.2s ease-in-out;
+  }
+
+  /* Skeleton animations otimizadas */
+  .skeleton-pulse {
+    animation: skeleton-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes skeleton-pulse {
+    0%, 100% {
+      opacity: 0.6;
+    }
+    50% {
+      opacity: 0.3;
+    }
+  }
+
+  /* Transições para modais e overlays */
+  .modal-smooth {
+    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+  }
+
+  /* Otimizações de performance para transições */
+  .smooth-element {
+    will-change: opacity;
+    backface-visibility: hidden;
+    transform: translateZ(0);
   }
 }

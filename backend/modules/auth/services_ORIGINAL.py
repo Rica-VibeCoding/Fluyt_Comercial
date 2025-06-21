@@ -175,7 +175,7 @@ class AuthService:
     
     async def _get_user_data(self, user_id: str) -> Dict[str, Any]:
         """
-        Busca dados do usuário - VERSÃO SIMPLIFICADA
+        Busca dados completos do usuário nas tabelas relacionadas
         
         Args:
             user_id: ID do usuário no Supabase Auth
@@ -187,27 +187,30 @@ class AuthService:
             NotFoundException: Usuário não encontrado
         """
         try:
-            # Buscar APENAS na tabela usuarios
-            result = self.supabase_admin.table('usuarios').select('*').eq('user_id', user_id).single().execute()
-            
-            if result.data:
-                user_data = result.data
-                return {
-                    'nome': user_data.get('nome'),
-                    'email': user_data.get('email'),
-                    'perfil': user_data.get('perfil', 'USER'),
-                    'ativo': user_data.get('ativo', True),
-                    'funcao': 'Usuário',
-                    'loja_id': None,  # Por enquanto
-                    'loja_nome': None,
-                    'empresa_id': None,
-                    'empresa_nome': None,
-                }
-            else:
-                raise NotFoundException(f"Usuário não encontrado: {user_id}")
+            # Primeiro tenta buscar na tabela usuarios (estrutura mais simples)
+            try:
+                result = self.supabase_admin.table('usuarios').select('*').eq('user_id', user_id).single().execute()
+                
+                if result.data:
+                    # Se encontrou na tabela usuarios, retorna dados simplificados
+                    user_data = result.data
+                    return {
+                        'nome': user_data.get('nome'),
+                        'email': user_data.get('email'),
+                        'perfil': user_data.get('perfil', 'USUARIO'),
+                        'ativo': user_data.get('ativo', True),
+                        'funcao': user_data.get('funcao', 'Usuário'),
+                        'loja_id': user_data.get('loja_id'),
+                        'loja_nome': None,  # Sem joins por enquanto
+                        'empresa_id': user_data.get('empresa_id'),
+                        'empresa_nome': None,  # Sem joins por enquanto
+                    }
+            except Exception as e:
+                # Se não encontrou em usuarios, lançar erro
+                raise NotFoundException(f"Usuário não encontrado no sistema. ID: {user_id}")
         
         except NotFoundException:
             raise
         except Exception as e:
-            logger.error(f"Erro ao buscar usuário {user_id}: {str(e)}")
-            raise NotFoundException(f"Usuário não encontrado: {user_id}")
+            logger.error(f"Error fetching user data for {user_id}: {str(e)}")
+            raise handle_supabase_error(e)

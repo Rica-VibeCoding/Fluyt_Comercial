@@ -1,0 +1,24 @@
+Project URL:
+
+
+https://momwbpxqnvgehotfmvde.supabase.co
+
+
+JWT Secret:
+
+
+JTj5Ss1QUerDKTVc9rzphRwQ3xwD8zLIpnjlNUNSBiH0BDyaQWyN4rH1wNDrZ4rXyIVLAyK3CqQMMm2iLeGpCQ==
+
+
+
+anonpublic:
+
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vbXdicHhxbnZnZWhvdGZtdmRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3NzAxNTIsImV4cCI6MjA2MzM0NjE1Mn0.n90ZweBT-o1ugerZJDZl8gx65WGe1eUrhph6VuSdSCs
+
+
+
+service_rolesecret:
+
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vbXdicHhxbnZnZWhvdGZtdmRlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0Nzc3MDE1MiwiZXhwIjoyMDYzMzQ2MTUyfQ.NyRBsnWlhUmZUQFykINlaMgm9dHGkzx2nqhCYjaNiFA

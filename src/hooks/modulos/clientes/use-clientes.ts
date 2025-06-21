@@ -2,124 +2,15 @@ import { useState, useCallback, useMemo } from 'react';
 import { Cliente, FiltrosCliente, Vendedor } from '../../../types/cliente';
 import { useToast } from '../../globais/use-toast';
 
-// Dados de exemplo brasileiros realistas
-const exemploClientes: Cliente[] = [
-  {
-    id: '1',
-    nome: 'João Silva Santos',
-    cpf_cnpj: '123.456.789-00',
-    rg_ie: '12.345.678-9',
-    email: 'joao.silva@gmail.com',
-    telefone: '(11) 99999-1234',
-    tipo_venda: 'NORMAL',
-    procedencia: 'Instagram',
-    vendedor_id: 'v1',
-    vendedor_nome: 'Ana Costa',
-    cep: '01310-100',
-    logradouro: 'Av. Paulista',
-    numero: '1234',
-    bairro: 'Bela Vista',
-    cidade: 'São Paulo',
-    uf: 'SP',
-    observacoes: 'Cliente interessado em cozinha planejada',
-    created_at: '2024-11-15T10:00:00Z',
-    updated_at: '2024-11-15T10:00:00Z'
-  },
-  {
-    id: '2',
-    nome: 'Construtora ABC Ltda',
-    cpf_cnpj: '12.345.678/0001-90',
-    rg_ie: '123.456.789.123',
-    email: 'contato@construtorabc.com.br',
-    telefone: '(11) 3333-4444',
-    tipo_venda: 'FUTURA',
-    procedencia: 'Indicação Arquiteto',
-    vendedor_id: 'v2',
-    vendedor_nome: 'Carlos Mendes',
-    cep: '09560-010',
-    logradouro: 'Rua das Flores',
-    numero: '567',
-    bairro: 'Centro',
-    cidade: 'São Caetano do Sul',
-    uf: 'SP',
-    observacoes: 'Projeto para 20 apartamentos',
-    created_at: '2024-11-10T14:30:00Z',
-    updated_at: '2024-11-10T14:30:00Z'
-  },
-  {
-    id: '3',
-    nome: 'Maria Fernanda Oliveira',
-    cpf_cnpj: '987.654.321-00',
-    rg_ie: '98.765.432-1',
-    email: 'maria.fernanda@hotmail.com',
-    telefone: '(11) 98888-5678',
-    tipo_venda: 'NORMAL',
-    procedencia: 'Site',
-    vendedor_id: 'v1',
-    vendedor_nome: 'Ana Costa',
-    cep: '04038-001',
-    logradouro: 'Rua Vergueiro',
-    numero: '2345',
-    bairro: 'Vila Mariana',
-    cidade: 'São Paulo',
-    uf: 'SP',
-    observacoes: 'Quer orçamento para quarto e closet',
-    created_at: '2024-11-12T09:15:00Z',
-    updated_at: '2024-11-12T09:15:00Z'
-  },
-  {
-    id: '4',
-    nome: 'Roberto Carlos Mendonça',
-    cpf_cnpj: '456.789.123-00',
-    rg_ie: '45.678.912-3',
-    email: 'roberto.mendonca@empresa.com',
-    telefone: '(11) 97777-9012',
-    tipo_venda: 'NORMAL',
-    procedencia: 'Facebook',
-    vendedor_id: 'v3',
-    vendedor_nome: 'Pedro Santos',
-    cep: '05424-000',
-    logradouro: 'Rua Teodoro Sampaio',
-    numero: '890',
-    bairro: 'Pinheiros',
-    cidade: 'São Paulo',
-    uf: 'SP',
-    created_at: '2024-11-08T16:45:00Z',
-    updated_at: '2024-11-08T16:45:00Z'
-  },
-  {
-    id: '5',
-    nome: 'Luciana Pereira Silva',
-    cpf_cnpj: '321.654.987-00',
-    rg_ie: '32.165.498-7',
-    email: 'luciana.pereira@gmail.com',
-    telefone: '(11) 96666-3456',
-    tipo_venda: 'FUTURA',
-    procedencia: 'Indicação Amigo',
-    vendedor_id: 'v2',
-    vendedor_nome: 'Carlos Mendes',
-    cep: '01227-200',
-    logradouro: 'Rua Augusta',
-    numero: '1500',
-    bairro: 'Consolação',
-    cidade: 'São Paulo',
-    uf: 'SP',
-    observacoes: 'Mudança em janeiro 2025',
-    created_at: '2024-11-05T11:20:00Z',
-    updated_at: '2024-11-05T11:20:00Z'
-  }
-];
+// DADOS MOCKADOS REMOVIDOS - Hook legado mantido apenas para compatibilidade
+// Usar useClientesApi() ou useClientesRealista() para integração com Supabase
 
-const exemploVendedores: Vendedor[] = [
-  { id: 'v1', nome: 'Ana Costa', perfil: 'VENDEDOR' },
-  { id: 'v2', nome: 'Carlos Mendes', perfil: 'VENDEDOR' },
-  { id: 'v3', nome: 'Pedro Santos', perfil: 'GERENTE' },
-  { id: 'v4', nome: 'Marina Silva', perfil: 'VENDEDOR' }
-];
+// DADOS MOCKADOS REMOVIDOS - usar dados reais do Supabase
+const exemploVendedores: Vendedor[] = [];
 
 export function useClientes() {
-  const [clientes, setClientes] = useState<Cliente[]>(exemploClientes);
-  const [vendedores] = useState<Vendedor[]>(exemploVendedores);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [vendedores] = useState<Vendedor[]>([]);
   const [filtros, setFiltros] = useState<FiltrosCliente>({});
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();

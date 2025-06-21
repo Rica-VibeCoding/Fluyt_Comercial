@@ -1,11 +1,11 @@
 """
-Serviços de autenticação
+Serviços de autenticação - VERSÃO CORRIGIDA
 """
 import logging
 from typing import Optional, Dict, Any
 from fastapi import HTTPException, status
 
-from core.database import get_supabase
+from core.database import get_supabase, _supabase
 from core.config import settings
 from core.exceptions import (
     UnauthorizedException,
@@ -23,7 +23,6 @@ class AuthService:
     
     def __init__(self):
         # Usar o cliente e admin diretamente
-        from core.database import _supabase
         self.supabase = _supabase.client
         self.supabase_admin = _supabase.admin
     
@@ -52,7 +51,7 @@ class AuthService:
             if not auth_response.user or not auth_response.session:
                 raise UnauthorizedException("Email ou senha inválidos")
             
-            # 2. Busca dados completos do usuário na tabela c_equipe
+            # 2. Busca dados completos do usuário na tabela usuarios
             user_data = await self._get_user_data(auth_response.user.id)
             
             # 3. Verifica se usuário está ativo
@@ -102,8 +101,10 @@ class AuthService:
             UnauthorizedException: Refresh token inválido
         """
         try:
-            # 1. Renova token no Supabase
-            auth_response = self.supabase.client.auth.refresh_session(refresh_token)
+            # Renovar sessão no Supabase
+            auth_response = self.supabase.auth.refresh_session({
+                "refresh_token": refresh_token
+            })
             
             if not auth_response.session:
                 raise UnauthorizedException("Refresh token inválido ou expirado")
@@ -125,7 +126,7 @@ class AuthService:
         Realiza logout invalidando o token
         
         Args:
-            access_token: Token de acesso a ser invalidado
+            access_token: Token de acesso atual
             
         Returns:
             True se logout bem-sucedido
@@ -175,7 +176,7 @@ class AuthService:
     
     async def _get_user_data(self, user_id: str) -> Dict[str, Any]:
         """
-        Busca dados do usuário - VERSÃO SIMPLIFICADA
+        Busca dados completos do usuário na tabela usuarios
         
         Args:
             user_id: ID do usuário no Supabase Auth
@@ -190,24 +191,25 @@ class AuthService:
             # Buscar APENAS na tabela usuarios
             result = self.supabase_admin.table('usuarios').select('*').eq('user_id', user_id).single().execute()
             
-            if result.data:
-                user_data = result.data
-                return {
-                    'nome': user_data.get('nome'),
-                    'email': user_data.get('email'),
-                    'perfil': user_data.get('perfil', 'USER'),
-                    'ativo': user_data.get('ativo', True),
-                    'funcao': 'Usuário',
-                    'loja_id': None,  # Por enquanto
-                    'loja_nome': None,
-                    'empresa_id': None,
-                    'empresa_nome': None,
-                }
-            else:
-                raise NotFoundException(f"Usuário não encontrado: {user_id}")
-        
+            if not result.data:
+                raise NotFoundException(f"Usuário não encontrado no sistema. ID: {user_id}")
+            
+            # Retorna dados simplificados da tabela usuarios
+            user_data = result.data
+            return {
+                'nome': user_data.get('nome'),
+                'email': user_data.get('email'),
+                'perfil': user_data.get('perfil', 'USUARIO'),
+                'ativo': user_data.get('ativo', True),
+                'funcao': user_data.get('funcao', 'Usuário'),
+                'loja_id': user_data.get('loja_id'),
+                'loja_nome': None,  # Sem joins por enquanto
+                'empresa_id': user_data.get('empresa_id'),
+                'empresa_nome': None,  # Sem joins por enquanto
+            }
+                
         except NotFoundException:
             raise
         except Exception as e:
-            logger.error(f"Erro ao buscar usuário {user_id}: {str(e)}")
-            raise NotFoundException(f"Usuário não encontrado: {user_id}")
+            logger.error(f"Error fetching user data for {user_id}: {str(e)}")
+            raise handle_supabase_error(e)

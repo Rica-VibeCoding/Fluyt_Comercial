@@ -174,26 +174,24 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         }}
       >
         <main 
-          className="flex-1 bg-gray-50 transition-all duration-300 overflow-y-auto"
-          style={{ 
-            marginTop: shouldShowProgressStepper ? `${progressStepperHeight}px` : '0',
-            height: shouldShowProgressStepper ? `calc(100vh - ${progressStepperHeight}px)` : '100vh'
-          }}
+          className="page-content-smooth flex-1 bg-gray-50 transition-all duration-300 overflow-y-auto component-fade-in visible"
+          style={{ paddingTop: '1rem' }}
         >
-          {children}
+          <div className="max-w-7xl mx-auto p-4 md:p-6">
+            {children}
+          </div>
         </main>
       </div>
 
       {/* Container principal - Mobile */}
       <div className="md:hidden h-screen flex flex-col">
         <main 
-          className="flex-1 bg-gray-50 overflow-y-auto"
-          style={{ 
-            marginTop: shouldShowProgressStepper ? `${progressStepperHeight + 64}px` : '64px', // +64px para o header mobile
-            height: shouldShowProgressStepper ? `calc(100vh - ${progressStepperHeight + 64}px)` : 'calc(100vh - 64px)'
-          }}
+          className="page-content-smooth flex-1 bg-gray-50 overflow-y-auto component-fade-in visible"
+          style={{ paddingTop: '1rem' }}
         >
-          {children}
+          <div className="max-w-7xl mx-auto p-4 md:p-6">
+            {children}
+          </div>
         </main>
       </div>
       

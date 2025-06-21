@@ -36,25 +36,10 @@ const nextConfig = {
         type: 'memory', // Mudança crítica: memory ao invés de filesystem
       };
       
-      // ✅ SPLIT CHUNKS MÍNIMO: Apenas essencial para evitar problemas de timing
+      // ✅ DESABILITAR SPLIT CHUNKS EM DEV: Evitar problemas com vendors.js
       config.optimization = {
         ...config.optimization,
-        splitChunks: {
-          chunks: 'async', // Menos agressivo que 'all'
-          cacheGroups: {
-            default: {
-              minChunks: 2,
-              priority: -20,
-              reuseExistingChunk: true,
-            },
-            vendor: {
-              test: /[\\/]node_modules[\\/]/,
-              name: 'vendors',
-              priority: -10,
-              chunks: 'all',
-            },
-          },
-        },
+        splitChunks: false, // Desabilitar completamente em desenvolvimento
       };
     }
     

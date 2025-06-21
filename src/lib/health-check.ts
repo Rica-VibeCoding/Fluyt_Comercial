@@ -73,4 +73,41 @@ export async function testMultipleEndpoints() {
   }
 
   return results;
+}
+
+// Função para testar endpoint público de clientes
+export async function testClientesPublico() {
+  logConfig('Testando endpoint público de clientes...');
+
+  try {
+    const url = `${API_CONFIG.BASE_URL}/api/v1/clientes/test/public`;
+    logConfig('URL de teste:', url);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: API_CONFIG.DEFAULT_HEADERS,
+      signal: AbortSignal.timeout(API_CONFIG.REQUEST_TIMEOUT)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    console.log('✅ API de clientes funcionando:', data);
+    return {
+      success: true,
+      data,
+      status: response.status,
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('❌ Erro ao testar API de clientes:', error);
+    return {
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    };
+  }
 } 

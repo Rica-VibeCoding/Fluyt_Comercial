@@ -57,7 +57,7 @@ export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
-  fallback?: boolean; // Indica se foi usado fallback
+  fallback?: boolean; // Indica se foi usado fallback para dados locais
   timestamp: string;
 }
 
@@ -84,10 +84,18 @@ class ApiClient {
     
     // Carregar token de autenticação se existir
     if (typeof window !== 'undefined') {
-      this.authToken = localStorage.getItem(FRONTEND_CONFIG.STORAGE_KEYS.AUTH_TOKEN);
+      this.authToken = localStorage.getItem('fluyt_auth_token');
+      
+      // Se tiver token, verificar se ainda é válido
+      if (this.authToken) {
+        logConfig('Token de autenticação encontrado no localStorage');
+      }
     }
     
-    logConfig('ApiClient inicializado', { baseURL: this.baseURL });
+    logConfig('ApiClient inicializado', { 
+      baseURL: this.baseURL,
+      hasAuthToken: !!this.authToken 
+    });
   }
 
   // Configurar token de autenticação
@@ -95,11 +103,12 @@ class ApiClient {
     this.authToken = token;
     if (typeof window !== 'undefined') {
       if (token) {
-        localStorage.setItem(FRONTEND_CONFIG.STORAGE_KEYS.AUTH_TOKEN, token);
+        localStorage.setItem('fluyt_auth_token', token);
       } else {
-        localStorage.removeItem(FRONTEND_CONFIG.STORAGE_KEYS.AUTH_TOKEN);
+        localStorage.removeItem('fluyt_auth_token');
       }
     }
+    logConfig('Token de autenticação atualizado', { hasToken: !!token });
   }
 
   // Headers com autenticação
@@ -114,7 +123,8 @@ class ApiClient {
   // Método base para requests
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    isRetry = false
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
     const requestOptions: RequestInit = {
@@ -126,12 +136,41 @@ class ApiClient {
       signal: AbortSignal.timeout(this.timeout),
     };
 
-    logConfig('Request iniciada', { method: options.method || 'GET', url });
+    logConfig('Request iniciada', { 
+      method: options.method || 'GET', 
+      url,
+      hasAuth: !!this.authToken,
+      isRetry 
+    });
 
     try {
       const response = await fetch(url, requestOptions);
       
+      // Se for 401 e não for retry, tentar renovar token
+      if (response.status === 401 && !isRetry && this.authToken) {
+        logConfig('Token expirado, tentando renovar...');
+        const refreshed = await this.refreshToken();
+        
+        if (refreshed) {
+          // Tentar novamente com novo token
+          return this.request<T>(endpoint, options, true);
+        }
+      }
+      
       if (!response.ok) {
+        // Se for 401 após retry ou sem token, limpar autenticação
+        if (response.status === 401) {
+          this.setAuthToken(null);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('fluyt_refresh_token');
+            localStorage.removeItem('fluyt_user');
+            // Redirecionar para login se não estiver na página de login
+            if (!window.location.pathname.includes('/login')) {
+              window.location.href = '/login';
+            }
+          }
+        }
+        
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
@@ -202,6 +241,63 @@ class ApiClient {
     return this.request<void>(endpoint, {
       method: 'DELETE',
     });
+  }
+
+  // ============= MÉTODOS DE AUTENTICAÇÃO =============
+
+  // Renovar token de acesso
+  private async refreshToken(): Promise<boolean> {
+    if (typeof window === 'undefined') return false;
+    
+    const refreshToken = localStorage.getItem('fluyt_refresh_token');
+    if (!refreshToken) {
+      logConfig('Sem refresh token disponível');
+      return false;
+    }
+
+    try {
+      const response = await fetch(`${this.baseURL}/api/v1/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+
+      if (!response.ok) {
+        logConfig('Falha ao renovar token', { status: response.status });
+        return false;
+      }
+
+      const data = await response.json();
+      
+      // Salvar novos tokens
+      this.setAuthToken(data.access_token);
+      localStorage.setItem('fluyt_refresh_token', data.refresh_token);
+      
+      logConfig('Token renovado com sucesso');
+      return true;
+    } catch (error) {
+      console.error('❌ Erro ao renovar token:', error);
+      return false;
+    }
+  }
+
+  // Verificar se usuário está autenticado
+  isAuthenticated(): boolean {
+    return !!this.authToken;
+  }
+
+  // Logout (limpar tokens)
+  logout() {
+    this.setAuthToken(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('fluyt_refresh_token');
+      localStorage.removeItem('fluyt_user');
+      // Remover cookie de autenticação
+      document.cookie = 'fluyt_auth_token=; path=/; max-age=0';
+      window.location.href = '/login';
+    }
   }
 
   // ============= MÉTODOS DE CONECTIVIDADE =============

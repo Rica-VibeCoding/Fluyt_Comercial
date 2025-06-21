@@ -8,13 +8,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <head>
-        <title>🧮 Simulador Financeiro de Proposta - Fluyt</title>
-        <meta name="description" content="Sistema de Validação - Fluyt" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-        <link rel="icon" href="/favicon.ico" type="image/x-icon" />
-      </head>
       <body className="antialiased">
         <ClientProviders>
           {children}

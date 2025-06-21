@@ -322,3 +322,29 @@ class ClienteRepository:
         except Exception as e:
             logger.error(f"Erro ao excluir cliente {cliente_id}: {str(e)}")
             raise DatabaseException(f"Erro ao excluir cliente: {str(e)}")
+    
+    async def contar_total_publico(self) -> int:
+        """
+        Conta o total de clientes (sem filtros de loja)
+        
+        **APENAS PARA TESTE DE CONECTIVIDADE**
+        Método público que não aplica RLS - usado apenas para validar
+        que a conexão com Supabase está funcionando
+        
+        Returns:
+            Número total de clientes na tabela
+        """
+        try:
+            result = self.db.table(self.table).select(
+                'id', count='exact'
+            ).execute()
+            
+            logger.info(f"Query executada na tabela: {self.table}")
+            logger.info(f"Resultado count: {result.count}")
+            logger.info(f"Dados retornados: {len(result.data) if result.data else 0} registros")
+            
+            return result.count or 0
+        
+        except Exception as e:
+            logger.error(f"Erro ao contar clientes publicamente: {str(e)}")
+            return 0

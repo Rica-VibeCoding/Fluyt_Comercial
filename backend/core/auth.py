@@ -101,7 +101,7 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> User:
     """
-    Dependency que extrai e valida o usuário do token JWT
+    Dependency que extrai usuário do token JWT - VERSÃO SIMPLIFICADA
     
     Uso:
     ```python
@@ -113,14 +113,11 @@ async def get_current_user(
     token = credentials.credentials
     token_data = verify_token(token)
     
-    # Busca dados completos do usuário
+    # Busca dados do usuário na tabela usuarios
     supabase = get_supabase()
     
     try:
-        # Busca na tabela de equipe
-        result = supabase.admin.table('c_equipe').select(
-            "*, c_lojas!inner(id, nome, empresa_id)"
-        ).eq('usuario_id', token_data.sub).single().execute()
+        result = supabase.admin.table('usuarios').select('*').eq('user_id', token_data.sub).single().execute()
         
         if not result.data:
             raise HTTPException(
@@ -129,21 +126,16 @@ async def get_current_user(
             )
         
         user_data = result.data
-        loja_data = user_data.get('c_lojas', {})
         
         user = User(
             id=token_data.sub,
-            email=token_data.email or user_data.get('email', ''),
-            perfil=user_data.get('perfil', 'USUARIO'),
-            loja_id=loja_data.get('id'),
-            empresa_id=loja_data.get('empresa_id'),
+            email=user_data.get('email', ''),
+            perfil=user_data.get('perfil', 'USER'),
+            loja_id=None,  # Simplificado por enquanto
+            empresa_id=None,
             nome=user_data.get('nome'),
             ativo=user_data.get('ativo', True),
-            metadata={
-                'funcao': user_data.get('funcao'),
-                'comissao_padrao': user_data.get('comissao_padrao'),
-                'minimo_garantido': user_data.get('minimo_garantido')
-            }
+            metadata={}
         )
         
         if not user.ativo:
@@ -157,7 +149,7 @@ async def get_current_user(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching user data: {str(e)}")
+        logger.error(f"Erro ao buscar usuário: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro ao buscar dados do usuário"
