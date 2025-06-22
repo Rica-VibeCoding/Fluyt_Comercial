@@ -156,8 +156,9 @@ async def get_current_user(
         
         if not result.data or len(result.data) == 0:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Usuário não encontrado"
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token inválido ou usuário não encontrado",
+                headers={"WWW-Authenticate": "Bearer"},
             )
         
         # Pegar o primeiro resultado
@@ -268,8 +269,9 @@ class AuthService:
             
             if not result.data or len(result.data) == 0:
                 raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Usuário não encontrado"
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token inválido ou usuário não encontrado",
+                    headers={"WWW-Authenticate": "Bearer"},
                 )
             
             user_db = result.data[0]
@@ -324,8 +326,9 @@ class AuthService:
             
             if not result.data or len(result.data) == 0:
                 raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Usuário não encontrado"
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token inválido ou usuário não encontrado",
+                    headers={"WWW-Authenticate": "Bearer"},
                 )
             
             user_db = result.data[0]

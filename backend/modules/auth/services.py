@@ -188,10 +188,10 @@ class AuthService:
         """
         try:
             # Buscar na tabela usuarios
-            result = self.supabase_admin.table('usuarios').select('*').eq('user_id', user_id).single().execute()
+            result = self.supabase_admin.table('usuarios').select('*').eq('user_id', user_id).execute()
             
             if result.data:
-                user_data = result.data
+                user_data = result.data[0]
                 
                 # Mapear função baseada no perfil
                 funcao_map = {

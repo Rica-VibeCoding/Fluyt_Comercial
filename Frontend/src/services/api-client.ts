@@ -136,19 +136,29 @@ class ApiClient {
       signal: AbortSignal.timeout(this.timeout),
     };
 
-    logConfig('Request iniciada', { 
-      method: options.method || 'GET', 
-      url,
-      hasAuth: !!this.authToken,
-      isRetry 
-    });
+    // 🔧 DEBUG LOGS DETALHADOS
+    console.group(`🌐 API Request: ${options.method || 'GET'} ${endpoint}`);
+    console.log('📍 URL completa:', url);
+    console.log('🔑 Headers:', requestOptions.headers);
+    console.log('📦 Body:', options.body);
+    console.log('🔄 É retry?', isRetry);
+    console.groupEnd();
 
     try {
       const response = await fetch(url, requestOptions);
       
+      // 🔧 DEBUG RESPONSE DETALHADO
+      console.group(`📥 API Response: ${response.status} ${response.statusText}`);
+      console.log('📍 URL:', url);
+      console.log('📊 Status:', response.status);
+      console.log('📝 Status Text:', response.statusText);
+      console.log('🏷️ Headers:', Object.fromEntries(response.headers.entries()));
+      
       // Se for 401 e não for retry, tentar renovar token
       if (response.status === 401 && !isRetry && this.authToken) {
-        logConfig('Token expirado, tentando renovar...');
+        console.log('🔄 Token expirado, tentando renovar...');
+        console.groupEnd();
+        
         const refreshed = await this.refreshToken();
         
         if (refreshed) {
@@ -158,8 +168,17 @@ class ApiClient {
       }
       
       if (!response.ok) {
+        // 🔧 LOG DETALHADO DE ERRO
+        console.error('❌ Resposta não OK:', {
+          status: response.status,
+          statusText: response.statusText,
+          url: url,
+          endpoint: endpoint
+        });
+        
         // Se for 401 após retry ou sem token, limpar autenticação
         if (response.status === 401) {
+          console.log('🚪 Limpando autenticação por 401');
           this.setAuthToken(null);
           if (typeof window !== 'undefined') {
             localStorage.removeItem('fluyt_refresh_token');
@@ -171,12 +190,14 @@ class ApiClient {
           }
         }
         
+        console.groupEnd();
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
       const data = await response.json();
       
-      logConfig('Request bem-sucedida', { status: response.status, url });
+      console.log('✅ Dados recebidos:', data);
+      console.groupEnd();
       
       return {
         success: true,
@@ -184,7 +205,18 @@ class ApiClient {
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
-      console.error('❌ Erro na request:', error);
+      console.group('❌ Erro na requisição');
+      console.error('🔥 Erro capturado:', error);
+      console.error('📍 URL que falhou:', url);
+      console.error('🔧 Tipo do erro:', error.constructor.name);
+      
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        console.error('🌐 Erro de rede - backend pode estar offline');
+      } else if (error.name === 'AbortError') {
+        console.error('⏱️ Timeout - requisição demorou mais que', this.timeout, 'ms');
+      }
+      
+      console.groupEnd();
       
       return {
         success: false,

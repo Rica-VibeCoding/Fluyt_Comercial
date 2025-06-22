@@ -500,3 +500,49 @@ async def criar_cliente_sem_auth(dados: ClienteCreate) -> dict:
             "message": f"Erro ao criar cliente: {str(e)}",
             "traceback": traceback.format_exc()
         }
+
+
+@router.delete("/test/excluir-sem-auth/{cliente_id}", response_model=dict, include_in_schema=False)
+async def excluir_cliente_sem_auth(cliente_id: str) -> dict:
+    """
+    ENDPOINT TEMPORÁRIO - Excluir cliente sem autenticação
+    
+    **APENAS PARA DEBUG/DESENVOLVIMENTO**
+    Permite testar exclusão de cliente sem token de autenticação
+    """
+    from core.config import settings
+    if not settings.is_development:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Endpoint não encontrado")
+    
+    try:
+        # Criar um usuário fake admin para o teste
+        from core.auth import User
+        fake_user = User(
+            id="test-admin-id",
+            email="admin@test.com",
+            nome="Admin Teste",
+            perfil="ADMIN",
+            loja_id="a3579ff1-1c64-44bc-8850-10a088d382a0"  # Loja Romanza
+        )
+        
+        sucesso = await cliente_service.excluir_cliente(cliente_id, fake_user)
+        
+        logger.info(f"Cliente excluído via endpoint de teste: {cliente_id}")
+        
+        return {
+            "success": True,
+            "message": "Cliente excluído com sucesso (endpoint de teste)",
+            "cliente_id": cliente_id,
+            "excluido": sucesso
+        }
+    
+    except Exception as e:
+        logger.error(f"Erro ao excluir cliente via teste: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        
+        return {
+            "success": False,
+            "message": f"Erro ao excluir cliente: {str(e)}",
+            "traceback": traceback.format_exc()
+        }

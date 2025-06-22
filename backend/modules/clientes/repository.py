@@ -162,12 +162,12 @@ class ClienteRepository:
             if loja_id is not None:
                 query = query.eq('loja_id', loja_id)
                 
-            result = query.single().execute()
+            result = query.execute()
             
             if not result.data:
                 raise NotFoundException(f"Cliente não encontrado: {cliente_id}")
             
-            cliente = result.data
+            cliente = result.data[0]
             
             # Processa dados relacionados
             if cliente.get('vendedor'):

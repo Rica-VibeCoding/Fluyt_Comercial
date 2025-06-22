@@ -36,6 +36,7 @@ class EmpresaRepository:
     ) -> Dict[str, Any]:
         """
         Lista empresas com filtros e paginação
+        OTIMIZADO: Usa nested select para evitar problema N+1
         
         Args:
             filtros: Dicionário com filtros opcionais
@@ -47,13 +48,28 @@ class EmpresaRepository:
             Dicionário com items e informações de paginação
         """
         try:
-            # Inicia a query base - SUPER_ADMIN vê tudo, outros apenas ativas
+            # Nested select para buscar empresas + lojas em UMA query só
+            # Isso elimina o problema N+1 (evita fazer query separada para cada empresa)
             if user_perfil == "SUPER_ADMIN":
-                query = self.db.table(self.table).select('*')  # SUPER_ADMIN vê empresas ativas E inativas
-                count_query = self.db.table(self.table).select('id', count='exact')  # Count sem filtro
+                # SUPER_ADMIN vê empresas ativas E inativas
+                query = self.db.table(self.table).select('''
+                    *,
+                    c_lojas (
+                        id,
+                        ativo
+                    )
+                ''')
+                count_query = self.db.table(self.table).select('id', count='exact')
             else:
-                query = self.db.table(self.table).select('*').eq('ativo', True)  # Outros veem apenas ativas
-                count_query = self.db.table(self.table).select('id', count='exact').eq('ativo', True)  # Count apenas ativas
+                # Outros perfis veem apenas empresas ativas
+                query = self.db.table(self.table).select('''
+                    *,
+                    c_lojas (
+                        id,
+                        ativo
+                    )
+                ''').eq('ativo', True)
+                count_query = self.db.table(self.table).select('id', count='exact').eq('ativo', True)
             
             # Aplica filtros opcionais
             if filtros:
@@ -73,9 +89,8 @@ class EmpresaRepository:
                 if filtros.get('data_fim'):
                     query = query.lte('created_at', filtros['data_fim'].isoformat())
             
-            # Conta total de registros (sem paginação) - count_query já definido acima
+            # Conta total de registros (sem paginação)
             count_result = count_query.execute()
-            
             total = count_result.count or 0
             
             # Aplica ordenação (mais recentes primeiro)
@@ -85,20 +100,21 @@ class EmpresaRepository:
             offset = (page - 1) * limit
             query = query.limit(limit).offset(offset)
             
-            # Executa a query
+            # Executa a query OTIMIZADA (1 query em vez de N+1)
             result = query.execute()
             
-            # Processa os dados retornados
+            # Processa os dados já unidos
             items = []
             for item in result.data:
-                # Busca lojas desta empresa separadamente
-                lojas_query = self.db.table('c_lojas').select('id, ativo').eq('empresa_id', item['id'])
-                lojas_result = lojas_query.execute()
-                lojas = lojas_result.data if lojas_result.data else []
+                # Lojas já vêm junto na query (nested select)
+                lojas = item.get('c_lojas', []) or []
                 
-                # Conta lojas
+                # Conta lojas (mesma lógica de antes)
                 item['total_lojas'] = len(lojas)
                 item['lojas_ativas'] = len([loja for loja in lojas if loja.get('ativo')])
+                
+                # Remove dados das lojas do retorno (não precisamos mais)
+                item.pop('c_lojas', None)
                 
                 items.append(item)
             
@@ -117,6 +133,7 @@ class EmpresaRepository:
     async def buscar_por_id(self, empresa_id: str, user_perfil: str = None) -> Dict[str, Any]:
         """
         Busca uma empresa específica pelo ID
+        OTIMIZADO: Usa nested select para evitar problema N+1
         
         Args:
             empresa_id: ID da empresa
@@ -129,27 +146,42 @@ class EmpresaRepository:
             NotFoundException: Se a empresa não for encontrada
         """
         try:
-            # SUPER_ADMIN pode buscar qualquer empresa, outros apenas ativas
+            # Nested select para buscar empresa + lojas em UMA query só
             if user_perfil == "SUPER_ADMIN":
-                query = self.db.table(self.table).select('*').eq('id', empresa_id)  # SUPER_ADMIN vê qualquer empresa
+                # SUPER_ADMIN pode buscar qualquer empresa
+                query = self.db.table(self.table).select('''
+                    *,
+                    c_lojas (
+                        id,
+                        ativo
+                    )
+                ''').eq('id', empresa_id)
             else:
-                query = self.db.table(self.table).select('*').eq('id', empresa_id).eq('ativo', True)  # Outros apenas ativas
+                # Outros apenas empresas ativas
+                query = self.db.table(self.table).select('''
+                    *,
+                    c_lojas (
+                        id,
+                        ativo
+                    )
+                ''').eq('id', empresa_id).eq('ativo', True)
                 
-            result = query.single().execute()
+            result = query.execute()
             
             if not result.data:
                 raise NotFoundException(f"Empresa não encontrada: {empresa_id}")
             
-            empresa = result.data
+            empresa = result.data[0]
             
-            # Busca lojas desta empresa separadamente
-            lojas_query = self.db.table('c_lojas').select('id, ativo').eq('empresa_id', empresa_id)
-            lojas_result = lojas_query.execute()
-            lojas = lojas_result.data if lojas_result.data else []
+            # Lojas já vêm junto na query (nested select)
+            lojas = empresa.get('c_lojas', []) or []
             
-            # Processa dados das lojas
+            # Processa dados das lojas (mesma lógica de antes)
             empresa['total_lojas'] = len(lojas)
             empresa['lojas_ativas'] = len([loja for loja in lojas if loja.get('ativo')])
+            
+            # Remove dados das lojas do retorno (não precisamos mais)
+            empresa.pop('c_lojas', None)
             
             return empresa
         

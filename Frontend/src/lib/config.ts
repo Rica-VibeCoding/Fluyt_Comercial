@@ -4,8 +4,10 @@
  */
 
 export const API_CONFIG = {
-  // URLs do backend
-  BASE_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+  // 🔧 URLs do backend - CORRIGIDO para usar proxy em desenvolvimento
+  BASE_URL: process.env.NODE_ENV === 'development' 
+    ? '' // Em desenvolvimento, usar proxy relativo
+    : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'),
   API_VERSION: 'v1',
   
   // Timeouts
@@ -17,9 +19,9 @@ export const API_CONFIG = {
     'Accept': 'application/json',
   },
   
-  // Endpoints críticos
+  // 🔧 Endpoints críticos - CORRIGIDOS para usar proxy
   ENDPOINTS: {
-    HEALTH: '/health',
+    HEALTH: process.env.NODE_ENV === 'development' ? '/api/v1/health' : '/health',
     AUTH: '/api/v1/auth',
     CLIENTES: '/api/v1/clientes',
     EMPRESAS: '/api/v1/empresas',
@@ -38,6 +40,7 @@ export const FRONTEND_CONFIG = {
     ENABLE_LOGS: process.env.NODE_ENV === 'development',
     MOCK_FALLBACK: false, // Desabilitado - usar apenas dados reais
     DEBUG_API: process.env.NODE_ENV === 'development', // Logs detalhados de API
+    USE_PROXY: process.env.NODE_ENV === 'development', // 🔧 NOVO: Flag para usar proxy
   },
   
   // Configurações de localStorage
@@ -57,14 +60,16 @@ export function verificarConfiguracoes(): {
 } {
   const problemas: string[] = [];
   
-  // Verificar URL da API
-  if (!API_CONFIG.BASE_URL) {
-    problemas.push('API_CONFIG.BASE_URL não definida');
+  // 🔧 Verificação ajustada para proxy
+  if (process.env.NODE_ENV === 'production' && !API_CONFIG.BASE_URL) {
+    problemas.push('API_CONFIG.BASE_URL não definida para produção');
   }
   
-  // Verificar se é localhost válido
-  if (API_CONFIG.BASE_URL.includes('localhost') && !API_CONFIG.BASE_URL.includes(':8000')) {
-    problemas.push('Backend deve rodar na porta 8000');
+  // Verificar se é localhost válido em produção
+  if (process.env.NODE_ENV === 'production' && 
+      API_CONFIG.BASE_URL.includes('localhost') && 
+      !API_CONFIG.BASE_URL.includes(':8000')) {
+    problemas.push('Backend deve rodar na porta 8000 em produção');
   }
   
   // Verificar se window existe (client-side)
@@ -112,11 +117,16 @@ export const DEBUG_CONFIG = {
 } as const;
 
 /**
- * Helper para verificar se backend está rodando
+ * Helper para verificar se backend está disponível
+ * 🔧 CORRIGIDO para usar proxy em desenvolvimento
  */
 export async function verificarBackendDisponivel(): Promise<boolean> {
   try {
-    const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.HEALTH}`, {
+    const url = process.env.NODE_ENV === 'development' 
+      ? '/api/v1/health' // Usar proxy
+      : `${API_CONFIG.BASE_URL}/health`; // Direto em produção
+    
+    const response = await fetch(url, {
       method: 'GET',
       headers: API_CONFIG.DEFAULT_HEADERS,
       signal: AbortSignal.timeout(5000) // 5 segundos timeout
