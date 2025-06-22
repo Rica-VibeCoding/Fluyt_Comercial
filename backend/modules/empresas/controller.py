@@ -4,9 +4,10 @@ Define todas as rotas HTTP para gerenciar empresas
 """
 import logging
 from typing import Optional
-from fastapi import APIRouter, Depends, Query, status, HTTPException
+from fastapi import APIRouter, Depends, Query, status, HTTPException, Request
 
 from core.auth import get_current_user, User
+from core.rate_limiter import limiter
 from core.dependencies import (
     get_pagination,
     PaginationParams,
@@ -240,46 +241,46 @@ async def excluir_empresa(
     current_user: User = Depends(get_current_user)
 ) -> SuccessResponse:
     """
-    Exclui uma empresa PERMANENTEMENTE do banco de dados (hard delete)
+    Desativa uma empresa (soft delete - marca como inativa)
     
-    **⚠️ ATENÇÃO: Esta operação é IRREVERSÍVEL!**
-    
-    **Acesso:** Apenas SUPER_ADMIN
+    **Acesso:** Apenas SUPER_ADMIN e ADMIN_MASTER
     
     **Parâmetros:**
     - `empresa_id`: UUID da empresa
     
     **Regras:**
-    - Apenas SUPER_ADMIN pode excluir empresas
-    - Empresa é REMOVIDA COMPLETAMENTE do banco de dados
-    - Não é possível excluir se houver lojas vinculadas
-    - Não é possível excluir se houver contratos vinculados
-    - **DADOS SERÃO PERDIDOS PERMANENTEMENTE**
+    - Apenas SUPER_ADMIN e ADMIN_MASTER podem desativar empresas
+    - Empresa é marcada como inativa, NÃO deletada fisicamente
+    - Dados são preservados para auditoria e possível reativação
+    - Histórico é mantido
     
     **Response:**
     ```json
     {
         "success": true,
-        "message": "Empresa excluída com sucesso"
+        "message": "Empresa desativada com sucesso"
     }
     ```
     """
     try:
-        sucesso = await empresa_service.excluir_empresa(empresa_id, current_user)
+        # Usa o método de soft delete (desativar)
+        sucesso = await empresa_service.desativar_empresa(empresa_id, current_user)
         
         if sucesso:
-            logger.info(f"Empresa excluída: {empresa_id} por usuário {current_user.id}")
-            return SuccessResponse(message="Empresa excluída com sucesso")
+            logger.info(f"Empresa desativada (soft delete): {empresa_id} por usuário {current_user.id}")
+            return SuccessResponse(message="Empresa desativada com sucesso")
         else:
-            raise Exception("Falha ao excluir empresa")
+            raise Exception("Falha ao desativar empresa")
     
     except Exception as e:
-        logger.error(f"Erro ao excluir empresa {empresa_id}: {str(e)}")
+        logger.error(f"Erro ao desativar empresa {empresa_id}: {str(e)}")
         raise
 
 
 @router.get("/verificar-cnpj/{cnpj}", response_model=dict)
+@limiter.limit("10/minute")  # Máximo 10 verificações por minuto
 async def verificar_cnpj(
+    request: Request,  # Obrigatório para o rate limiter
     cnpj: str,
     empresa_id: Optional[str] = Query(None, description="ID da empresa a ignorar (para edição)"),
     current_user: User = Depends(get_current_user)
@@ -328,7 +329,9 @@ async def verificar_cnpj(
 
 
 @router.get("/verificar-nome/{nome}", response_model=dict)
+@limiter.limit("10/minute")  # Máximo 10 verificações por minuto
 async def verificar_nome(
+    request: Request,  # Obrigatório para o rate limiter
     nome: str,
     empresa_id: Optional[str] = Query(None, description="ID da empresa a ignorar (para edição)"),
     current_user: User = Depends(get_current_user)
@@ -371,52 +374,5 @@ async def verificar_nome(
         raise
 
 
-@router.get("/test/public", response_model=dict, include_in_schema=False)
-async def test_empresas_publico() -> dict:
-    """
-    Endpoint público para teste de conectividade
-    
-    **APENAS PARA DESENVOLVIMENTO**
-    Permite testar se a API está funcionando sem necessidade de autenticação
-    
-    **Response:**
-    ```json
-    {
-        "success": true,
-        "message": "API de empresas funcionando",
-        "total_empresas": 4,
-        "ambiente": "development"
-    }
-    ```
-    """
-    from core.config import settings
-    if not settings.is_development:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Endpoint não encontrado")
-    
-    try:
-        # Teste básico de conectividade com o serviço
-        from .repository import EmpresaRepository
-        from core.database import get_database
-        
-        db = get_database()
-        repo = EmpresaRepository(db)
-        # Contagem básica de empresas
-        total = await repo.contar_total_publico()
-        
-        logger.info("Teste público de conectividade da API de empresas executado")
-        
-        return {
-            "success": True,
-            "message": "API de empresas funcionando",
-            "total_empresas": total,
-            "ambiente": "development"
-        }
-    
-    except Exception as e:
-        logger.error(f"Erro no teste público: {str(e)}")
-        return {
-            "success": False,
-            "message": f"Erro na API: {str(e)}",
-            "total_empresas": 0,
-            "ambiente": "development"
-        } 
+# ENDPOINT DE TESTE PÚBLICO REMOVIDO POR SEGURANÇA
+# Use endpoints autenticados para verificar conectividade 

@@ -203,41 +203,9 @@ class EmpresaService:
             logger.error(f"Erro ao atualizar empresa {empresa_id}: {str(e)}")
             raise
     
-    async def excluir_empresa(self, empresa_id: str, user: User) -> bool:
-        """
-        Exclui uma empresa PERMANENTEMENTE do banco de dados (hard delete)
-        
-        ATENÇÃO: Esta operação é IRREVERSÍVEL!
-        Remove completamente a empresa do banco, mas apenas se não houver dependências.
-        
-        Args:
-            empresa_id: ID da empresa
-            user: Usuário logado
-            
-        Returns:
-            True se excluído com sucesso
-        """
-        try:
-            # Apenas SUPER_ADMIN e ADMIN_MASTER podem excluir empresas
-            if user.perfil not in ["SUPER_ADMIN", "ADMIN_MASTER"]:
-                raise ValidationException("Apenas SUPER_ADMIN ou ADMIN_MASTER podem excluir empresas")
-            
-            # Conecta com o banco
-            db = get_database()
-            repository = EmpresaRepository(db)
-            
-            # O repository fará todas as verificações de dependências
-            # e lançará ConflictException se houver lojas ou contratos vinculados
-            sucesso = await repository.excluir(empresa_id)
-            
-            if sucesso:
-                logger.warning(f"EXCLUSÃO PERMANENTE: Empresa {empresa_id} removida do banco de dados")
-            
-            return sucesso
-        
-        except Exception as e:
-            logger.error(f"Erro ao excluir empresa {empresa_id}: {str(e)}")
-            raise
+    # MÉTODO EXCLUIR_EMPRESA (HARD DELETE) REMOVIDO INTENCIONALMENTE
+    # Use desativar_empresa() para soft delete
+    # Isso garante que dados nunca sejam perdidos permanentemente
 
     async def desativar_empresa(self, empresa_id: str, user: User) -> bool:
         """

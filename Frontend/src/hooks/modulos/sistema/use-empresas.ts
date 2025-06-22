@@ -199,7 +199,7 @@ export function useEmpresas() {
     }
   }, [empresas, carregarEmpresas]);
 
-  // Excluir empresa
+  // Desativar empresa (soft delete)
   const excluirEmpresa = useCallback(async (id: string): Promise<boolean> => {
     const empresa = empresas.find(e => e.id === id);
     
@@ -208,29 +208,29 @@ export function useEmpresas() {
       return false;
     }
 
-    // Verificar se tem lojas vinculadas
-    if (empresa.total_lojas && empresa.total_lojas > 0) {
-      toast.error('Não é possível excluir empresa com lojas vinculadas');
+    // Verificar se tem lojas vinculadas ativas
+    if (empresa.lojas_ativas && empresa.lojas_ativas > 0) {
+      toast.error('Não é possível desativar empresa com lojas ativas');
       return false;
     }
 
     setLoading(true);
     
     try {
-      // Chamar API
+      // Chamar API (soft delete)
       const response = await empresaService.excluir(id);
       
       if (response.success) {
         // Recarregar lista de empresas
         await carregarEmpresas();
-        toast.success('Empresa excluída com sucesso!');
+        toast.success('Empresa desativada com sucesso!');
         return true;
       } else {
-        throw new Error(response.error || 'Erro ao excluir empresa');
+        throw new Error(response.error || 'Erro ao desativar empresa');
       }
 
     } catch (error: any) {
-      const mensagemErro = error.message || 'Erro ao excluir empresa';
+      const mensagemErro = error.message || 'Erro ao desativar empresa';
       toast.error(mensagemErro);
       return false;
     } finally {

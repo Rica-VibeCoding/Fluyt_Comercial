@@ -14,6 +14,9 @@ passlib[bcrypt]==1.7.4
 httpx==0.25.2
 requests==2.31.0
 
+# ===== RATE LIMITING =====
+slowapi==0.1.9
+
 # ===== ENVIRONMENT & CONFIG =====
 python-dotenv==1.0.0
 python-multipart==0.0.6

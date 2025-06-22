@@ -348,85 +348,9 @@ class EmpresaRepository:
             logger.error(f"Erro ao desativar empresa {empresa_id}: {str(e)}")
             raise DatabaseException(f"Erro ao desativar empresa: {str(e)}")
 
-    async def excluir(self, empresa_id: str) -> bool:
-        """
-        Exclui uma empresa PERMANENTEMENTE do banco de dados (hard delete)
-        
-        ATENÇÃO: Esta operação é IRREVERSÍVEL!
-        Remove completamente a empresa e todos os dados relacionados.
-        
-        Args:
-            empresa_id: ID da empresa
-            
-        Returns:
-            True se excluído com sucesso
-            
-        Raises:
-            NotFoundException: Se empresa não encontrada
-            ConflictException: Se empresa tem dependências que impedem exclusão
-        """
-        try:
-            # Verifica se existe (SUPER_ADMIN pode excluir qualquer empresa)
-            empresa = await self.buscar_por_id(empresa_id, "SUPER_ADMIN")
-            
-            # Verifica se tem lojas vinculadas
-            lojas_query = self.db.table('c_lojas').select('id').eq('empresa_id', empresa_id)
-            lojas_result = lojas_query.execute()
-            
-            if lojas_result.data and len(lojas_result.data) > 0:
-                raise ConflictException(
-                    f"Não é possível excluir empresa '{empresa['nome']}' pois possui {len(lojas_result.data)} loja(s) vinculada(s). "
-                    "Exclua primeiro as lojas ou desative a empresa."
-                )
-            
-            # Verifica se tem contratos vinculados diretamente
-            contratos_query = self.db.table('c_contratos').select('id').eq('empresa_id', empresa_id)
-            contratos_result = contratos_query.execute()
-            
-            if contratos_result.data and len(contratos_result.data) > 0:
-                raise ConflictException(
-                    f"Não é possível excluir empresa '{empresa['nome']}' pois possui {len(contratos_result.data)} contrato(s) vinculado(s). "
-                    "Exclua primeiro os contratos ou desative a empresa."
-                )
-            
-            # Se chegou até aqui, pode excluir permanentemente
-            logger.warning(f"EXCLUSÃO PERMANENTE: Removendo empresa {empresa['nome']} (ID: {empresa_id}) do banco de dados")
-            
-            query = self.db.table(self.table).delete().eq('id', empresa_id)
-            result = query.execute()
-            
-            logger.info(f"Empresa {empresa['nome']} excluída permanentemente com sucesso")
-            
-            return True
-        
-        except (NotFoundException, ConflictException):
-            raise
-        except Exception as e:
-            logger.error(f"Erro ao excluir empresa {empresa_id}: {str(e)}")
-            raise DatabaseException(f"Erro ao excluir empresa: {str(e)}")
+    # MÉTODO EXCLUIR (HARD DELETE) REMOVIDO INTENCIONALMENTE
+    # Usamos apenas soft delete através do método desativar()
+    # Isso garante que dados nunca sejam perdidos permanentemente
     
-    async def contar_total_publico(self) -> int:
-        """
-        Conta o total de empresas (sem filtros)
-        
-        **APENAS PARA TESTE DE CONECTIVIDADE**
-        Método público que não aplica RLS - usado apenas para validar
-        que a conexão com Supabase está funcionando
-        
-        Returns:
-            Número total de empresas na tabela
-        """
-        try:
-            result = self.db.table(self.table).select(
-                'id', count='exact'
-            ).execute()
-            
-            logger.info(f"Query executada na tabela: {self.table}")
-            logger.info(f"Resultado count: {result.count}")
-            logger.info(f"Dados retornados: {len(result.data) if result.data else 0} registros")
-            
-            return result.count or 0
-        
-        except Exception as e:
-            logger.error(f"Erro ao contar empresas publicamente: {str(e)}")
-            return 0 
+    # MÉTODO CONTAR_TOTAL_PUBLICO REMOVIDO POR SEGURANÇA
+    # Use métodos autenticados com hierarquia adequada 
