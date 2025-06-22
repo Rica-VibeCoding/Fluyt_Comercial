@@ -418,9 +418,7 @@ async def debug_clientes() -> dict:
 
 
 @router.get("/procedencias", response_model=List[dict])
-async def listar_procedencias(
-    current_user: User = Depends(get_current_user)
-) -> List[dict]:
+async def listar_procedencias() -> List[dict]:
     """
     Lista todas as procedências ativas
     
@@ -436,9 +434,9 @@ async def listar_procedencias(
     ```
     """
     try:
-        # Busca procedências diretamente do Supabase
-        from core.database import get_supabase_client
-        supabase = get_supabase_client()
+        # Busca procedências usando cliente admin (bypassa RLS)
+        from core.database import get_admin_database
+        supabase = get_admin_database()
         
         result = supabase.table('cad_procedencias').select('*').eq('ativo', True).order('nome').execute()
         

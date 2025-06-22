@@ -260,26 +260,39 @@ class EmpresaRepository:
             Empresa criada com ID
             
         Raises:
-            ConflictException: Se CNPJ ou nome já existe
+            ConflictException: Se nome já existe (CNPJ pode repetir)
         """
         try:
-            # Verifica se nome já existe (busca em todas as empresas para evitar duplicação)
-            existe_nome = await self.buscar_por_nome(dados['nome'], "SUPER_ADMIN")
+            logger.info(f"Criando empresa: dados={dados}")
+            
+            # Normaliza e verifica se nome já existe
+            nome_normalizado = dados['nome'].strip() if dados['nome'] else ''
+            if not nome_normalizado:
+                raise ConflictException("Nome da empresa é obrigatório")
+                
+            existe_nome = await self.buscar_por_nome(nome_normalizado, "SUPER_ADMIN")
             if existe_nome:
+                logger.warning(f"CONFLICT: Nome '{nome_normalizado}' já existe na empresa {existe_nome['id']}")
                 raise ConflictException(
-                    f"Empresa com nome '{dados['nome']}' já cadastrada"
+                    f"Empresa com nome '{nome_normalizado}' já cadastrada"
                 )
             
-            # Verifica se CNPJ já existe APENAS se foi fornecido (busca em todas as empresas)
+            # CNPJ pode se repetir - apenas logamos para auditoria
             if dados.get('cnpj'):
-                existe_cnpj = await self.buscar_por_cnpj(dados['cnpj'], "SUPER_ADMIN")
-                if existe_cnpj:
-                    raise ConflictException(
-                        f"CNPJ {dados['cnpj']} já cadastrado"
-                    )
+                cnpj_normalizado = dados['cnpj'].strip() if dados['cnpj'] else ''
+                if cnpj_normalizado:
+                    existe_cnpj = await self.buscar_por_cnpj(cnpj_normalizado, "SUPER_ADMIN")
+                    if existe_cnpj:
+                        logger.info(f"INFO: CNPJ '{cnpj_normalizado}' já existe em outra empresa - permitido")
+            
+            # Normaliza dados antes de inserir
+            dados_normalizados = dados.copy()
+            dados_normalizados['nome'] = nome_normalizado
+            if dados.get('cnpj'):
+                dados_normalizados['cnpj'] = cnpj_normalizado
             
             # Cria a empresa
-            result = self.db.table(self.table).insert(dados).execute()
+            result = self.db.table(self.table).insert(dados_normalizados).execute()
             
             if not result.data:
                 raise DatabaseException("Erro ao criar empresa")
@@ -309,27 +322,33 @@ class EmpresaRepository:
             
         Raises:
             NotFoundException: Se empresa não encontrada
-            ConflictException: Se CNPJ ou nome já existe em outra empresa
+            ConflictException: Se nome já existe em outra empresa (CNPJ pode repetir)
         """
         try:
             # Verifica se empresa existe (SUPER_ADMIN pode buscar qualquer empresa)
             empresa_atual = await self.buscar_por_id(empresa_id, "SUPER_ADMIN")
+            logger.info(f"Atualizando empresa {empresa_id}: dados={dados}")
             
             # Se está mudando o nome, verifica duplicidade (busca em todas as empresas)
-            if 'nome' in dados and dados['nome'] != empresa_atual['nome']:
-                existe_nome = await self.buscar_por_nome(dados['nome'], "SUPER_ADMIN")
-                if existe_nome:
-                    raise ConflictException(
-                        f"Empresa com nome '{dados['nome']}' já cadastrada"
-                    )
+            if 'nome' in dados:
+                nome_novo = dados['nome'].strip() if dados['nome'] else ''
+                nome_atual = empresa_atual['nome'].strip() if empresa_atual['nome'] else ''
+                if nome_novo and nome_novo != nome_atual:
+                    existe_nome = await self.buscar_por_nome(nome_novo, "SUPER_ADMIN")
+                    if existe_nome:
+                        logger.warning(f"CONFLICT: Nome '{nome_novo}' já existe na empresa {existe_nome['id']}")
+                        raise ConflictException(
+                            f"Empresa com nome '{nome_novo}' já cadastrada"
+                        )
             
-            # Se está mudando CNPJ, verifica duplicidade (busca em todas as empresas)
-            if 'cnpj' in dados and dados['cnpj'] != empresa_atual['cnpj']:
-                existe_cnpj = await self.buscar_por_cnpj(dados['cnpj'], "SUPER_ADMIN")
-                if existe_cnpj:
-                    raise ConflictException(
-                        f"CNPJ {dados['cnpj']} já cadastrado"
-                    )
+            # CNPJ pode se repetir - apenas logamos para auditoria na atualização
+            if 'cnpj' in dados:
+                cnpj_novo = dados['cnpj'] if dados['cnpj'] else None
+                cnpj_atual = empresa_atual['cnpj'] if empresa_atual['cnpj'] else None
+                if cnpj_novo and cnpj_novo != cnpj_atual:
+                    existe_cnpj = await self.buscar_por_cnpj(cnpj_novo, "SUPER_ADMIN")
+                    if existe_cnpj:
+                        logger.info(f"INFO: CNPJ '{cnpj_novo}' já existe em outra empresa - permitido na atualização")
             
             # Atualiza apenas campos fornecidos
             dados_limpos = {k: v for k, v in dados.items() if v is not None}

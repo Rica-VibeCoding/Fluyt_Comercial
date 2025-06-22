@@ -1,0 +1,24 @@
+api-client.ts:187 ❌ Resposta não OK: 
+{status: 500, statusText: 'Internal Server Error', url: 'http://localhost:8000/api/v1/empresas', endpoint: '/api/v1/empresas', errorBody: {…}}
+
+api-client.ts:224 ❌ Erro na requisição
+api-client.ts:225 🔥 Erro capturado: Error: Erro ao criar empresa: {'code': '23505', 'details': 'Key (cnpj)=(12345678000199) already exists.', 'hint': None, 'message': 'duplicate key value violates unique constraint "cad_empresas_cnpj_key"'}
+    at ApiClient.request (api-client.ts:210:15)
+    at async EmpresaService.criar (empresa-service.ts:142:24)
+    at async eval (use-empresas.ts:114:24)
+    at async handleSubmit (gestao-empresas.tsx:47:17)
+api-client.ts:226 📍 URL que falhou: http://localhost:8000/api/v1/empresas
+request	@	api-client.ts:226
+await in request		
+criarEmpresa	@	api-client.ts:331
+criar	@	empresa-service.ts:142
+eval	@	use-empresas.ts:114
+handleSubmit	@	gestao-empresas.tsx:47
+api-client.ts:227 🔧 Tipo do erro: Error
+request	@	api-client.ts:227
+await in request		
+criarEmpresa	@	api-client.ts:331
+criar	@	empresa-service.ts:142
+eval	@	use-empresas.ts:114
+handleSubmit	@	gestao-empresas.tsx:47
+config.ts:98 🔧 [CONFIG] ❌ Erro ao criar empresa: Erro ao criar empresa: {'code': '23505', 'details': 'Key (cnpj)=(12345678000199) already exists.', 'hint': None, 'message': 'duplicate key value violates unique constraint "cad_empresas_cnpj_key"'}

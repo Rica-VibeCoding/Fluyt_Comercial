@@ -55,11 +55,11 @@ export function GestaoEmpresas() {
   const handleEdit = (empresa: any) => {
     setEditingEmpresa(empresa);
     form.reset({
-      nome: empresa.nome,
-      cnpj: empresa.cnpj,
-      email: empresa.email,
-      telefone: empresa.telefone,
-      endereco: empresa.endereco
+      nome: empresa.nome || '',
+      cnpj: empresa.cnpj || '',
+      email: empresa.email || '',
+      telefone: empresa.telefone || '',
+      endereco: empresa.endereco || ''
     });
     setIsDialogOpen(true);
   };

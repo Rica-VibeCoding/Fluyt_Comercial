@@ -45,13 +45,10 @@ export default function GestaoLojas() {
   const [editingLoja, setEditingLoja] = useState<any>(null);
   const [formData, setFormData] = useState<LojaFormData>({
     nome: '',
-    codigo: '',
     endereco: '',
     telefone: '',
     email: '',
-    gerente: '',
-    empresaId: '',
-    metaMes: 100000
+    empresa_id: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -73,13 +70,10 @@ export default function GestaoLojas() {
     setEditingLoja(loja);
     setFormData({
       nome: loja.nome,
-      codigo: loja.codigo,
-      endereco: loja.endereco,
-      telefone: loja.telefone,
-      email: loja.email,
-      gerente: loja.gerente,
-      empresaId: loja.empresaId,
-      metaMes: loja.metaMes
+      endereco: loja.endereco || '',
+      telefone: loja.telefone || '',
+      email: loja.email || '',
+      empresa_id: loja.empresa_id || '',
     });
     setIsDialogOpen(true);
   };
@@ -88,13 +82,10 @@ export default function GestaoLojas() {
     setEditingLoja(null);
     setFormData({
       nome: '',
-      codigo: '',
       endereco: '',
       telefone: '',
       email: '',
-      gerente: '',
-      empresaId: '',
-      metaMes: 100000
+      empresa_id: '',
     });
     setIsDialogOpen(true);
   };
@@ -104,21 +95,17 @@ export default function GestaoLojas() {
     setEditingLoja(null);
     setFormData({
       nome: '',
-      codigo: '',
       endereco: '',
       telefone: '',
       email: '',
-      gerente: '',
-      empresaId: '',
-      metaMes: 100000
+      empresa_id: '',
     });
   };
 
   const handleEmpresaChange = (empresaId: string) => {
     setFormData(prev => ({
       ...prev,
-      empresaId,
-      codigo: empresaId ? gerarProximoCodigo(empresaId) : ''
+      empresa_id: empresaId,
     }));
   };
 
@@ -165,7 +152,12 @@ export default function GestaoLojas() {
       </div>
 
       {/* Tabela */}
-      <LojaTable lojas={lojas} />
+      <LojaTable 
+        lojas={lojas} 
+        onEdit={handleEdit}
+        onDelete={excluirLoja}
+        onToggleStatus={alternarStatusLoja}
+      />
 
       {/* Dialog de formulário */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -187,8 +179,8 @@ export default function GestaoLojas() {
                 <div className="space-y-1">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
                     <div>
-                      <Label htmlFor="empresaId" className="text-xs font-medium text-slate-700">Empresa *</Label>
-                      <Select value={formData.empresaId} onValueChange={handleEmpresaChange}>
+                      <Label htmlFor="empresa_id" className="text-xs font-medium text-slate-700">Empresa *</Label>
+                      <Select value={formData.empresa_id} onValueChange={handleEmpresaChange}>
                         <SelectTrigger className="h-8 text-sm border-slate-300 focus:border-slate-400">
                           <SelectValue placeholder="Selecione a empresa" />
                         </SelectTrigger>
@@ -200,17 +192,6 @@ export default function GestaoLojas() {
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="codigo" className="text-xs font-medium text-slate-700">Código</Label>
-                      <Input
-                        id="codigo"
-                        value={formData.codigo}
-                        readOnly
-                        className="h-8 text-sm bg-slate-50 border-slate-300"
-                        placeholder="Será gerado automaticamente"
-                      />
                     </div>
 
                     <div className="md:col-span-2">
@@ -252,29 +233,6 @@ export default function GestaoLojas() {
                         type="email"
                         value={formData.email}
                         onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                        className="h-8 text-sm border-slate-300 focus:border-slate-400"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="gerente" className="text-xs font-medium text-slate-700">Gerente</Label>
-                      <Input
-                        id="gerente"
-                        value={formData.gerente}
-                        onChange={(e) => setFormData(prev => ({ ...prev, gerente: e.target.value }))}
-                        className="h-8 text-sm border-slate-300 focus:border-slate-400"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="metaMes" className="text-xs font-medium text-slate-700">Meta Mensal (R$)</Label>
-                      <Input
-                        id="metaMes"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={formData.metaMes}
-                        onChange={(e) => setFormData(prev => ({ ...prev, metaMes: Number(e.target.value) }))}
                         className="h-8 text-sm border-slate-300 focus:border-slate-400"
                       />
                     </div>

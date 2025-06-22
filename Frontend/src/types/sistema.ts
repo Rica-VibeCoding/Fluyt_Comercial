@@ -35,30 +35,26 @@ export interface EmpresaFormData {
 // LOJAS
 // ========================================
 export interface Loja extends BaseEntity {
-  nome: string;
-  codigo: string;
-  endereco: string;
-  telefone: string;
-  email: string;
-  gerente: string;
-  funcionarios: number;
-  vendasMes: number;
-  metaMes: number;
-  ativa: boolean;
-  empresaId: string;
-  empresa?: string;
-  dataAbertura: string;
+  nome: string;                    // ✅ ÚNICO OBRIGATÓRIO
+  endereco?: string;               // ✅ opcional (alinhado com Supabase)
+  telefone?: string;               // ✅ opcional (alinhado com Supabase)
+  email?: string;                  // ✅ opcional (alinhado com Supabase)
+  empresa_id?: string;             // ✅ opcional (alinhado com Supabase: empresa_id)
+  gerente_id?: string;             // ✅ opcional (alinhado com Supabase: gerente_id UUID)
+  ativo: boolean;                  // ✅ campo soft delete (alinhado com Supabase)
+  
+  // Campos calculados/relacionados (não existem na tabela)
+  empresa?: string;                // Nome da empresa (via JOIN)
+  gerente?: string;                // Nome do gerente (via JOIN)
 }
 
 export interface LojaFormData {
-  nome: string;
-  codigo: string;
-  endereco: string;
-  telefone: string;
-  email: string;
-  gerente: string;
-  empresaId: string;
-  metaMes: number;
+  nome: string;                    // ✅ ÚNICO OBRIGATÓRIO
+  endereco?: string;               // ✅ opcional
+  telefone?: string;               // ✅ opcional
+  email?: string;                  // ✅ opcional
+  empresa_id?: string;             // ✅ opcional
+  gerente_id?: string;             // ✅ opcional
 }
 
 // ========================================

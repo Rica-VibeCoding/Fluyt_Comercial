@@ -255,7 +255,7 @@ class ClienteRepository:
             Cliente criado com ID
             
         Raises:
-            ConflictException: Se CPF/CNPJ já existe
+            ConflictException: Se nome já existe (CPF/CNPJ pode repetir)
         """
         try:
             # Verifica se nome já existe
@@ -265,13 +265,11 @@ class ClienteRepository:
                     f"Cliente com nome '{dados['nome']}' já cadastrado"
                 )
             
-            # Verifica se CPF/CNPJ já existe APENAS se foi fornecido
+            # CPF/CNPJ pode se repetir - apenas logamos para auditoria
             if dados.get('cpf_cnpj'):
                 existe = await self.buscar_por_cpf_cnpj(dados['cpf_cnpj'], loja_id)
                 if existe:
-                    raise ConflictException(
-                        f"CPF/CNPJ {dados['cpf_cnpj']} já cadastrado"
-                    )
+                    logger.info(f"INFO: CPF/CNPJ '{dados['cpf_cnpj']}' já existe em outro cliente - permitido")
             
             # Adiciona loja_id aos dados
             dados['loja_id'] = loja_id
@@ -309,7 +307,7 @@ class ClienteRepository:
             
         Raises:
             NotFoundException: Se cliente não encontrado
-            ConflictException: Se CPF/CNPJ já existe em outro cliente
+            ConflictException: Se nome já existe em outro cliente (CPF/CNPJ pode repetir)
         """
         try:
             # Verifica se cliente existe
@@ -323,13 +321,11 @@ class ClienteRepository:
                         f"Cliente com nome '{dados['nome']}' já cadastrado"
                     )
             
-            # Se está mudando CPF/CNPJ, verifica duplicidade
+            # CPF/CNPJ pode se repetir - apenas logamos para auditoria na atualização
             if 'cpf_cnpj' in dados and dados['cpf_cnpj'] != cliente_atual['cpf_cnpj']:
                 existe = await self.buscar_por_cpf_cnpj(dados['cpf_cnpj'], loja_id)
                 if existe:
-                    raise ConflictException(
-                        f"CPF/CNPJ {dados['cpf_cnpj']} já cadastrado"
-                    )
+                    logger.info(f"INFO: CPF/CNPJ '{dados['cpf_cnpj']}' já existe em outro cliente - permitido na atualização")
             
             # Atualiza apenas campos fornecidos
             dados_limpos = {k: v for k, v in dados.items() if v is not None}

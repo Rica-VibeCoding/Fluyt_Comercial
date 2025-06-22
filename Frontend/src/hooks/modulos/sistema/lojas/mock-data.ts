@@ -1,90 +1,85 @@
 import type { Loja } from '@/types/sistema';
 
-// Mock data para desenvolvimento
+// Mock data para desenvolvimento - ALINHADO COM SUPABASE
 export const mockLojas: Loja[] = [
   {
     id: '1',
     nome: 'Fluyt São Paulo - Centro',
-    codigo: 'SP001',
     endereco: 'Av. Paulista, 1000 - Centro, São Paulo/SP',
     telefone: '(11) 98765-4321',
     email: 'centro@fluyt.com.br',
-    gerente: 'Maria Silva',
-    funcionarios: 15,
-    vendasMes: 245000,
-    metaMes: 200000,
-    ativa: true,
-    empresaId: '1',
+    empresa_id: '1',
+    gerente_id: 'gerente-1-uuid',
+    ativo: true,
+    createdAt: '2020-01-15T10:00:00Z',
+    updatedAt: '2020-01-15T10:00:00Z',
+    
+    // Campos calculados/relacionados
     empresa: 'Fluyt Móveis & Design',
-    dataAbertura: '2020-01-15',
-    createdAt: '2020-01-15T10:00:00Z'
+    gerente: 'Maria Silva'
   },
   {
     id: '2',
     nome: 'Fluyt Santos - Centro',
-    codigo: 'ST001',
     endereco: 'Rua do Comércio, 500 - Centro, Santos/SP',
     telefone: '(13) 3456-7890',
     email: 'santos@fluyt.com.br',
-    gerente: 'João Santos',
-    funcionarios: 8,
-    vendasMes: 128000,
-    metaMes: 150000,
-    ativa: true,
-    empresaId: '2',
+    empresa_id: '2',
+    gerente_id: 'gerente-2-uuid',
+    ativo: true,
+    createdAt: '2022-06-10T10:00:00Z',
+    updatedAt: '2022-06-10T10:00:00Z',
+    
+    // Campos calculados/relacionados
     empresa: 'Fluyt Filial Santos',
-    dataAbertura: '2022-06-10',
-    createdAt: '2022-06-10T10:00:00Z'
+    gerente: 'João Santos'
   },
   {
     id: '3',
     nome: 'Fluyt ABC - Shopping',
-    codigo: 'ABC001',
     endereco: 'Shopping ABC - Santo André/SP',
     telefone: '(11) 2345-6789',
     email: 'abc@fluyt.com.br',
-    gerente: 'Ana Costa',
-    funcionarios: 12,
-    vendasMes: 89000,
-    metaMes: 120000,
-    ativa: false,
-    empresaId: '1',
+    empresa_id: '1',
+    gerente_id: 'gerente-3-uuid',
+    ativo: false,
+    createdAt: '2023-03-20T10:00:00Z',
+    updatedAt: '2023-03-20T10:00:00Z',
+    
+    // Campos calculados/relacionados
     empresa: 'Fluyt Móveis & Design',
-    dataAbertura: '2023-03-20',
-    createdAt: '2023-03-20T10:00:00Z'
+    gerente: 'Ana Costa'
   },
   {
     id: '4',
     nome: 'Fluyt Campinas - Norte',
-    codigo: 'CP001',
     endereco: 'Av. Norte, 2000 - Campinas/SP',
     telefone: '(19) 9876-5432',
     email: 'campinas@fluyt.com.br',
-    gerente: 'Pedro Lima',
-    funcionarios: 18,
-    vendasMes: 312000,
-    metaMes: 280000,
-    ativa: true,
-    empresaId: '3',
+    empresa_id: '3',
+    gerente_id: 'gerente-4-uuid',
+    ativo: true,
+    createdAt: '2021-08-15T10:00:00Z',
+    updatedAt: '2021-08-15T10:00:00Z',
+    
+    // Campos calculados/relacionados
     empresa: 'Fluyt Norte',
-    dataAbertura: '2021-08-15',
-    createdAt: '2021-08-15T10:00:00Z'
+    gerente: 'Pedro Lima'
   },
   {
     id: '5',
     nome: 'Fluyt Sorocaba - Centro',
-    codigo: 'SO001',
     endereco: 'Rua Central, 800 - Sorocaba/SP',
     telefone: '(15) 3333-4444',
     email: 'sorocaba@fluyt.com.br',
-    gerente: 'Carla Mendes',
-    funcionarios: 10,
-    vendasMes: 167000,
-    metaMes: 180000,
-    ativa: true,
-    empresaId: '2',
+    empresa_id: '2',
+    gerente_id: 'gerente-5-uuid',
+    ativo: true,
+    createdAt: '2023-01-10T10:00:00Z',
+    updatedAt: '2023-01-10T10:00:00Z',
+    
+    // Campos calculados/relacionados
     empresa: 'Fluyt Filial Santos',
-    dataAbertura: '2023-01-10',
-    createdAt: '2023-01-10T10:00:00Z'
+    gerente: 'Carla Mendes'
   }
 ];

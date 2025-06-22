@@ -155,6 +155,7 @@ class EmpresaResponse(EmpresaBase):
     
     # Campos calculados
     total_lojas: Optional[int] = 0
+    lojas_ativas: Optional[int] = 0
     funcionarios: Optional[int] = 0
     
     # Controle do sistema

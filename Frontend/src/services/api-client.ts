@@ -168,12 +168,28 @@ class ApiClient {
       }
       
       if (!response.ok) {
+        // Tentar capturar mensagem de erro do corpo da resposta
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        let errorBody = null;
+        
+        try {
+          errorBody = await response.json();
+          if (errorBody.message) {
+            errorMessage = errorBody.message;
+          } else if (errorBody.detail) {
+            errorMessage = errorBody.detail;
+          }
+        } catch (e) {
+          // Se falhar ao parsear JSON, usar mensagem padrão
+        }
+        
         // 🔧 LOG DETALHADO DE ERRO
         console.error('❌ Resposta não OK:', {
           status: response.status,
           statusText: response.statusText,
           url: url,
-          endpoint: endpoint
+          endpoint: endpoint,
+          errorBody: errorBody
         });
         
         // Se for 401 após retry ou sem token, limpar autenticação
@@ -191,7 +207,7 @@ class ApiClient {
         }
         
         console.groupEnd();
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -363,6 +379,77 @@ class ApiClient {
     return this.request<any>(endpoint);
   }
 
+  // ============= MÉTODOS ESPECÍFICOS PARA LOJAS =============
+
+  // Listar lojas com filtros
+  async listarLojas(filtros?: any): Promise<ApiResponse<any>> {
+    const params = new URLSearchParams();
+    
+    if (filtros?.busca) params.append('busca', filtros.busca);
+    if (filtros?.empresa_id) params.append('empresa_id', filtros.empresa_id);
+    if (filtros?.gerente_id) params.append('gerente_id', filtros.gerente_id);
+    if (filtros?.data_inicio) params.append('data_inicio', filtros.data_inicio);
+    if (filtros?.data_fim) params.append('data_fim', filtros.data_fim);
+    if (filtros?.page) params.append('page', filtros.page.toString());
+    if (filtros?.limit) params.append('limit', filtros.limit.toString());
+
+    let endpoint = API_CONFIG.ENDPOINTS.LOJAS;
+    if (params.toString()) {
+      endpoint += `?${params.toString()}`;
+    }
+
+    return this.request<any>(endpoint);
+  }
+
+  // Buscar loja por ID
+  async buscarLojaPorId(id: string): Promise<ApiResponse<any>> {
+    const endpoint = `${API_CONFIG.ENDPOINTS.LOJAS}/${id}`;
+    return this.request<any>(endpoint);
+  }
+
+  // Criar loja
+  async criarLoja(dados: any): Promise<ApiResponse<any>> {
+    const endpoint = API_CONFIG.ENDPOINTS.LOJAS;
+    return this.request<any>(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(dados),
+    });
+  }
+
+  // Atualizar loja
+  async atualizarLoja(id: string, dados: any): Promise<ApiResponse<any>> {
+    const endpoint = `${API_CONFIG.ENDPOINTS.LOJAS}/${id}`;
+    return this.request<any>(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(dados),
+    });
+  }
+
+  // Excluir loja
+  async excluirLoja(id: string): Promise<ApiResponse<void>> {
+    const endpoint = `${API_CONFIG.ENDPOINTS.LOJAS}/${id}`;
+    return this.request<void>(endpoint, {
+      method: 'DELETE',
+    });
+  }
+
+  // Verificar nome de loja
+  async verificarNomeLoja(nome: string, lojaId?: string): Promise<ApiResponse<any>> {
+    let endpoint = `${API_CONFIG.ENDPOINTS.LOJAS}/verificar-nome/${encodeURIComponent(nome)}`;
+    
+    if (lojaId) {
+      endpoint += `?loja_id=${lojaId}`;
+    }
+
+    return this.request<any>(endpoint);
+  }
+
+  // Teste público de lojas
+  async testePublicoLojas(): Promise<ApiResponse<any>> {
+    const endpoint = `${API_CONFIG.ENDPOINTS.LOJAS}/test/public`;
+    return this.request<any>(endpoint);
+  }
+
   // ============= MÉTODOS DE AUTENTICAÇÃO =============
 
   // Renovar token de acesso
@@ -471,6 +558,10 @@ export function converterClienteBackendParaFrontend(clienteBackend: ClienteBacke
 
 // Converter dados do formulário para payload do backend
 export function converterFormDataParaPayload(formData: ClienteFormData): ClienteCreatePayload {
+  // Filtrar IDs temporários (não são UUIDs válidos)
+  const procedencia_id = formData.procedencia_id?.startsWith('temp-') ? undefined : formData.procedencia_id;
+  const vendedor_id = formData.vendedor_id?.startsWith('v') ? undefined : formData.vendedor_id;
+  
   return {
     nome: formData.nome,
     cpf_cnpj: formData.cpf_cnpj || undefined,
@@ -485,8 +576,8 @@ export function converterFormDataParaPayload(formData: ClienteFormData): Cliente
     cidade: formData.cidade || undefined,
     uf: formData.uf || undefined,
     cep: formData.cep || undefined,
-    procedencia_id: formData.procedencia_id || undefined,
-    vendedor_id: formData.vendedor_id || undefined,
+    procedencia_id: procedencia_id || undefined,
+    vendedor_id: vendedor_id || undefined,
     observacoes: formData.observacoes || undefined,
   };
 }

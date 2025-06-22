@@ -1,8 +1,7 @@
 import { useCallback } from 'react';
 import { toast } from 'sonner';
 import type { Loja, LojaFormData } from '@/types/sistema';
-import { useLojaValidation } from './use-loja-validation';
-import { useLojaUtils } from './use-loja-utils';
+import { apiClient } from '@/services/api-client';
 
 // Hook especializado para operações CRUD de lojas
 export function useLojaCrud(
@@ -11,51 +10,59 @@ export function useLojaCrud(
   setLoading: (loading: boolean) => void,
   obterEmpresaPorId: (id: string) => any
 ) {
-  const { validarLoja } = useLojaValidation();
-  const { verificarCodigoDuplicado } = useLojaUtils(lojas);
+  // Validação simples apenas para nome obrigatório
+  const validarLoja = (dados: LojaFormData): boolean => {
+    if (!dados.nome || dados.nome.trim().length < 2) {
+      toast.error('Nome da loja é obrigatório (mínimo 2 caracteres)');
+      return false;
+    }
+    return true;
+  };
 
   // Criar loja
   const criarLoja = useCallback(async (dados: LojaFormData): Promise<boolean> => {
     setLoading(true);
     
     try {
-      // Validações
-      const erros = validarLoja(dados);
-      
-      if (verificarCodigoDuplicado(dados.codigo)) {
-        erros.push('Código da loja já existe');
-      }
-
-      if (erros.length > 0) {
-        erros.forEach(erro => toast.error(erro));
+      if (!validarLoja(dados)) {
+        setLoading(false);
         return false;
       }
 
-      // Buscar nome da empresa
-      const empresa = obterEmpresaPorId(dados.empresaId);
-      if (!empresa) {
-        toast.error('Empresa não encontrada');
+      // Chamar API real do backend
+      const response = await apiClient.criarLoja({
+        nome: dados.nome,
+        endereco: dados.endereco,
+        telefone: dados.telefone,
+        email: dados.email,
+        empresa_id: dados.empresa_id,
+        gerente_id: dados.gerente_id
+      });
+
+      if (response.success && response.data) {
+        // Converter resposta do backend para formato frontend
+        const novaLoja: Loja = {
+          id: response.data.id,
+          nome: response.data.nome,
+          endereco: response.data.endereco,
+          telefone: response.data.telefone,
+          email: response.data.email,
+          empresa_id: response.data.empresa_id,
+          gerente_id: response.data.gerente_id,
+          ativo: response.data.ativo,
+          createdAt: response.data.created_at,
+          updatedAt: response.data.updated_at,
+          empresa: response.data.empresa,
+          gerente: response.data.gerente,
+        };
+
+        setLojas([...lojas, novaLoja]);
+        toast.success('Loja criada com sucesso!');
+        return true;
+      } else {
+        toast.error(response.error || 'Erro ao criar loja');
         return false;
       }
-
-      // Simular API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      const novaLoja: Loja = {
-        id: Date.now().toString(),
-        ...dados,
-        codigo: dados.codigo.toUpperCase(),
-        empresa: empresa.nome,
-        funcionarios: 0,
-        vendasMes: 0,
-        ativa: true,
-        dataAbertura: new Date().toISOString().split('T')[0], // YYYY-MM-DD
-        createdAt: new Date().toISOString()
-      };
-
-      setLojas([...lojas, novaLoja]);
-      toast.success('Loja criada com sucesso!');
-      return true;
     } catch (error) {
       console.error('Erro ao criar loja:', error);
       toast.error('Erro ao criar loja');
@@ -63,48 +70,54 @@ export function useLojaCrud(
     } finally {
       setLoading(false);
     }
-  }, [lojas, setLojas, setLoading, validarLoja, verificarCodigoDuplicado, obterEmpresaPorId]);
+  }, [lojas, setLojas, setLoading]);
 
   // Editar loja
   const editarLoja = useCallback(async (id: string, dados: LojaFormData): Promise<boolean> => {
     setLoading(true);
     
     try {
-      // Validações
-      const erros = validarLoja(dados);
-      
-      if (verificarCodigoDuplicado(dados.codigo, id)) {
-        erros.push('Código da loja já existe');
-      }
-
-      if (erros.length > 0) {
-        erros.forEach(erro => toast.error(erro));
+      if (!validarLoja(dados)) {
+        setLoading(false);
         return false;
       }
 
-      // Buscar nome da empresa
-      const empresa = obterEmpresaPorId(dados.empresaId);
-      if (!empresa) {
-        toast.error('Empresa não encontrada');
+      // Chamar API real do backend
+      const response = await apiClient.atualizarLoja(id, {
+        nome: dados.nome,
+        endereco: dados.endereco,
+        telefone: dados.telefone,
+        email: dados.email,
+        empresa_id: dados.empresa_id,
+        gerente_id: dados.gerente_id
+      });
+
+      if (response.success && response.data) {
+        // Atualizar lista local com dados do backend
+        setLojas(lojas.map(loja => 
+          loja.id === id 
+            ? { 
+                ...loja, 
+                nome: response.data.nome,
+                endereco: response.data.endereco,
+                telefone: response.data.telefone,
+                email: response.data.email,
+                empresa_id: response.data.empresa_id,
+                gerente_id: response.data.gerente_id,
+                ativo: response.data.ativo,
+                updated_at: response.data.updated_at,
+                empresa: response.data.empresa,
+                gerente: response.data.gerente,
+              }
+            : loja
+        ));
+        
+        toast.success('Loja atualizada com sucesso!');
+        return true;
+      } else {
+        toast.error(response.error || 'Erro ao atualizar loja');
         return false;
       }
-
-      // Simular API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      setLojas(lojas.map(loja => 
-        loja.id === id 
-          ? { 
-              ...loja, 
-              ...dados,
-              codigo: dados.codigo.toUpperCase(),
-              empresa: empresa.nome
-            }
-          : loja
-      ));
-      
-      toast.success('Loja atualizada com sucesso!');
-      return true;
     } catch (error) {
       console.error('Erro ao editar loja:', error);
       toast.error('Erro ao editar loja');
@@ -112,19 +125,25 @@ export function useLojaCrud(
     } finally {
       setLoading(false);
     }
-  }, [lojas, setLojas, setLoading, validarLoja, verificarCodigoDuplicado, obterEmpresaPorId]);
+  }, [lojas, setLojas, setLoading]);
 
   // Excluir loja
   const excluirLoja = useCallback(async (id: string): Promise<boolean> => {
     setLoading(true);
     
     try {
-      // Simular API call
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Chamar API real do backend
+      const response = await apiClient.excluirLoja(id);
       
-      setLojas(lojas.filter(loja => loja.id !== id));
-      toast.success('Loja excluída com sucesso!');
-      return true;
+      if (response.success) {
+        // Remover da lista local
+        setLojas(lojas.filter(loja => loja.id !== id));
+        toast.success('Loja excluída com sucesso!');
+        return true;
+      } else {
+        toast.error(response.error || 'Erro ao excluir loja');
+        return false;
+      }
     } catch (error) {
       console.error('Erro ao excluir loja:', error);
       toast.error('Erro ao excluir loja');
@@ -136,44 +155,42 @@ export function useLojaCrud(
 
   // Alternar status da loja
   const alternarStatusLoja = useCallback(async (id: string): Promise<boolean> => {
+    setLoading(true);
+    
     try {
-      // Simular API call
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      setLojas(lojas.map(loja => 
-        loja.id === id ? { ...loja, ativa: !loja.ativa } : loja
-      ));
-      
       const loja = lojas.find(l => l.id === id);
-      const novoStatus = loja ? !loja.ativa : false;
-      
-      toast.success(`Loja ${novoStatus ? 'ativada' : 'desativada'} com sucesso!`);
-      return true;
+      if (!loja) {
+        toast.error('Loja não encontrada');
+        setLoading(false);
+        return false;
+      }
+
+      // Chamar API real para atualizar status
+      const response = await apiClient.atualizarLoja(id, {
+        ativo: !loja.ativo
+      });
+
+      if (response.success && response.data) {
+        // Atualizar lista local
+        setLojas(lojas.map(l => 
+          l.id === id ? { ...l, ativo: response.data.ativo, updated_at: response.data.updated_at } : l
+        ));
+        
+        const novoStatus = response.data.ativo;
+        toast.success(`Loja ${novoStatus ? 'ativada' : 'desativada'} com sucesso!`);
+        return true;
+      } else {
+        toast.error(response.error || 'Erro ao alterar status da loja');
+        return false;
+      }
     } catch (error) {
       console.error('Erro ao alterar status:', error);
       toast.error('Erro ao alterar status da loja');
       return false;
+    } finally {
+      setLoading(false);
     }
-  }, [lojas, setLojas]);
-
-  // Atualizar vendas da loja
-  const atualizarVendas = useCallback(async (id: string, vendas: number): Promise<boolean> => {
-    try {
-      // Simular API call
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      setLojas(lojas.map(loja => 
-        loja.id === id ? { ...loja, vendasMes: vendas } : loja
-      ));
-      
-      toast.success('Vendas atualizadas com sucesso!');
-      return true;
-    } catch (error) {
-      console.error('Erro ao atualizar vendas:', error);
-      toast.error('Erro ao atualizar vendas');
-      return false;
-    }
-  }, [lojas, setLojas]);
+  }, [lojas, setLojas, setLoading]);
 
   // Resetar dados (para desenvolvimento)
   const resetarDados = useCallback(() => {
@@ -187,7 +204,6 @@ export function useLojaCrud(
     atualizarLoja: editarLoja, // Alias para compatibilidade
     excluirLoja,
     alternarStatusLoja,
-    atualizarVendas,
     resetarDados
   };
 }

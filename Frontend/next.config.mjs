@@ -13,12 +13,16 @@ const nextConfig = {
   // FastAPI espera trailing slash, Next.js remove por padrão
   trailingSlash: false, // Manter false para Next.js
   
-  // 🔧 PROXY REVERSO CORRIGIDO - Adicionar trailing slash na destination
+  // 🔧 PROXY REVERSO CORRIGIDO
   async rewrites() {
     return [
       {
         source: '/api/v1/:path*',
-        destination: 'http://localhost:8000/api/v1/:path*', // SEM trailing slash extra
+        destination: 'http://localhost:8000/api/v1/:path*',
+      },
+      {
+        source: '/api/:path*',
+        destination: 'http://localhost:8000/api/:path*',
       },
     ];
   },

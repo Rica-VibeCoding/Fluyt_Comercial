@@ -1,0 +1,13 @@
+{
+  "total_tabelas": 5,
+  "tabelas_com_problemas": [],
+  "tabelas_seguras": [
+    "cad_empresas",
+    "c_lojas",
+    "c_clientes",
+    "c_orcamentos",
+    "c_ambientes"
+  ],
+  "constraints_problematicas": [],
+  "recomendacoes": []
+}

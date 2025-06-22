@@ -11,14 +11,18 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 import type { Loja } from '@/types/sistema';
 
 interface LojaTableProps {
   lojas: Loja[];
+  onEdit?: (loja: Loja) => void;
+  onDelete?: (id: string) => Promise<boolean>;
+  onToggleStatus?: (id: string) => Promise<boolean>;
 }
 
-export function LojaTable({ lojas }: LojaTableProps) {
+export function LojaTable({ lojas, onEdit, onDelete, onToggleStatus }: LojaTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   const toggleRowExpansion = (lojaId: string) => {
@@ -101,13 +105,14 @@ export function LojaTable({ lojas }: LojaTableProps) {
 
                 {/* Status */}
                 <TableCell className="py-2">
-                  <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      loja.ativa ? 'bg-slate-600 text-white' : 'bg-red-100 text-red-800'
+                  <Badge 
+                    variant="secondary" 
+                    className={`text-xs px-2 py-0.5 font-medium ${
+                      loja.ativo ? 'bg-slate-600 text-white' : 'bg-red-100 text-red-800'
                     }`}
                   >
-                    {loja.ativa ? 'Ativa' : 'Inativa'}
-                  </span>
+                    {loja.ativo ? 'Ativa' : 'Inativa'}
+                  </Badge>
                 </TableCell>
 
                 {/* Ações */}
@@ -117,6 +122,7 @@ export function LojaTable({ lojas }: LojaTableProps) {
                       variant="ghost"
                       size="sm"
                       className="h-8 w-8 p-0 hover:bg-blue-50/50"
+                      onClick={() => onEdit?.(loja)}
                     >
                       <Edit className="h-3 w-3 text-slate-500" />
                     </Button>
@@ -124,6 +130,7 @@ export function LojaTable({ lojas }: LojaTableProps) {
                       variant="ghost"
                       size="sm"
                       className="h-8 w-8 p-0 hover:bg-red-50/50"
+                      onClick={() => onDelete?.(loja.id)}
                     >
                       <Trash2 className="h-3 w-3 text-slate-500" />
                     </Button>
@@ -147,7 +154,7 @@ export function LojaTable({ lojas }: LojaTableProps) {
                           <div className="flex items-center gap-2">
                             <Store className="h-3 w-3 text-slate-500" />
                             <span className="text-xs font-medium text-slate-600 min-w-[45px]">Código:</span>
-                            <span className="text-xs font-mono text-slate-900">{loja.codigo || '--'}</span>
+                            <span className="text-xs font-mono text-slate-900">{loja.id.slice(0, 8) || '--'}</span>
                           </div>
 
                           {/* Email */}
@@ -202,10 +209,10 @@ export function LojaTable({ lojas }: LojaTableProps) {
 
                           {/* Status Visual */}
                           <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${loja.ativa ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                            <div className={`w-2 h-2 rounded-full ${loja.ativo ? 'bg-green-500' : 'bg-red-500'}`}></div>
                             <span className="text-xs font-medium text-slate-600 min-w-[50px]">Status:</span>
-                            <span className={`text-xs ${loja.ativa ? 'text-green-600' : 'text-red-600'}`}>
-                              {loja.ativa ? 'Ativa' : 'Inativa'}
+                            <span className={`text-xs ${loja.ativo ? 'text-green-600' : 'text-red-600'}`}>
+                              {loja.ativo ? 'Ativa' : 'Inativa'}
                             </span>
                           </div>
                         </div>

@@ -4,9 +4,9 @@
  */
 
 export const API_CONFIG = {
-  // 🔧 URLs do backend - CORRIGIDO para usar proxy em desenvolvimento
+  // 🔧 URLs do backend - CORRIGIDO para conectar diretamente ao backend
   BASE_URL: process.env.NODE_ENV === 'development' 
-    ? '' // Em desenvolvimento, usar proxy relativo
+    ? 'http://localhost:8000' // CONECTAR DIRETAMENTE AO BACKEND
     : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'),
   API_VERSION: 'v1',
   
@@ -19,12 +19,13 @@ export const API_CONFIG = {
     'Accept': 'application/json',
   },
   
-  // 🔧 Endpoints críticos - CORRIGIDOS para usar proxy
+  // 🔧 Endpoints críticos - CONECTAR DIRETAMENTE AO BACKEND
   ENDPOINTS: {
-    HEALTH: process.env.NODE_ENV === 'development' ? '/api/v1/health' : '/health',
+    HEALTH: '/health',
     AUTH: '/api/v1/auth',
     CLIENTES: '/api/v1/clientes',
     EMPRESAS: '/api/v1/empresas',
+    LOJAS: '/api/v1/lojas',
     DOCS: '/api/v1/docs',
   }
 } as const;
@@ -118,13 +119,11 @@ export const DEBUG_CONFIG = {
 
 /**
  * Helper para verificar se backend está disponível
- * 🔧 CORRIGIDO para usar proxy em desenvolvimento
+ * 🔧 CORRIGIDO para conectar diretamente ao backend
  */
 export async function verificarBackendDisponivel(): Promise<boolean> {
   try {
-    const url = process.env.NODE_ENV === 'development' 
-      ? '/api/v1/health' // Usar proxy
-      : `${API_CONFIG.BASE_URL}/health`; // Direto em produção
+    const url = `${API_CONFIG.BASE_URL}/health`; // SEMPRE DIRETO AO BACKEND
     
     const response = await fetch(url, {
       method: 'GET',
