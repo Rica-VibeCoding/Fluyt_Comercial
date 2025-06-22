@@ -187,30 +187,42 @@ async def health_check() -> Dict[str, Any]:
 
 
 # Importar e registrar routers dos módulos
-from modules.auth import controller as auth_controller
-from modules.clientes import controller as clientes_controller
+from modules.auth.controller import router as auth_router
+from modules.clientes.controller import router as clientes_router
+from modules.status_orcamento.controller import router as status_router
 
-app.include_router(
-    auth_controller.router,
-    prefix=f"{settings.api_prefix}/auth",
-    tags=["Autenticação"]
-)
-
-app.include_router(
-    clientes_controller.router,
-    prefix=f"{settings.api_prefix}/clientes",
-    tags=["Clientes"]
-)
+# Registrar routers na aplicação
+app.include_router(auth_router, prefix="/api/v1/auth")
+app.include_router(clientes_router, prefix="/api/v1")
+app.include_router(status_router, prefix="/api/v1")
 
 
 # Execução direta (desenvolvimento)
 if __name__ == "__main__":
     import uvicorn
     
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=settings.is_development,
-        log_level=settings.log_level.lower()
-    )
+    # Configurações otimizadas para estabilidade
+    uvicorn_config = {
+        "app": "main:app",
+        "host": "0.0.0.0",
+        "port": 8000,
+        "reload": settings.is_development,
+        "log_level": settings.log_level.lower(),
+        "access_log": True,
+        "use_colors": True,
+        "reload_delay": 2.0,  # Delay para evitar reloads excessivos
+        "reload_dirs": ["modules/", "core/"],  # Limita diretórios monitorados
+        "reload_excludes": ["logs/", "temp/", "uploads/", "__pycache__/", "*.pyc"],
+        "workers": 1,  # Força single worker para evitar conflitos
+        "timeout_keep_alive": 5,  # Reduz timeout para liberar conexões
+        "limit_concurrency": 100,  # Limita conexões simultâneas
+        "limit_max_requests": 1000,  # Reinicia worker após muitas requests
+    }
+    
+    if settings.is_development:
+        logger.info("🔧 Configurações de desenvolvimento otimizadas aplicadas")
+        logger.info(f"   - Reload delay: {uvicorn_config['reload_delay']}s")
+        logger.info(f"   - Diretórios monitorados: {uvicorn_config['reload_dirs']}")
+        logger.info(f"   - Arquivos excluídos: {uvicorn_config['reload_excludes']}")
+    
+    uvicorn.run(**uvicorn_config)

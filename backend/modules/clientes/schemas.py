@@ -4,6 +4,7 @@ Define como os dados de cliente devem ser enviados e recebidos pela API
 """
 from typing import Optional, Literal
 from datetime import datetime
+from uuid import UUID
 from pydantic import BaseModel, EmailStr, field_validator
 import re
 
@@ -11,16 +12,18 @@ import re
 class ClienteBase(BaseModel):
     """
     Campos base que todo cliente tem
+    APENAS NOME É OBRIGATÓRIO - todos os outros são opcionais
     """
-    # Dados principais
+    # Dados principais - APENAS NOME OBRIGATÓRIO
     nome: str
-    cpf_cnpj: str
+    cpf_cnpj: Optional[str] = None
     rg_ie: Optional[str] = None
     email: Optional[EmailStr] = None
-    telefone: str
+    telefone: Optional[str] = None
     tipo_venda: Literal['NORMAL', 'FUTURA'] = 'NORMAL'
+    ativo: bool = True
     
-    # Endereço
+    # Endereço - todos opcionais
     logradouro: Optional[str] = None
     numero: Optional[str] = None
     complemento: Optional[str] = None
@@ -29,8 +32,8 @@ class ClienteBase(BaseModel):
     uf: Optional[str] = None
     cep: Optional[str] = None
     
-    # Informações comerciais
-    procedencia_id: Optional[str] = None
+    # Informações comerciais - todos opcionais
+    procedencia_id: Optional[UUID] = None
     vendedor_id: Optional[str] = None
     observacoes: Optional[str] = None
     
@@ -40,8 +43,15 @@ class ClienteBase(BaseModel):
         Valida se o CPF ou CNPJ tem formato correto
         Remove caracteres especiais e verifica tamanho
         """
+        if not v or v.strip() == '':  # Se for None, string vazia ou só espaços
+            return None
+            
         # Remove tudo que não for número
         numeros = re.sub(r'\D', '', v)
+        
+        # Se não tiver números, retorna None
+        if not numeros:
+            return None
         
         # Verifica se tem 11 dígitos (CPF) ou 14 (CNPJ)
         if len(numeros) not in [11, 14]:
@@ -54,8 +64,15 @@ class ClienteBase(BaseModel):
         """
         Valida formato do telefone
         """
+        if not v or v.strip() == '':  # Se for None, string vazia ou só espaços
+            return None
+            
         # Remove caracteres especiais
         numeros = re.sub(r'\D', '', v)
+        
+        # Se não tiver números, retorna None
+        if not numeros:
+            return None
         
         # Verifica se tem pelo menos 10 dígitos
         if len(numeros) < 10:
@@ -68,32 +85,40 @@ class ClienteBase(BaseModel):
         """
         Valida formato do CEP
         """
-        if v:
-            # Remove caracteres especiais
-            numeros = re.sub(r'\D', '', v)
+        if not v or v.strip() == '':  # Se for None, string vazia ou só espaços
+            return None
             
-            # CEP deve ter 8 dígitos
-            if len(numeros) != 8:
-                raise ValueError('CEP deve ter 8 dígitos')
-            
-            return numeros
-        return v
+        # Remove caracteres especiais
+        numeros = re.sub(r'\D', '', v)
+        
+        # Se não tiver números, retorna None
+        if not numeros:
+            return None
+        
+        # CEP deve ter 8 dígitos
+        if len(numeros) != 8:
+            raise ValueError('CEP deve ter 8 dígitos')
+        
+        return numeros
     
     @field_validator('uf')
     def validar_uf(cls, v):
         """
         Valida se o estado é válido
         """
+        if not v or v.strip() == '':  # Se for None, string vazia ou só espaços
+            return None
+            
         estados_validos = [
             'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 
             'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 
             'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
         ]
         
-        if v and v.upper() not in estados_validos:
+        if v.upper() not in estados_validos:
             raise ValueError(f'UF inválida. Use uma das: {", ".join(estados_validos)}')
         
-        return v.upper() if v else v
+        return v.upper()
 
 
 class ClienteCreate(ClienteBase):
@@ -114,6 +139,7 @@ class ClienteUpdate(BaseModel):
     email: Optional[EmailStr] = None
     telefone: Optional[str] = None
     tipo_venda: Optional[Literal['NORMAL', 'FUTURA']] = None
+    ativo: Optional[bool] = None
     
     # Endereço
     logradouro: Optional[str] = None
@@ -125,7 +151,7 @@ class ClienteUpdate(BaseModel):
     cep: Optional[str] = None
     
     # Informações comerciais
-    procedencia_id: Optional[str] = None
+    procedencia_id: Optional[UUID] = None
     vendedor_id: Optional[str] = None
     observacoes: Optional[str] = None
 
@@ -166,7 +192,7 @@ class FiltrosCliente(BaseModel):
     """
     busca: Optional[str] = None  # Busca por nome, CPF/CNPJ, telefone
     tipo_venda: Optional[Literal['NORMAL', 'FUTURA']] = None
-    procedencia_id: Optional[str] = None
+    procedencia_id: Optional[UUID] = None
     vendedor_id: Optional[str] = None
     data_inicio: Optional[datetime] = None
     data_fim: Optional[datetime] = None

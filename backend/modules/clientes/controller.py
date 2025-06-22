@@ -3,7 +3,7 @@ Controller - Endpoints da API para clientes
 Define todas as rotas HTTP para gerenciar clientes
 """
 import logging
-from typing import Optional
+from typing import Optional, List
 from fastapi import APIRouter, Depends, Query, status, HTTPException
 
 from core.auth import get_current_user, User
@@ -12,6 +12,7 @@ from core.dependencies import (
     PaginationParams,
     SuccessResponse
 )
+from core.exceptions import NotFoundException, ConflictException
 
 from .schemas import (
     ClienteCreate,
@@ -25,7 +26,7 @@ from .services import ClienteService
 logger = logging.getLogger(__name__)
 
 # Router do módulo
-router = APIRouter()
+router = APIRouter(prefix="/clientes", tags=["clientes"])
 
 # Instância do serviço
 cliente_service = ClienteService()
@@ -412,5 +413,90 @@ async def debug_clientes() -> dict:
         return {
             "success": False,
             "message": f"Erro no debug: {str(e)}",
+            "traceback": traceback.format_exc()
+        }
+
+
+@router.get("/procedencias", response_model=List[dict])
+async def listar_procedencias(
+    current_user: User = Depends(get_current_user)
+) -> List[dict]:
+    """
+    Lista todas as procedências ativas
+    
+    **Retorna:**
+    ```json
+    [
+        {
+            "id": "uuid",
+            "nome": "Facebook",
+            "ativo": true
+        }
+    ]
+    ```
+    """
+    try:
+        # Busca procedências diretamente do Supabase
+        from core.database import get_supabase_client
+        supabase = get_supabase_client()
+        
+        result = supabase.table('cad_procedencias').select('*').eq('ativo', True).order('nome').execute()
+        
+        return result.data
+    
+    except Exception as e:
+        logger.error(f"Erro ao listar procedências: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao buscar procedências"
+        )
+
+
+@router.post("/test/criar-sem-auth", response_model=dict, include_in_schema=False)
+async def criar_cliente_sem_auth(dados: ClienteCreate) -> dict:
+    """
+    ENDPOINT TEMPORÁRIO - Criar cliente sem autenticação
+    
+    **APENAS PARA DEBUG/DESENVOLVIMENTO**
+    Permite testar criação de cliente sem token de autenticação
+    """
+    from core.config import settings
+    if not settings.is_development:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Endpoint não encontrado")
+    
+    try:
+        # Criar um usuário fake para o teste
+        from core.auth import User
+        fake_user = User(
+            id="test-user-id",
+            email="test@test.com",
+            nome="Usuário Teste",
+            perfil="ADMIN",
+            loja_id="test-loja-id"
+        )
+        
+        cliente = await cliente_service.criar_cliente(dados, fake_user)
+        
+        logger.info(f"Cliente criado via endpoint de teste: {cliente.id}")
+        
+        return {
+            "success": True,
+            "message": "Cliente criado com sucesso (endpoint de teste)",
+            "cliente": {
+                "id": cliente.id,
+                "nome": cliente.nome,
+                "cpf_cnpj": cliente.cpf_cnpj,
+                "telefone": cliente.telefone
+            }
+        }
+    
+    except Exception as e:
+        logger.error(f"Erro ao criar cliente via teste: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        
+        return {
+            "success": False,
+            "message": f"Erro ao criar cliente: {str(e)}",
             "traceback": traceback.format_exc()
         }

@@ -318,11 +318,12 @@ class ClienteService {
     if (conectado) {
       try {
         logConfig('📡 Deletando cliente via API...', { id });
-        const response = await apiClient.deletarCliente(id);
+        const response = await apiClient.excluirCliente(id);
         
         if (response.success) {
           return {
             success: true,
+            data: undefined,
             source: 'api',
             timestamp: response.timestamp,
           };
@@ -333,17 +334,9 @@ class ClienteService {
         const errorMsg = error.message || 'Erro desconhecido';
         logConfig('❌ Erro na API:', errorMsg);
         
-        // Mensagem mais específica baseada no tipo de erro
-        let userMessage = 'Não foi possível conectar ao servidor.';
-        if (errorMsg.includes('timeout') || errorMsg.includes('Timeout')) {
-          userMessage = 'O servidor demorou muito para responder. Tente novamente.';
-        } else if (errorMsg.includes('Network') || errorMsg.includes('fetch')) {
-          userMessage = 'Erro de conexão. Verifique se o backend está rodando em http://localhost:8000';
-        }
-        
         return {
           success: false,
-          error: userMessage,
+          error: 'Não foi possível deletar o cliente. Tente novamente.',
           source: 'api',
           timestamp: new Date().toISOString(),
         };

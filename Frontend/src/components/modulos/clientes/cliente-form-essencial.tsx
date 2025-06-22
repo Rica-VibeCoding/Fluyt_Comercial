@@ -65,7 +65,7 @@ export function ClienteFormEssencial({ form }: ClienteFormEssencialProps) {
           name="cpf_cnpj"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-xs font-medium text-slate-700">CPF/CNPJ *</FormLabel>
+              <FormLabel className="text-xs font-medium text-slate-700">CPF/CNPJ</FormLabel>
               <FormControl>
                 <Input 
                   placeholder="000.000.000-00"
@@ -87,7 +87,7 @@ export function ClienteFormEssencial({ form }: ClienteFormEssencialProps) {
           name="rg_ie"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-xs font-medium text-slate-700">RG/IE *</FormLabel>
+              <FormLabel className="text-xs font-medium text-slate-700">RG/IE</FormLabel>
               <FormControl>
                 <Input placeholder="12.345.678-9" className="h-8 text-sm border-slate-300 focus:border-slate-400" {...field} />
               </FormControl>
@@ -120,7 +120,7 @@ export function ClienteFormEssencial({ form }: ClienteFormEssencialProps) {
           name="telefone"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-xs font-medium text-slate-700">Telefone *</FormLabel>
+              <FormLabel className="text-xs font-medium text-slate-700">Telefone</FormLabel>
               <FormControl>
                 <Input 
                   placeholder="(11) 99999-9999"

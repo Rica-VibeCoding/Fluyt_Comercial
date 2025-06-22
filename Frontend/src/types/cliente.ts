@@ -6,10 +6,10 @@
 export interface Cliente {
   id: string;
   nome: string;
-  cpf_cnpj: string;
+  cpf_cnpj?: string;
   rg_ie?: string;
   email?: string;
-  telefone: string;
+  telefone?: string;
   tipo_venda: 'NORMAL' | 'FUTURA';
   logradouro?: string;
   numero?: string;
@@ -32,24 +32,24 @@ export interface Cliente {
 /**
  * Dados de formulário para criar/editar cliente
  * ✅ ALINHADA COM BACKEND: ClienteCreate (schemas.py)
- * Campos obrigatórios para criação via API
+ * APENAS NOME É OBRIGATÓRIO - todos os outros campos são opcionais
  */
 export interface ClienteFormData {
-  nome: string;
-  cpf_cnpj: string;
+  nome: string; // ÚNICO CAMPO OBRIGATÓRIO
+  cpf_cnpj?: string;
   rg_ie?: string;
   email?: string;
-  telefone: string;
+  telefone?: string;
   tipo_venda: 'NORMAL' | 'FUTURA';
-  logradouro: string;
+  logradouro?: string;
   numero?: string;
   complemento?: string;
-  bairro: string;
-  cidade: string;
-  uf: string;
-  cep: string;
-  procedencia_id: string;
-  vendedor_id: string;
+  bairro?: string;
+  cidade?: string;
+  uf?: string;
+  cep?: string;
+  procedencia_id?: string;
+  vendedor_id?: string;
   observacoes?: string;
 }
 

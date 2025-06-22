@@ -12,10 +12,10 @@ import type { Cliente, ClienteFormData, FiltrosCliente } from '@/types/cliente';
 export interface ClienteBackend {
   id: string;
   nome: string;
-  cpf_cnpj: string;
+  cpf_cnpj?: string;
   rg_ie?: string;
   email?: string;
-  telefone: string;
+  telefone?: string;
   tipo_venda: 'NORMAL' | 'FUTURA';
   logradouro?: string;
   numero?: string;
@@ -36,10 +36,10 @@ export interface ClienteBackend {
 
 export interface ClienteCreatePayload {
   nome: string;
-  cpf_cnpj: string;
+  cpf_cnpj?: string;
   rg_ie?: string;
   email?: string;
-  telefone: string;
+  telefone?: string;
   tipo_venda: 'NORMAL' | 'FUTURA';
   logradouro?: string;
   numero?: string;
@@ -235,11 +235,19 @@ class ApiClient {
     });
   }
 
-  // Deletar cliente
-  async deletarCliente(id: string): Promise<ApiResponse<void>> {
+  // Excluir cliente
+  async excluirCliente(id: string): Promise<ApiResponse<void>> {
     const endpoint = `${API_CONFIG.ENDPOINTS.CLIENTES}/${id}`;
     return this.request<void>(endpoint, {
       method: 'DELETE',
+    });
+  }
+
+  // Buscar procedências
+  async buscarProcedencias(): Promise<ApiResponse<Array<{ id: string; nome: string; ativo: boolean }>>> {
+    const endpoint = `${API_CONFIG.ENDPOINTS.CLIENTES}/procedencias`;
+    return this.request<Array<{ id: string; nome: string; ativo: boolean }>>(endpoint, {
+      method: 'GET',
     });
   }
 
@@ -353,21 +361,21 @@ export function converterClienteBackendParaFrontend(clienteBackend: ClienteBacke
 export function converterFormDataParaPayload(formData: ClienteFormData): ClienteCreatePayload {
   return {
     nome: formData.nome,
-    cpf_cnpj: formData.cpf_cnpj,
-    rg_ie: formData.rg_ie,
-    email: formData.email,
-    telefone: formData.telefone,
+    cpf_cnpj: formData.cpf_cnpj || undefined,
+    rg_ie: formData.rg_ie || undefined,
+    email: formData.email || undefined,
+    telefone: formData.telefone || undefined,
     tipo_venda: formData.tipo_venda,
-    logradouro: formData.logradouro,
-    numero: formData.numero,
-    complemento: formData.complemento,
-    bairro: formData.bairro,
-    cidade: formData.cidade,
-    uf: formData.uf,
-    cep: formData.cep,
-    procedencia_id: formData.procedencia_id,
-    vendedor_id: formData.vendedor_id,
-    observacoes: formData.observacoes,
+    logradouro: formData.logradouro || undefined,
+    numero: formData.numero || undefined,
+    complemento: formData.complemento || undefined,
+    bairro: formData.bairro || undefined,
+    cidade: formData.cidade || undefined,
+    uf: formData.uf || undefined,
+    cep: formData.cep || undefined,
+    procedencia_id: formData.procedencia_id || undefined,
+    vendedor_id: formData.vendedor_id || undefined,
+    observacoes: formData.observacoes || undefined,
   };
 }
 

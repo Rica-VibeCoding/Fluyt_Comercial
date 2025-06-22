@@ -54,7 +54,7 @@ class ClienteRepository:
                 vendedor:c_equipe!vendedor_id(id, nome),
                 procedencia:c_procedencias!procedencia_id(id, nome)
                 """
-            )
+            ).eq('ativo', True)  # Filtrar apenas clientes ativos (soft delete)
             
             # Aplica filtro de loja apenas se fornecido (RLS)
             # Se loja_id é None, não filtra (SUPER_ADMIN)
@@ -92,7 +92,7 @@ class ClienteRepository:
                     query = query.lte('created_at', filtros['data_fim'].isoformat())
             
             # Conta total de registros (sem paginação)
-            count_query = self.db.table(self.table).select('id', count='exact')
+            count_query = self.db.table(self.table).select('id', count='exact').eq('ativo', True)
             if loja_id is not None:
                 count_query = count_query.eq('loja_id', loja_id)
             count_result = count_query.execute()
@@ -156,7 +156,7 @@ class ClienteRepository:
                 vendedor:c_equipe!vendedor_id(id, nome),
                 procedencia:c_procedencias!procedencia_id(id, nome)
                 """
-            ).eq('id', cliente_id)
+            ).eq('id', cliente_id).eq('ativo', True)  # Filtrar apenas clientes ativos
             
             # Aplica filtro de loja apenas se fornecido
             if loja_id is not None:
@@ -197,7 +197,7 @@ class ClienteRepository:
             Dados do cliente ou None se não encontrado
         """
         try:
-            query = self.db.table(self.table).select('*').eq('cpf_cnpj', cpf_cnpj)
+            query = self.db.table(self.table).select('*').eq('cpf_cnpj', cpf_cnpj).eq('ativo', True)
             
             # Aplica filtro de loja apenas se fornecido
             if loja_id is not None:
@@ -212,6 +212,35 @@ class ClienteRepository:
         
         except Exception as e:
             logger.error(f"Erro ao buscar por CPF/CNPJ: {str(e)}")
+            raise DatabaseException(f"Erro ao buscar cliente: {str(e)}")
+    
+    async def buscar_por_nome(self, nome: str, loja_id: Optional[str]) -> Optional[Dict[str, Any]]:
+        """
+        Busca cliente pelo nome exato
+        
+        Args:
+            nome: Nome do cliente
+            loja_id: ID da loja
+            
+        Returns:
+            Dados do cliente ou None se não encontrado
+        """
+        try:
+            query = self.db.table(self.table).select('*').eq('nome', nome).eq('ativo', True)
+            
+            # Aplica filtro de loja apenas se fornecido
+            if loja_id is not None:
+                query = query.eq('loja_id', loja_id)
+                
+            result = query.execute()
+            
+            if result.data:
+                return result.data[0]
+            
+            return None
+        
+        except Exception as e:
+            logger.error(f"Erro ao buscar por nome: {str(e)}")
             raise DatabaseException(f"Erro ao buscar cliente: {str(e)}")
     
     async def criar(self, dados: Dict[str, Any], loja_id: str) -> Dict[str, Any]:
@@ -229,12 +258,20 @@ class ClienteRepository:
             ConflictException: Se CPF/CNPJ já existe
         """
         try:
-            # Verifica se CPF/CNPJ já existe
-            existe = await self.buscar_por_cpf_cnpj(dados['cpf_cnpj'], loja_id)
-            if existe:
+            # Verifica se nome já existe
+            existe_nome = await self.buscar_por_nome(dados['nome'], loja_id)
+            if existe_nome:
                 raise ConflictException(
-                    f"CPF/CNPJ {dados['cpf_cnpj']} já cadastrado"
+                    f"Cliente com nome '{dados['nome']}' já cadastrado"
                 )
+            
+            # Verifica se CPF/CNPJ já existe APENAS se foi fornecido
+            if dados.get('cpf_cnpj'):
+                existe = await self.buscar_por_cpf_cnpj(dados['cpf_cnpj'], loja_id)
+                if existe:
+                    raise ConflictException(
+                        f"CPF/CNPJ {dados['cpf_cnpj']} já cadastrado"
+                    )
             
             # Adiciona loja_id aos dados
             dados['loja_id'] = loja_id
@@ -277,6 +314,14 @@ class ClienteRepository:
         try:
             # Verifica se cliente existe
             cliente_atual = await self.buscar_por_id(cliente_id, loja_id)
+            
+            # Se está mudando o nome, verifica duplicidade
+            if 'nome' in dados and dados['nome'] != cliente_atual['nome']:
+                existe_nome = await self.buscar_por_nome(dados['nome'], loja_id)
+                if existe_nome:
+                    raise ConflictException(
+                        f"Cliente com nome '{dados['nome']}' já cadastrado"
+                    )
             
             # Se está mudando CPF/CNPJ, verifica duplicidade
             if 'cpf_cnpj' in dados and dados['cpf_cnpj'] != cliente_atual['cpf_cnpj']:

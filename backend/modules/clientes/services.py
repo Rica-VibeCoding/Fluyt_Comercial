@@ -278,6 +278,10 @@ class ClienteService:
             True se disponível, False se já existe
         """
         try:
+            # Se CPF/CNPJ está vazio, está sempre disponível
+            if not cpf_cnpj or cpf_cnpj.strip() == '':
+                return True
+                
             # Verifica se usuário tem loja associada (exceto ADMIN_MASTER)
             if not user.loja_id and user.perfil != "ADMIN_MASTER":
                 raise ValidationException("Usuário não possui loja associada")

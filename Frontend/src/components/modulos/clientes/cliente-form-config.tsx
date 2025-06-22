@@ -14,7 +14,8 @@ import {
 } from '../../ui/select';
 import { Textarea } from '../../ui/textarea';
 import { UseFormReturn } from 'react-hook-form';
-import { Vendedor, PROCEDENCIAS_PADRAO } from '../../../types/cliente';
+import { Vendedor } from '../../../types/cliente';
+import { useProcedencias } from '../../../hooks/data/use-procedencias';
 
 interface ClienteFormConfigProps {
   form: UseFormReturn<any>;
@@ -22,25 +23,31 @@ interface ClienteFormConfigProps {
 }
 
 export function ClienteFormConfig({ form, vendedores }: ClienteFormConfigProps) {
+  const { procedencias, isLoading: loadingProcedencias } = useProcedencias();
+  
   return (
     <div className="space-y-1">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
         <FormField
           control={form.control}
-          name="procedencia"
+          name="procedencia_id"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-xs font-medium text-slate-700">Procedência *</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <FormLabel className="text-xs font-medium text-slate-700">Procedência</FormLabel>
+              <Select 
+                onValueChange={field.onChange} 
+                defaultValue={field.value}
+                disabled={loadingProcedencias}
+              >
                 <FormControl>
                   <SelectTrigger className="h-8 text-sm border-slate-300 focus:border-slate-400">
-                    <SelectValue placeholder="Como conheceu?" />
+                    <SelectValue placeholder={loadingProcedencias ? "Carregando..." : "Como conheceu?"} />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {PROCEDENCIAS_PADRAO.map(proc => (
-                    <SelectItem key={proc} value={proc}>
-                      {proc}
+                  {procedencias.map(proc => (
+                    <SelectItem key={proc.id} value={proc.id}>
+                      {proc.nome}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -55,7 +62,7 @@ export function ClienteFormConfig({ form, vendedores }: ClienteFormConfigProps) 
           name="vendedor_id"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-xs font-medium text-slate-700">Vendedor Responsável *</FormLabel>
+              <FormLabel className="text-xs font-medium text-slate-700">Vendedor Responsável</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger className="h-8 text-sm border-slate-300 focus:border-slate-400">
