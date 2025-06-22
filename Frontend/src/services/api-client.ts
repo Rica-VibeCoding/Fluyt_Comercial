@@ -251,6 +251,86 @@ class ApiClient {
     });
   }
 
+  // ============= MÉTODOS ESPECÍFICOS PARA EMPRESAS =============
+
+  // Listar empresas
+  async listarEmpresas(filtros?: any): Promise<ApiResponse<any>> {
+    const params = new URLSearchParams();
+    
+    if (filtros?.busca) params.append('busca', filtros.busca);
+    if (filtros?.data_inicio) params.append('data_inicio', filtros.data_inicio);
+    if (filtros?.data_fim) params.append('data_fim', filtros.data_fim);
+    if (filtros?.page) params.append('page', filtros.page.toString());
+    if (filtros?.limit) params.append('limit', filtros.limit.toString());
+
+    let endpoint = API_CONFIG.ENDPOINTS.EMPRESAS;
+    if (params.toString()) {
+      endpoint += `?${params.toString()}`;
+    }
+
+    return this.request<any>(endpoint);
+  }
+
+  // Buscar empresa por ID
+  async buscarEmpresaPorId(id: string): Promise<ApiResponse<any>> {
+    const endpoint = `${API_CONFIG.ENDPOINTS.EMPRESAS}/${id}`;
+    return this.request<any>(endpoint);
+  }
+
+  // Criar empresa
+  async criarEmpresa(dados: any): Promise<ApiResponse<any>> {
+    const endpoint = API_CONFIG.ENDPOINTS.EMPRESAS;
+    return this.request<any>(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(dados),
+    });
+  }
+
+  // Atualizar empresa
+  async atualizarEmpresa(id: string, dados: any): Promise<ApiResponse<any>> {
+    const endpoint = `${API_CONFIG.ENDPOINTS.EMPRESAS}/${id}`;
+    return this.request<any>(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(dados),
+    });
+  }
+
+  // Excluir empresa
+  async excluirEmpresa(id: string): Promise<ApiResponse<void>> {
+    const endpoint = `${API_CONFIG.ENDPOINTS.EMPRESAS}/${id}`;
+    return this.request<void>(endpoint, {
+      method: 'DELETE',
+    });
+  }
+
+  // Verificar CNPJ
+  async verificarCNPJEmpresa(cnpj: string, empresaId?: string): Promise<ApiResponse<any>> {
+    let endpoint = `${API_CONFIG.ENDPOINTS.EMPRESAS}/verificar-cnpj/${cnpj}`;
+    
+    if (empresaId) {
+      endpoint += `?empresa_id=${empresaId}`;
+    }
+
+    return this.request<any>(endpoint);
+  }
+
+  // Verificar nome
+  async verificarNomeEmpresa(nome: string, empresaId?: string): Promise<ApiResponse<any>> {
+    let endpoint = `${API_CONFIG.ENDPOINTS.EMPRESAS}/verificar-nome/${encodeURIComponent(nome)}`;
+    
+    if (empresaId) {
+      endpoint += `?empresa_id=${empresaId}`;
+    }
+
+    return this.request<any>(endpoint);
+  }
+
+  // Teste público de empresas
+  async testePublicoEmpresas(): Promise<ApiResponse<any>> {
+    const endpoint = `${API_CONFIG.ENDPOINTS.EMPRESAS}/test/public`;
+    return this.request<any>(endpoint);
+  }
+
   // ============= MÉTODOS DE AUTENTICAÇÃO =============
 
   // Renovar token de acesso

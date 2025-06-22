@@ -1,17 +1,35 @@
 # 🏢 Sistema Fluyt - Gestão Comercial
 
-> **Projeto Principal**: Simulador Financeiro de Orçamentos empresarial em Next.js 15
+> **Projeto Principal**: Sistema de Gestão Comercial Full-Stack em Next.js + FastAPI
 
 ## 🎯 Contexto Essencial
 
-**Sistema unificado** consolidando 4 aplicações React separadas em uma plataforma Next.js modular com interface em português para gestão comercial empresarial.
+**Sistema unificado** de gestão comercial empresarial com arquitetura full-stack, interface em português e fluxo operacional completo para móveis planejados.
 
 ## 🛠 Stack Core
 
-- **Next.js 15** (App Router) + **React 19** + **TypeScript**
+- **Next.js 14.2** (App Router) + **React 18.3** + **TypeScript**
 - **Tailwind CSS** + **Shadcn/ui** (Radix UI primitives)
-- **TanStack Query** + **React Hook Form** + **Zod**
+- **TanStack Query** + **React Hook Form** + **Zod** + **Zustand**
+- **Backend**: FastAPI + Python + Supabase
 - **Interface**: 100% português brasileiro
+
+## 🏗 Arquitetura Full-Stack
+
+### Frontend (Next.js)
+- Interface em React + TypeScript
+- Gerenciamento de estado com Zustand
+- Comunicação via React Query
+
+### Backend (FastAPI + Python)
+- API RESTful modular
+- Autenticação JWT
+- Integração com Supabase
+
+### Banco de Dados (Supabase/PostgreSQL)
+- Row Level Security (RLS)
+- Soft delete implementado
+- Índices otimizados
 
 ## 📁 Estrutura Modular
 
@@ -24,7 +42,7 @@ src/
 │   └── painel/                 # Painel administrativo
 │       ├── layout.tsx          # Layout do painel com sidebar
 │       ├── page.tsx            # Dashboard principal
-│       ├── orcamento/          # 💰 ATIVO - Módulo Orçamentos
+│       ├── orcamento/          # 💰 Módulo Orçamentos
 │       │   ├── page.tsx        # Lista de orçamentos
 │       │   └── simulador/      # Simulador financeiro
 │       ├── clientes/           # 👥 Módulo Clientes
@@ -52,29 +70,35 @@ src/
 ├── hooks/                      # 🎣 Hooks Customizados
 │   ├── globais/                # Hooks globais da aplicação
 │   └── modulos/                # Hooks específicos por módulo
-│       ├── orcamento/          # use-simulador.ts (CORE)
-│       ├── clientes/           # Hooks de clientes
+│       ├── orcamento/          # use-modal-pagamento.ts
+│       ├── clientes/           # use-clientes-api.ts
 │       ├── ambientes/          # Hooks de ambientes
 │       └── contratos/          # Hooks de contratos
 │
 ├── types/                      # 📝 Tipagens TypeScript
-│   ├── simulador.ts            # Tipos do simulador financeiro
+│   ├── orcamento.ts            # Tipos do sistema de orçamentos
 │   ├── cliente.ts              # Tipos de clientes
 │   ├── ambiente.ts             # Tipos de ambientes
 │   └── contrato.ts             # Tipos de contratos
 │
 ├── lib/                        # 🛠 Utilitários e Configurações
 │   ├── utils.ts                # Utilitários gerais (cn, etc.)
-│   ├── dados/                  # Dados estáticos e mocks
-│   ├── tipos/                  # Tipos auxiliares
-│   └── validacoes/             # Esquemas Zod de validação
+│   ├── supabase.ts             # Configuração Supabase
+│   ├── api-client.ts           # Cliente HTTP
+│   └── validators.ts           # Esquemas Zod de validação
 │
-├── migracao/                   # 📦 Códigos Originais (Temporário)
-│   ├── fluyt-cliente-manager-main/
-│   ├── contrato-main/
-│   └── uiux/
+├── store/                      # 🗃️ Zustand Stores
+│   ├── clientes-store.ts       # Store de clientes
+│   ├── orcamento-store.ts      # Store de orçamentos
+│   └── sessao-store.ts         # Store de sessão
 │
-└── index.css                   # Estilos globais Tailwind
+├── services/                   # 🔌 Serviços de API
+│   ├── api-client.ts           # Cliente HTTP base
+│   └── cliente-service.ts      # Serviços de clientes
+│
+├── context/                    # ⚡ React Contexts
+├── middleware.ts               # 🛡️ Middleware Next.js
+└── index.css                   # 🎨 Estilos globais Tailwind
 ```
 
 ## 🏗 Organização Modular Detalhada
@@ -97,11 +121,11 @@ O projeto segue uma **arquitetura modular consistente** onde cada módulo de neg
 - **Sistema de temas**: Suporte a modo claro/escuro
 - **Acessibilidade nativa**: ARIA, navegação por teclado
 
-### 🎣 Hooks Customizados
-- **Hooks globais**: Autenticação, tema, notificações
-- **Hooks modulares**: Lógica específica de cada módulo
-- **Padrão consistente**: `use[ModuloFuncionalidade]`
-- **Tipagem completa**: TypeScript em todos os hooks
+### 🎣 Hooks Principais
+- `hooks/modulos/clientes/use-clientes-api.ts` - API de clientes
+- `hooks/modulos/orcamento/use-modal-pagamento.ts` - Modal de pagamento
+- `hooks/globais/use-cliente-selecionado.ts` - Cliente global
+- `hooks/data/use-orcamento.ts` - Dados de orçamento
 
 ### 📝 Sistema de Tipagens
 - **Tipagem modular**: Um arquivo por módulo de negócio
@@ -109,40 +133,57 @@ O projeto segue uma **arquitetura modular consistente** onde cada módulo de neg
 - **Validação integrada**: Esquemas Zod para runtime validation
 - **Type safety**: 100% TypeScript sem `any`
 
-## 🧮 Módulo Principal: Simulador de Orçamentos
+## 📈 Fluxo Operacional
 
-### Componentes Críticos
-- `src/app/painel/orcamento/simulador/page.tsx` - Página principal (423 linhas)
-- `src/hooks/modulos/orcamento/use-simulador.ts` - Lógica core (477 linhas)
-- `src/components/modulos/orcamento/dashboard-orcamento.tsx` - Interface principal
+### Processo Implementado
+1. **Autenticação** - Login via Supabase Auth ✅
+2. **Cliente** - CRUD completo funcionando ✅
+3. **Ambientes** - Em desenvolvimento 🔄
+4. **Orçamento** - Interface básica 🔄
+5. **Contrato** - Estrutura preparada 🔄
 
-### Funcionalidades Ativas
-- **4 Formas de Pagamento**: ENTRADA, FINANCEIRA, CARTÃO, BOLETO
-- **Cálculos Financeiros**: Valor presente, juros compostos, deflação
-- **Sistema de Travamento**: Locks em valores específicos
-- **Redistribuição Inteligente**: Algoritmo com prioridades
-- **Interface Editável**: Click-to-edit nos valores principais
-
-### Algoritmos Principais
-```typescript
-// Prioridade para redistribuição
-const PRIORIDADE_FORMAS = ['ENTRADA', 'BOLETO', 'FINANCEIRA', 'CARTAO'];
-
-// Cálculos por tipo de pagamento
-- FINANCEIRA: VP = valor / (1 + taxa)^parcelas
-- CARTAO: VR = valor * (1 - deflação) * (1 - juros * parcelas)
-- BOLETO: VP = valor / (1 + custoCapital)^parcelas
-```
+### ProgressStepper
+Sistema de navegação visual que guia o usuário através do fluxo comercial: **Cliente → Ambientes → Orçamento → Contrato**.
 
 ## 📊 Status dos Módulos
 
 | Módulo | Status | Descrição |
 |--------|--------|-----------|
-| 💰 Orçamentos | ✅ **ATIVO** | Simulador completo e funcional |
-| 👥 Clientes | 🟡 Estrutura | Páginas básicas criadas |
+| 👥 Clientes | ✅ **COMPLETO** | CRUD funcional + backend integrado |
+| 💰 Orçamentos | 🟡 Em desenvolvimento | Interface parcial, hooks básicos |
 | 🏢 Ambientes | 🟡 Estrutura | Páginas básicas criadas |
 | 📋 Contratos | 🟡 Estrutura | Páginas básicas criadas |
 | ⚙️ Sistema | 🟡 Estrutura | Páginas básicas criadas |
+
+## 🔧 Backend FastAPI
+
+### Estrutura Modular
+```
+backend/
+├── main.py                     # Aplicação principal
+├── core/                       # Configurações centrais
+│   ├── config.py              # Configurações do sistema
+│   ├── database.py            # Conexão Supabase
+│   ├── auth.py                # Middleware de autenticação
+│   └── exceptions.py          # Exceções customizadas
+└── modules/                    # Módulos de negócio
+    ├── auth/                  # Autenticação e autorização
+    ├── clientes/              # CRUD de clientes ✅
+    └── status_orcamento/      # Gestão de status ✅
+```
+
+### Padrão de Desenvolvimento
+Cada módulo segue a estrutura:
+- **`controller.py`** - Endpoints REST
+- **`services.py`** - Lógica de negócio
+- **`repository.py`** - Acesso ao banco
+- **`schemas.py`** - Validação Pydantic
+
+### Sistema de Autenticação
+- **JWT tokens** com refresh automático
+- **Hierarquia de perfis**: SUPER_ADMIN, ADMIN, GERENTE, VENDEDOR
+- **RLS (Row Level Security)** no Supabase
+- **Middleware** de autenticação no backend
 
 ## 🎨 Convenções Importantes
 
@@ -158,38 +199,32 @@ const PRIORIDADE_FORMAS = ['ENTRADA', 'BOLETO', 'FINANCEIRA', 'CARTAO'];
 - **Formatação brasileira** (moeda R$, datas, números)
 - **Responsividade** desktop-first
 
-## 🔧 Contexto de Migração
-
-### Origem
-- **4 sistemas React separados** sendo consolidados
-- **Pasta `src/migracao/`** contém códigos originais preservados:
-  - `fluyt-cliente-manager-main/` - Sistema original de clientes  
-  - `contrato-main/` - Sistema original de contratos
-  - `uiux/` - Componentes e designs originais
-- **Migração arquitetural**: React Router → Next.js App Router
-
-### Foco Atual
-- **Simulador de orçamentos** é o módulo prioritário e funcional
-- **Demais módulos** têm estrutura básica preparada
-- **Interface unificada** com sidebar de navegação
-
 ## 🚀 Para Desenvolvimento
 
 ### Arquivos Chave para Modificações
-- `src/app/painel/orcamento/simulador/page.tsx` - Interface principal do simulador
-- `src/hooks/modulos/orcamento/use-simulador.ts` - Lógica de negócio principal (477 linhas)
+- `src/app/painel/clientes/page.tsx` - Interface de clientes (funcional)
+- `src/hooks/modulos/orcamento/use-modal-pagamento.ts` - Hook de pagamento (247 linhas)
 - `src/components/layout/sidebar.tsx` - Navegação lateral do painel
-- `src/components/modulos/orcamento/` - Componentes específicos do simulador
-- `src/types/simulador.ts` - Tipagens do módulo de orçamentos
+- `src/components/modulos/clientes/` - Componentes de clientes (completos)
+- `src/types/cliente.ts` - Tipagens do módulo de clientes
 - `src/components/ui/` - Design system com 50+ componentes
 - `src/lib/utils.ts` - Utilitários gerais (Tailwind merge, etc.)
+- `backend/modules/clientes/` - Backend completo de clientes
 
 ### Scripts Disponíveis
 ```bash
+# Frontend
 npm run dev    # Desenvolvimento
 npm run build  # Build produção  
 npm run start  # Produção local
+
+# Backend
+python main.py # Servidor FastAPI
 ```
 
+### Documentação Técnica
+- `INTEGRAÇÃO TABELAS.md` - Guia completo para novos módulos
+- Padrões baseados na implementação de clientes (modelo de referência)
+
 ---
-**Objetivo**: Sistema empresarial de gestão comercial com foco em simulação financeira de propostas. Interface profissional em português brasileiro.
+**Objetivo**: Sistema empresarial de gestão comercial full-stack com foco em fluxo operacional completo. Interface profissional em português brasileiro com backend robusto e seguro.

@@ -7,7 +7,7 @@ import { useSistemaStore } from '@/store/sistema-store';
 import { Empresa } from '@/types/sistema';
 import { toast } from 'sonner';
 
-// Mock de dados para desenvolvimento
+// Mock de dados para desenvolvimento (alinhado com backend)
 const mockEmpresas: Empresa[] = [
   {
     id: '1',
@@ -17,8 +17,8 @@ const mockEmpresas: Empresa[] = [
     telefone: '(11) 3456-7890',
     endereco: 'Rua das Indústrias, 123, Vila Industrial, São Paulo-SP',
     ativo: true,
-    funcionarios: 25,
-    dataFundacao: '2020-01-15',
+    total_lojas: 3,      // ✅ alinhado com backend
+    lojas_ativas: 3,     // ✅ alinhado com backend
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   },
@@ -30,8 +30,8 @@ const mockEmpresas: Empresa[] = [
     telefone: '(11) 9876-5432',
     endereco: 'Av. Norte, 456, Centro, Guarulhos-SP',
     ativo: true,
-    funcionarios: 12,
-    dataFundacao: '2022-06-20',
+    total_lojas: 1,      // ✅ alinhado com backend
+    lojas_ativas: 1,     // ✅ alinhado com backend
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }

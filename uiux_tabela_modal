@@ -1,0 +1,443 @@
+# 📋 Guia de Refatoração: Tabelas Frontend + Supabase + UX/UI
+
+## 🎯 **OBJETIVO**
+Este documento orienta desenvolvedores na refatoração de tabelas no frontend seguindo os padrões estabelecidos de UX/UI, integração com Supabase e estrutura modular.
+
+---
+
+## 🏗️ **ARQUITETURA GERAL**
+
+### **Stack Tecnológico**
+- **Frontend:** Next.js 14 + TypeScript + Tailwind CSS
+- **Backend:** FastAPI + Python
+- **Database:** Supabase (PostgreSQL)
+- **UI Components:** shadcn/ui + Lucide Icons
+
+### **Estrutura de Pastas**
+```
+Frontend/src/
+├── components/modulos/sistema/
+│   ├── [modulo]/
+│   │   ├── [modulo]-table.tsx     # Tabela principal
+│   │   ├── [modulo]-form.tsx      # Modal de formulário
+│   │   └── index.ts               # Exports
+├── hooks/modulos/sistema/
+│   └── use-[modulo].ts            # Hook de estado e API
+├── types/sistema.ts               # Interfaces TypeScript
+└── services/api-client.ts         # Cliente HTTP
+```
+
+---
+
+## 🎨 **PADRÃO UX/UI ESTABELECIDO**
+
+### **📊 Estrutura da Tabela**
+
+#### **Cabeçalho (TableHeader)**
+```typescript
+<TableHeader>
+  <TableRow className="bg-slate-50 border-b border-slate-200">
+    <TableHead className="w-12"></TableHead>           // Expand icon
+    <TableHead>Código</TableHead>                      // #001, #002...
+    <TableHead>[Campo Principal]</TableHead>           // Nome/Título
+    <TableHead>[Campo Secundário]</TableHead>          // Categoria/Tipo
+    <TableHead>[Campo Terciário]</TableHead>           // Valor/Status
+    <TableHead>Status</TableHead>                      // Switch + Badge
+    <TableHead className="text-right">Ações</TableHead> // Edit/Delete
+  </TableRow>
+</TableHeader>
+```
+
+#### **Linha Principal (Compacta)**
+- **Expand Icon:** ChevronRight/ChevronDown (h-4 w-4)
+- **Código:** Sequencial #001, #002... (font-mono)
+- **Dados:** Apenas essenciais, texto small (text-sm)
+- **Ações:** Ícones ghost (h-3 w-3) com hover
+
+#### **Linha Expandida (Detalhada)**
+- **Layout:** Grid 3 colunas (lg:grid-cols-3)
+- **Espaçamento:** gap-3, space-y-2
+- **Títulos:** text-xs, uppercase, tracking-wide
+- **Ícones:** h-3 w-3 com cores contextuais
+- **Placeholders:** "--" em vez de "Não informado"
+
+### **🎨 Classes CSS Padrão**
+
+```css
+/* Tabela */
+.table-container: "rounded-lg border-0 bg-blue-50/30 shadow-md"
+.table-row: "h-12 bg-white hover:bg-blue-50/50 cursor-pointer transition-colors"
+.table-row-expanded: "bg-blue-50/20 hover:bg-blue-50/30"
+
+/* Textos */
+.title-section: "text-xs font-semibold text-slate-700 mb-2 uppercase tracking-wide"
+.label: "text-xs font-medium text-slate-600 min-w-[45px]"
+.value: "text-xs text-slate-900"
+.placeholder: "text-xs text-gray-400"
+
+/* Ícones */
+.icon-small: "h-3 w-3"
+.icon-expand: "h-4 w-4 text-slate-500"
+.icon-action: "h-3 w-3 text-slate-500"
+```
+
+---
+
+## 🔧 **TEMPLATE DE IMPLEMENTAÇÃO**
+
+### **1. Interface TypeScript**
+
+```typescript
+// types/sistema.ts
+export interface [Entidade] extends BaseEntity {
+  // Campos obrigatórios
+  nome: string;
+  
+  // Campos opcionais (sempre com ?)
+  email?: string;
+  telefone?: string;
+  ativo: boolean;
+}
+
+export interface [Entidade]FormData {
+  // Apenas campos editáveis
+  nome: string;
+  email?: string;
+  telefone?: string;
+}
+```
+
+### **2. Hook de Estado**
+
+```typescript
+// hooks/modulos/sistema/use-[entidade].ts
+export function use[Entidade]() {
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  
+  const toggleRowExpansion = (id: string) => {
+    const newExpandedRows = new Set(expandedRows);
+    if (newExpandedRows.has(id)) {
+      newExpandedRows.delete(id);
+    } else {
+      newExpandedRows.add(id);
+    }
+    setExpandedRows(newExpandedRows);
+  };
+
+  const get[Entidade]Numero = (index: number) => {
+    return String(index + 1).padStart(3, '0');
+  };
+
+  // CRUD operations...
+  
+  return {
+    expandedRows,
+    toggleRowExpansion,
+    get[Entidade]Numero,
+    // ... outros métodos
+  };
+}
+```
+
+### **3. Componente Tabela**
+
+```typescript
+// components/modulos/sistema/[entidade]/[entidade]-table.tsx
+export function [Entidade]Table({ 
+  [entidades], 
+  onEdit, 
+  onDelete, 
+  onToggleStatus,
+  loading = false 
+}: [Entidade]TableProps) {
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  // ... funções auxiliares
+
+  return (
+    <div className="rounded-lg border-0 bg-blue-50/30 shadow-md">
+      <Table>
+        <TableHeader>
+          {/* Cabeçalho padrão */}
+        </TableHeader>
+        <TableBody>
+          {[entidades].map(([entidade], index) => (
+            <React.Fragment key={[entidade].id}>
+              {/* Linha principal */}
+              <TableRow 
+                className="h-12 bg-white hover:bg-blue-50/50 cursor-pointer transition-colors"
+                onClick={() => toggleRowExpansion([entidade].id)}
+              >
+                {/* Células compactas */}
+              </TableRow>
+
+              {/* Linha expandida */}
+              {expandedRows.has([entidade].id) && (
+                <TableRow className="bg-blue-50/20 hover:bg-blue-50/30">
+                  <TableCell colSpan={[numero_colunas]} className="py-4">
+                    <div className="pl-4">
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                        {/* 3 colunas organizadas */}
+                      </div>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+            </React.Fragment>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+```
+
+---
+
+## 🔌 **INTEGRAÇÃO SUPABASE**
+
+### **Backend (FastAPI)**
+
+#### **Estrutura Módulo**
+```
+backend/modules/[entidade]/
+├── __init__.py
+├── controller.py      # Endpoints REST
+├── repository.py      # Queries Supabase
+├── schemas.py         # Pydantic models
+└── services.py        # Lógica de negócio
+```
+
+#### **Controller Padrão**
+```python
+# controller.py
+@router.get("/", response_model=List[EntidadeResponse])
+async def listar_entidades():
+    return await entidade_service.listar_todas()
+
+@router.post("/", response_model=EntidadeResponse)
+async def criar_entidade(dados: EntidadeCreate):
+    return await entidade_service.criar(dados)
+
+@router.put("/{entidade_id}")
+async def atualizar_entidade(entidade_id: str, dados: EntidadeUpdate):
+    return await entidade_service.atualizar(entidade_id, dados)
+
+@router.delete("/{entidade_id}")
+async def deletar_entidade(entidade_id: str):
+    return await entidade_service.deletar(entidade_id)
+```
+
+#### **Repository Padrão**
+```python
+# repository.py
+class EntidadeRepository:
+    @staticmethod
+    async def listar_todas():
+        response = supabase.table("cad_entidades").select("*").execute()
+        return response.data
+    
+    @staticmethod
+    async def criar(dados: dict):
+        response = supabase.table("cad_entidades").insert(dados).execute()
+        return response.data[0]
+    
+    @staticmethod
+    async def atualizar(id: str, dados: dict):
+        response = supabase.table("cad_entidades").update(dados).eq("id", id).execute()
+        return response.data[0]
+    
+    @staticmethod
+    async def deletar(id: str):
+        supabase.table("cad_entidades").delete().eq("id", id).execute()
+        return True
+```
+
+### **Frontend (API Client)**
+
+```typescript
+// services/api-client.ts
+export const [entidade]Api = {
+  async listar(): Promise<[Entidade][]> {
+    const response = await fetch(`${API_URL}/[entidades]`);
+    return response.json();
+  },
+
+  async criar(dados: [Entidade]FormData): Promise<[Entidade]> {
+    const response = await fetch(`${API_URL}/[entidades]`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dados),
+    });
+    return response.json();
+  },
+
+  async atualizar(id: string, dados: [Entidade]FormData): Promise<[Entidade]> {
+    const response = await fetch(`${API_URL}/[entidades]/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dados),
+    });
+    return response.json();
+  },
+
+  async deletar(id: string): Promise<void> {
+    await fetch(`${API_URL}/[entidades]/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+```
+
+---
+
+## 📊 **PADRÕES DE SCHEMA SUPABASE**
+
+### **Tabela Padrão**
+```sql
+CREATE TABLE cad_[entidades] (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nome VARCHAR NOT NULL,
+  email VARCHAR,
+  telefone VARCHAR,
+  ativo BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Trigger para updated_at
+CREATE TRIGGER update_[entidades]_updated_at 
+  BEFORE UPDATE ON cad_[entidades] 
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+```
+
+### **RLS (Row Level Security)**
+```sql
+-- Habilitar RLS
+ALTER TABLE cad_[entidades] ENABLE ROW LEVEL SECURITY;
+
+-- Policy para SELECT
+CREATE POLICY "Usuários podem ver [entidades]" ON cad_[entidades]
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+-- Policy para INSERT/UPDATE/DELETE
+CREATE POLICY "Usuários podem gerenciar [entidades]" ON cad_[entidades]
+  FOR ALL USING (auth.role() = 'authenticated');
+```
+
+---
+
+## 🎯 **CHECKLIST DE REFATORAÇÃO**
+
+### **✅ Preparação**
+- [ ] Verificar se tabela existe no Supabase
+- [ ] Conferir schema com campos obrigatórios/opcionais
+- [ ] Validar se backend tem endpoints CRUD
+- [ ] Verificar se tipos TypeScript estão corretos
+
+### **✅ Implementação**
+- [ ] Criar hook com estado de expansão
+- [ ] Implementar função de numeração sequencial
+- [ ] Adicionar imports de ícones necessários
+- [ ] Estruturar cabeçalho da tabela (6-7 colunas)
+- [ ] Implementar linha principal compacta
+- [ ] Criar linha expandida com 3 colunas organizadas
+- [ ] Aplicar classes CSS padrão
+- [ ] Configurar placeholders sutis (--)
+- [ ] Testar responsividade (lg:grid-cols-3)
+
+### **✅ Validação**
+- [ ] Testar expansão/contração de linhas
+- [ ] Verificar se ações não expandem linha (stopPropagation)
+- [ ] Validar placeholders para campos vazios
+- [ ] Conferir responsividade em mobile
+- [ ] Testar CRUD completo
+- [ ] Verificar performance com muitos registros
+
+---
+
+## 🚨 **PROBLEMAS COMUNS E SOLUÇÕES**
+
+### **Problema: Campos undefined quebrando a UI**
+```typescript
+// ❌ Errado
+<span>{entidade.campo}</span>
+
+// ✅ Correto
+<span>{entidade.campo || '--'}</span>
+// ou
+{entidade.campo ? (
+  <span>{entidade.campo}</span>
+) : (
+  <span className="text-xs text-gray-400">--</span>
+)}
+```
+
+### **Problema: Ações expandindo linha**
+```typescript
+// ✅ Sempre adicionar stopPropagation nas ações
+<TableCell onClick={(e) => e.stopPropagation()}>
+  <Button onClick={() => onEdit(item)}>
+    <Edit className="h-3 w-3" />
+  </Button>
+</TableCell>
+```
+
+### **Problema: ColSpan incorreto**
+```typescript
+// ✅ Contar todas as colunas incluindo expand e código
+<TableCell colSpan={7} className="py-4">
+//              ↑ Total de colunas da tabela
+```
+
+### **Problema: Performance com muitos registros**
+```typescript
+// ✅ Usar React.Fragment para evitar DOM extra
+{items.map((item, index) => (
+  <React.Fragment key={item.id}>
+    {/* Linhas da tabela */}
+  </React.Fragment>
+))}
+```
+
+---
+
+## 📚 **RECURSOS ADICIONAIS**
+
+### **Ícones Lucide Recomendados**
+- **Dados:** Building2, Users, Mail, Phone, MapPin
+- **Valores:** DollarSign, Percent, TrendingUp
+- **Ações:** Edit, Trash2, ChevronDown, ChevronRight
+- **Categorias:** Tag, Store, Settings, Hash
+- **Status:** Shield, Star, Target
+
+### **Cores Contextuais**
+```typescript
+const colors = {
+  primary: 'text-blue-500',
+  success: 'text-green-500', 
+  warning: 'text-yellow-500',
+  danger: 'text-red-500',
+  info: 'text-purple-500',
+  neutral: 'text-slate-500'
+};
+```
+
+### **Breakpoints Tailwind**
+- `lg:grid-cols-3` - 3 colunas em desktop
+- `gap-3` - Espaçamento padrão
+- `space-y-2` - Espaçamento vertical
+- `min-w-[45px]` - Largura mínima de labels
+
+---
+
+## 🎓 **EXEMPLO COMPLETO**
+
+Consulte as tabelas já refatoradas como referência:
+- **Simples:** `lojas/loja-table.tsx`
+- **Média:** `montadores/montador-table.tsx` 
+- **Complexa:** `equipe/funcionario-table.tsx`
+
+---
+
+**📝 Nota:** Este padrão foi estabelecido após refatoração de 7 tabelas e deve ser seguido para manter consistência visual e funcional em todo o sistema.

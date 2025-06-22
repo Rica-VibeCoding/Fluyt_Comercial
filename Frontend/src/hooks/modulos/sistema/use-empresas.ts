@@ -1,51 +1,56 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import type { Empresa, EmpresaFormData } from '@/types/sistema';
-import { useLocalStorage } from '@/hooks/globais/use-local-storage';
+import { empresaService, converterEmpresaAPIParaFrontend, converterEmpresaFormDataParaPayload } from '@/services/empresa-service';
 
-// Mock data para desenvolvimento
-const mockEmpresas: Empresa[] = [
-  {
-    id: '1',
-    nome: 'Fluyt Móveis & Design',
-    cnpj: '12.345.678/0001-90',
-    email: 'contato@fluyt.com.br',
-    telefone: '(11) 98765-4321',
-    endereco: 'Av. Paulista, 1000 - São Paulo/SP',
-    ativo: true,
-    funcionarios: 45,
-    dataFundacao: '2020-01-15',
-    createdAt: '2020-01-15T10:00:00Z'
-  },
-  {
-    id: '2',
-    nome: 'Fluyt Filial Santos',
-    cnpj: '12.345.678/0002-71',
-    email: 'santos@fluyt.com.br',
-    telefone: '(13) 3456-7890',
-    endereco: 'Rua do Comércio, 500 - Santos/SP',
-    ativo: true,
-    funcionarios: 18,
-    dataFundacao: '2022-06-10',
-    createdAt: '2022-06-10T10:00:00Z'
-  },
-  {
-    id: '3',
-    nome: 'Fluyt Norte',
-    cnpj: '12.345.678/0003-52',
-    email: 'norte@fluyt.com.br',
-    telefone: '(11) 97777-8888',
-    endereco: 'Av. Marginal, 2000 - Guarulhos/SP',
-    ativo: false,
-    funcionarios: 8,
-    dataFundacao: '2023-03-20',
-    createdAt: '2023-03-20T10:00:00Z'
-  }
-];
+// Interface para filtros de busca
+interface FiltrosEmpresa {
+  busca?: string;
+  data_inicio?: string;
+  data_fim?: string;
+  page?: number;
+  limit?: number;
+}
 
 export function useEmpresas() {
-  const [empresas, setEmpresas, clearEmpresas] = useLocalStorage<Empresa[]>('fluyt_empresas', mockEmpresas);
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  // Carregar empresas da API
+  const carregarEmpresas = useCallback(async (filtros?: FiltrosEmpresa) => {
+    setLoading(true);
+    setErro(null);
+
+    try {
+      const response = await empresaService.listar(filtros);
+      
+      if (response.success && response.data) {
+        // Converter empresas da API para formato frontend
+        const empresasConvertidas = response.data.items.map(empresaAPI => ({
+          ...converterEmpresaAPIParaFrontend(empresaAPI),
+          // Garantir que os campos obrigatórios estejam presentes
+          total_lojas: empresaAPI.total_lojas || 0,
+          lojas_ativas: empresaAPI.lojas_ativas || 0
+        }));
+        
+        setEmpresas(empresasConvertidas);
+      } else {
+        throw new Error(response.error || 'Erro ao carregar empresas');
+      }
+    } catch (error: any) {
+      const mensagemErro = error.message || 'Erro ao carregar empresas';
+      setErro(mensagemErro);
+      toast.error(mensagemErro);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Carregar empresas ao montar o componente
+  useEffect(() => {
+    carregarEmpresas();
+  }, [carregarEmpresas]);
 
   // Validar CNPJ (implementação simplificada)
   const validarCNPJ = useCallback((cnpj: string): boolean => {
@@ -65,159 +70,134 @@ export function useEmpresas() {
     return telefoneNumeros.length >= 10;
   }, []);
 
-  // Validar dados da empresa
+  // Validar dados da empresa - apenas nome obrigatório
   const validarEmpresa = useCallback((dados: EmpresaFormData): string[] => {
     const erros: string[] = [];
 
+    // ✅ Único campo obrigatório
     if (!dados.nome || dados.nome.trim().length < 2) {
       erros.push('Nome da empresa deve ter pelo menos 2 caracteres');
     }
 
-    if (!validarCNPJ(dados.cnpj)) {
+    // ✅ Validações condicionais - apenas se preenchidos
+    if (dados.cnpj && !validarCNPJ(dados.cnpj)) {
       erros.push('CNPJ inválido');
     }
 
-    if (!validarEmail(dados.email)) {
+    if (dados.email && !validarEmail(dados.email)) {
       erros.push('Email inválido');
     }
 
-    if (!validarTelefone(dados.telefone)) {
+    if (dados.telefone && !validarTelefone(dados.telefone)) {
       erros.push('Telefone inválido');
-    }
-
-    if (!dados.endereco || dados.endereco.trim().length < 10) {
-      erros.push('Endereço deve ter pelo menos 10 caracteres');
     }
 
     return erros;
   }, [validarCNPJ, validarEmail, validarTelefone]);
-
-  // Verificar duplicidade de CNPJ
-  const verificarCNPJDuplicado = useCallback((cnpj: string, empresaId?: string): boolean => {
-    const cnpjLimpo = cnpj.replace(/[^\d]/g, '');
-    return empresas.some(empresa => 
-      empresa.cnpj.replace(/[^\d]/g, '') === cnpjLimpo && 
-      empresa.id !== empresaId
-    );
-  }, [empresas]);
-
-  // Verificar duplicidade de email
-  const verificarEmailDuplicado = useCallback((email: string, empresaId?: string): boolean => {
-    return empresas.some(empresa => 
-      empresa.email.toLowerCase() === email.toLowerCase() && 
-      empresa.id !== empresaId
-    );
-  }, [empresas]);
 
   // Criar empresa
   const criarEmpresa = useCallback(async (dados: EmpresaFormData): Promise<boolean> => {
     setLoading(true);
     
     try {
-      // Validações
+      // Validações locais
       const erros = validarEmpresa(dados);
-      
-      if (verificarCNPJDuplicado(dados.cnpj)) {
-        erros.push('CNPJ já cadastrado');
-      }
-      
-      if (verificarEmailDuplicado(dados.email)) {
-        erros.push('Email já cadastrado');
-      }
-
       if (erros.length > 0) {
         erros.forEach(erro => toast.error(erro));
         return false;
       }
 
-      // Simular API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Converter dados para formato da API
+      const payload = converterEmpresaFormDataParaPayload(dados);
+      
+      // Chamar API
+      const response = await empresaService.criar(payload);
+      
+      if (response.success && response.data) {
+        // Recarregar lista de empresas
+        await carregarEmpresas();
+        toast.success('Empresa criada com sucesso!');
+        return true;
+      } else {
+        throw new Error(response.error || 'Erro ao criar empresa');
+      }
 
-      const novaEmpresa: Empresa = {
-        id: Date.now().toString(),
-        ...dados,
-        ativo: true,
-        funcionarios: 0,
-        createdAt: new Date().toISOString()
-      };
-
-      setEmpresas(prev => [...prev, novaEmpresa]);
-      toast.success('Empresa criada com sucesso!');
-      return true;
-
-    } catch (error) {
-      toast.error('Erro ao criar empresa');
+    } catch (error: any) {
+      const mensagemErro = error.message || 'Erro ao criar empresa';
+      toast.error(mensagemErro);
       return false;
     } finally {
       setLoading(false);
     }
-  }, [validarEmpresa, verificarCNPJDuplicado, verificarEmailDuplicado]);
+  }, [validarEmpresa, carregarEmpresas]);
 
   // Atualizar empresa
   const atualizarEmpresa = useCallback(async (id: string, dados: EmpresaFormData): Promise<boolean> => {
     setLoading(true);
     
     try {
-      // Validações
+      // Validações locais
       const erros = validarEmpresa(dados);
-      
-      if (verificarCNPJDuplicado(dados.cnpj, id)) {
-        erros.push('CNPJ já cadastrado');
-      }
-      
-      if (verificarEmailDuplicado(dados.email, id)) {
-        erros.push('Email já cadastrado');
-      }
-
       if (erros.length > 0) {
         erros.forEach(erro => toast.error(erro));
         return false;
       }
 
-      // Simular API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Converter dados para formato da API
+      const payload = converterEmpresaFormDataParaPayload(dados);
+      
+      // Chamar API
+      const response = await empresaService.atualizar(id, payload);
+      
+      if (response.success && response.data) {
+        // Recarregar lista de empresas
+        await carregarEmpresas();
+        toast.success('Empresa atualizada com sucesso!');
+        return true;
+      } else {
+        throw new Error(response.error || 'Erro ao atualizar empresa');
+      }
 
-      setEmpresas(prev => prev.map(empresa => 
-        empresa.id === id 
-          ? { ...empresa, ...dados, updatedAt: new Date().toISOString() }
-          : empresa
-      ));
-
-      toast.success('Empresa atualizada com sucesso!');
-      return true;
-
-    } catch (error) {
-      toast.error('Erro ao atualizar empresa');
+    } catch (error: any) {
+      const mensagemErro = error.message || 'Erro ao atualizar empresa';
+      toast.error(mensagemErro);
       return false;
     } finally {
       setLoading(false);
     }
-  }, [validarEmpresa, verificarCNPJDuplicado, verificarEmailDuplicado]);
+  }, [validarEmpresa, carregarEmpresas]);
 
   // Alternar status da empresa
   const alternarStatusEmpresa = useCallback(async (id: string): Promise<void> => {
     setLoading(true);
     
     try {
-      // Simular API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      setEmpresas(prev => prev.map(empresa => 
-        empresa.id === id 
-          ? { ...empresa, ativo: !empresa.ativo, updatedAt: new Date().toISOString() }
-          : empresa
-      ));
-
       const empresa = empresas.find(e => e.id === id);
-      const novoStatus = !empresa?.ativo ? 'ativada' : 'desativada';
-      toast.success(`Empresa ${novoStatus} com sucesso!`);
+      if (!empresa) {
+        throw new Error('Empresa não encontrada');
+      }
 
-    } catch (error) {
-      toast.error('Erro ao alterar status da empresa');
+      // Atualizar apenas o status
+      const response = await empresaService.atualizar(id, {
+        ativo: !empresa.ativo
+      });
+
+      if (response.success) {
+        // Recarregar lista de empresas
+        await carregarEmpresas();
+        const novoStatus = !empresa.ativo ? 'ativada' : 'desativada';
+        toast.success(`Empresa ${novoStatus} com sucesso!`);
+      } else {
+        throw new Error(response.error || 'Erro ao alterar status');
+      }
+
+    } catch (error: any) {
+      const mensagemErro = error.message || 'Erro ao alterar status da empresa';
+      toast.error(mensagemErro);
     } finally {
       setLoading(false);
     }
-  }, [empresas]);
+  }, [empresas, carregarEmpresas]);
 
   // Excluir empresa
   const excluirEmpresa = useCallback(async (id: string): Promise<boolean> => {
@@ -228,29 +208,35 @@ export function useEmpresas() {
       return false;
     }
 
-    // Verificar se tem funcionários vinculados
-    if (empresa.funcionarios && empresa.funcionarios > 0) {
-      toast.error('Não é possível excluir empresa com funcionários vinculados');
+    // Verificar se tem lojas vinculadas
+    if (empresa.total_lojas && empresa.total_lojas > 0) {
+      toast.error('Não é possível excluir empresa com lojas vinculadas');
       return false;
     }
 
     setLoading(true);
     
     try {
-      // Simular API call
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Chamar API
+      const response = await empresaService.excluir(id);
+      
+      if (response.success) {
+        // Recarregar lista de empresas
+        await carregarEmpresas();
+        toast.success('Empresa excluída com sucesso!');
+        return true;
+      } else {
+        throw new Error(response.error || 'Erro ao excluir empresa');
+      }
 
-      setEmpresas(prev => prev.filter(e => e.id !== id));
-      toast.success('Empresa excluída com sucesso!');
-      return true;
-
-    } catch (error) {
-      toast.error('Erro ao excluir empresa');
+    } catch (error: any) {
+      const mensagemErro = error.message || 'Erro ao excluir empresa';
+      toast.error(mensagemErro);
       return false;
     } finally {
       setLoading(false);
     }
-  }, [empresas]);
+  }, [empresas, carregarEmpresas]);
 
   // Obter empresas ativas
   const obterEmpresasAtivas = useCallback((): Empresa[] => {
@@ -262,36 +248,82 @@ export function useEmpresas() {
     return empresas.find(empresa => empresa.id === id);
   }, [empresas]);
 
-  // Buscar empresas
+  // Buscar empresas localmente (filtro rápido)
   const buscarEmpresas = useCallback((termo: string): Empresa[] => {
     if (!termo.trim()) return empresas;
     
     const termoBusca = termo.toLowerCase().trim();
     return empresas.filter(empresa =>
       empresa.nome.toLowerCase().includes(termoBusca) ||
-      empresa.cnpj.includes(termoBusca) ||
-      empresa.email.toLowerCase().includes(termoBusca)
+      (empresa.cnpj && empresa.cnpj.includes(termoBusca)) ||
+      (empresa.email && empresa.email.toLowerCase().includes(termoBusca))
     );
   }, [empresas]);
+
+  // Verificar disponibilidade de CNPJ
+  const verificarCNPJDisponivel = useCallback(async (cnpj: string, empresaId?: string): Promise<boolean> => {
+    if (!cnpj) return true;
+
+    try {
+      const response = await empresaService.verificarCNPJ(cnpj, empresaId);
+      return response.success && response.data ? response.data.disponivel : false;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  // Verificar disponibilidade de nome
+  const verificarNomeDisponivel = useCallback(async (nome: string, empresaId?: string): Promise<boolean> => {
+    if (!nome) return true;
+
+    try {
+      const response = await empresaService.verificarNome(nome, empresaId);
+      return response.success && response.data ? response.data.disponivel : false;
+    } catch {
+      return false;
+    }
+  }, []);
 
   // Estatísticas
   const estatisticas = {
     total: empresas.length,
     ativas: empresas.filter(e => e.ativo).length,
     inativas: empresas.filter(e => !e.ativo).length,
-    totalFuncionarios: empresas.reduce((total, empresa) => total + (empresa.funcionarios || 0), 0)
+    totalLojas: empresas.reduce((total, empresa) => total + (empresa.total_lojas || 0), 0),
+    lojasAtivas: empresas.reduce((total, empresa) => total + (empresa.lojas_ativas || 0), 0)
   };
 
-  // Resetar dados para mock inicial
+  // Teste de conectividade
+  const testarConectividade = useCallback(async (): Promise<boolean> => {
+    try {
+      const response = await empresaService.testePublico();
+      if (response.success) {
+        toast.success('Conectado ao backend!');
+        return true;
+      } else {
+        toast.error('Erro ao conectar com o backend');
+        return false;
+      }
+    } catch {
+      toast.error('Backend não está acessível');
+      return false;
+    }
+  }, []);
+
+  // Resetar dados (limpar cache local)
   const resetarDados = useCallback(() => {
-    clearEmpresas();
-    toast.success('Dados resetados para configuração inicial!');
-  }, [clearEmpresas]);
+    setEmpresas([]);
+    setErro(null);
+    setLoading(false);
+    toast.success('Dados de empresas resetados!');
+  }, []);
 
   return {
     empresas,
     loading,
+    erro,
     estatisticas,
+    carregarEmpresas,
     criarEmpresa,
     atualizarEmpresa,
     alternarStatusEmpresa,
@@ -299,6 +331,9 @@ export function useEmpresas() {
     obterEmpresasAtivas,
     obterEmpresaPorId,
     buscarEmpresas,
+    verificarCNPJDisponivel,
+    verificarNomeDisponivel,
+    testarConectividade,
     resetarDados,
     validarCNPJ,
     validarEmail,

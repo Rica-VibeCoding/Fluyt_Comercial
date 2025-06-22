@@ -6,6 +6,7 @@
 // Cliente API
 export { apiClient } from './api-client';
 export { clienteService } from './cliente-service';
+export { empresaService } from './empresa-service';
 
 // Tipos
 export type {
@@ -20,8 +21,21 @@ export type {
   ClienteListResponse,
 } from './cliente-service';
 
+export type {
+  EmpresaAPI,
+  EmpresaCreatePayload,
+  EmpresaUpdatePayload,
+  EmpresaListResponse,
+  EmpresaFiltros,
+} from './empresa-service';
+
 // Helpers de conversão
 export {
   converterClienteBackendParaFrontend,
   converterFormDataParaPayload,
 } from './api-client';
+
+export {
+  converterEmpresaAPIParaFrontend,
+  converterEmpresaFormDataParaPayload,
+} from './empresa-service';

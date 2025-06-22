@@ -13,22 +13,22 @@ export interface BaseEntity {
 // EMPRESAS
 // ========================================
 export interface Empresa extends BaseEntity {
-  nome: string;
-  cnpj: string;
-  email: string;
-  telefone: string;
-  endereco: string;
+  nome: string;         // ✅ único obrigatório
+  cnpj?: string;        // ✅ opcional
+  email?: string;       // ✅ opcional
+  telefone?: string;    // ✅ opcional
+  endereco?: string;    // ✅ opcional
   ativo: boolean;
-  funcionarios?: number;
-  dataFundacao?: string;
+  total_lojas: number;  // ✅ contagem automática de lojas (alinhado com backend)
+  lojas_ativas: number; // ✅ contagem de lojas ativas (alinhado com backend)
 }
 
 export interface EmpresaFormData {
-  nome: string;
-  cnpj: string;
-  email: string;
-  telefone: string;
-  endereco: string;
+  nome: string;         // ✅ único obrigatório
+  cnpj?: string;        // ✅ opcional
+  email?: string;       // ✅ opcional
+  telefone?: string;    // ✅ opcional
+  endereco?: string;    // ✅ opcional
 }
 
 // ========================================

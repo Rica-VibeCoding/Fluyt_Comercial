@@ -22,6 +22,7 @@ export const API_CONFIG = {
     HEALTH: '/health',
     AUTH: '/api/v1/auth',
     CLIENTES: '/api/v1/clientes',
+    EMPRESAS: '/api/v1/empresas',
     DOCS: '/api/v1/docs',
   }
 } as const;

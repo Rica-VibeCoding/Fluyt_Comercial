@@ -39,5 +39,6 @@ export const API_ENDPOINTS = {
   LOGOUT: '/api/v1/auth/logout',
   ME: '/api/v1/auth/me',
   CLIENTES: '/api/v1/clientes',
+  EMPRESAS: '/api/v1/empresas',
   HEALTH: '/api/v1/health',
 } as const; 
