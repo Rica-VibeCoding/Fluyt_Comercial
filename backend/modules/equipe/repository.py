@@ -1,0 +1,406 @@
+"""
+Repository - Camada de acesso ao banco de dados para funcionários
+Responsável por todas as operações com o Supabase na tabela cad_equipe
+"""
+import logging
+from typing import Optional, List, Dict, Any
+from datetime import datetime
+
+from supabase import Client
+from core.exceptions import NotFoundException, DatabaseException, ConflictException
+
+logger = logging.getLogger(__name__)
+
+
+class FuncionarioRepository:
+    """
+    Classe responsável por acessar a tabela cad_equipe no Supabase
+    """
+    
+    def __init__(self, db: Client):
+        """
+        Inicializa o repository com a conexão do banco
+        
+        Args:
+            db: Cliente do Supabase já configurado
+        """
+        self.db = db
+        self.table = 'cad_equipe'
+    
+    async def listar(
+        self,
+        loja_id: Optional[str] = None,
+        filtros: Dict[str, Any] = None,
+        page: int = 1,
+        limit: int = 20
+    ) -> Dict[str, Any]:
+        """
+        Lista funcionários com filtros e paginação
+        OTIMIZADO: Usa nested select para evitar problema N+1
+        
+        Args:
+            loja_id: ID da loja (para filtrar por loja)
+            filtros: Dicionário com filtros opcionais
+            page: Página atual
+            limit: Itens por página
+            
+        Returns:
+            Dicionário com items e informações de paginação
+        """
+        try:
+            # Nested select para buscar funcionários + loja + setor em UMA query só
+            query = self.db.table(self.table).select('''
+                *,
+                loja:c_lojas(id, nome),
+                setor:cad_setores(id, nome)
+            ''').eq('ativo', True)  # Apenas funcionários ativos (soft delete)
+            
+            # Aplica filtro de loja se fornecido
+            if loja_id is not None:
+                query = query.eq('loja_id', loja_id)
+            
+            # Aplica filtros opcionais
+            if filtros:
+                # Busca textual (nome, email)
+                if filtros.get('busca'):
+                    busca = f"%{filtros['busca']}%"
+                    query = query.or_(
+                        f"nome.ilike.{busca},"
+                        f"email.ilike.{busca}"
+                    )
+                
+                # Perfil do funcionário
+                if filtros.get('perfil'):
+                    query = query.eq('perfil', filtros['perfil'])
+                
+                # Setor
+                if filtros.get('setor_id'):
+                    query = query.eq('setor_id', filtros['setor_id'])
+                
+                # Período de admissão
+                if filtros.get('data_inicio'):
+                    query = query.gte('data_admissao', filtros['data_inicio'].isoformat())
+                
+                if filtros.get('data_fim'):
+                    query = query.lte('data_admissao', filtros['data_fim'].isoformat())
+            
+            # Conta total de registros (sem paginação)
+            count_query = self.db.table(self.table).select('id', count='exact').eq('ativo', True)
+            if loja_id is not None:
+                count_query = count_query.eq('loja_id', loja_id)
+            count_result = count_query.execute()
+            
+            total = count_result.count or 0
+            
+            # Aplica ordenação (alfabética por nome)
+            query = query.order('nome')
+            
+            # Aplica paginação
+            offset = (page - 1) * limit
+            query = query.limit(limit).offset(offset)
+            
+            # Executa a query OTIMIZADA
+            result = query.execute()
+            
+            # Processa os dados já unidos
+            items = []
+            for item in result.data:
+                # Extrai dados da loja
+                if item.get('loja'):
+                    item['loja_nome'] = item['loja'].get('nome')
+                    del item['loja']
+                
+                # Extrai dados do setor
+                if item.get('setor'):
+                    item['setor_nome'] = item['setor'].get('nome')
+                    del item['setor']
+                
+                items.append(item)
+            
+            return {
+                'items': items,
+                'total': total,
+                'page': page,
+                'limit': limit,
+                'pages': (total + limit - 1) // limit
+            }
+        
+        except Exception as e:
+            logger.error(f"Erro ao listar funcionários: {str(e)}")
+            raise DatabaseException(f"Erro ao listar funcionários: {str(e)}")
+    
+    async def buscar_por_id(self, funcionario_id: str, loja_id: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Busca um funcionário específico pelo ID
+        OTIMIZADO: Usa nested select para evitar problema N+1
+        
+        Args:
+            funcionario_id: ID do funcionário
+            loja_id: ID da loja (para filtrar por loja)
+            
+        Returns:
+            Dados completos do funcionário
+            
+        Raises:
+            NotFoundException: Se o funcionário não for encontrado
+        """
+        try:
+            # Nested select para buscar funcionário + loja + setor em UMA query só
+            query = self.db.table(self.table).select('''
+                *,
+                loja:c_lojas(id, nome),
+                setor:cad_setores(id, nome)
+            ''').eq('id', funcionario_id).eq('ativo', True)
+            
+            # Aplica filtro de loja se fornecido
+            if loja_id is not None:
+                query = query.eq('loja_id', loja_id)
+                
+            result = query.execute()
+            
+            if not result.data:
+                raise NotFoundException(f"Funcionário não encontrado: {funcionario_id}")
+            
+            funcionario = result.data[0]
+            
+            # Processa dados relacionados
+            if funcionario.get('loja'):
+                funcionario['loja_nome'] = funcionario['loja'].get('nome')
+                del funcionario['loja']
+            
+            if funcionario.get('setor'):
+                funcionario['setor_nome'] = funcionario['setor'].get('nome')
+                del funcionario['setor']
+            
+            return funcionario
+        
+        except NotFoundException:
+            raise
+        except Exception as e:
+            logger.error(f"Erro ao buscar funcionário {funcionario_id}: {str(e)}")
+            raise DatabaseException(f"Erro ao buscar funcionário: {str(e)}")
+    
+    async def buscar_por_nome(self, nome: str, loja_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """
+        Busca funcionário pelo nome exato
+        
+        Args:
+            nome: Nome do funcionário
+            loja_id: ID da loja (para filtrar por loja)
+            
+        Returns:
+            Dados do funcionário ou None se não encontrado
+        """
+        try:
+            query = self.db.table(self.table).select('*').eq('nome', nome).eq('ativo', True)
+            
+            # Aplica filtro de loja se fornecido
+            if loja_id is not None:
+                query = query.eq('loja_id', loja_id)
+                
+            result = query.execute()
+            
+            if result.data:
+                return result.data[0]
+            
+            return None
+        
+        except Exception as e:
+            logger.error(f"Erro ao buscar por nome: {str(e)}")
+            raise DatabaseException(f"Erro ao buscar funcionário: {str(e)}")
+    
+    async def buscar_por_email(self, email: str, loja_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """
+        Busca funcionário pelo email
+        
+        Args:
+            email: Email do funcionário
+            loja_id: ID da loja (para filtrar por loja)
+            
+        Returns:
+            Dados do funcionário ou None se não encontrado
+        """
+        try:
+            query = self.db.table(self.table).select('*').eq('email', email).eq('ativo', True)
+            
+            # Aplica filtro de loja se fornecido
+            if loja_id is not None:
+                query = query.eq('loja_id', loja_id)
+                
+            result = query.execute()
+            
+            if result.data:
+                return result.data[0]
+            
+            return None
+        
+        except Exception as e:
+            logger.error(f"Erro ao buscar por email: {str(e)}")
+            raise DatabaseException(f"Erro ao buscar funcionário: {str(e)}")
+    
+    async def criar(self, dados: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Cria um novo funcionário
+        
+        Args:
+            dados: Dados do funcionário
+            
+        Returns:
+            Funcionário criado com ID
+            
+        Raises:
+            ConflictException: Se nome já existe (email pode repetir)
+        """
+        try:
+            logger.info(f"Criando funcionário: dados={dados}")
+            
+            # Normaliza e verifica se nome já existe
+            nome_normalizado = dados['nome'].strip() if dados['nome'] else ''
+            if not nome_normalizado:
+                raise ConflictException("Nome do funcionário é obrigatório")
+            
+            # Verifica se nome já existe (considerando loja se fornecida)
+            loja_id = dados.get('loja_id')
+            existe_nome = await self.buscar_por_nome(nome_normalizado, loja_id)
+            if existe_nome:
+                logger.warning(f"CONFLICT: Nome '{nome_normalizado}' já existe no funcionário {existe_nome['id']}")
+                raise ConflictException(
+                    f"Funcionário com nome '{nome_normalizado}' já cadastrado"
+                )
+            
+            # Email pode se repetir - apenas logamos para auditoria
+            if dados.get('email'):
+                email_normalizado = dados['email'].strip().lower() if dados['email'] else ''
+                if email_normalizado:
+                    existe_email = await self.buscar_por_email(email_normalizado, loja_id)
+                    if existe_email:
+                        logger.info(f"INFO: Email '{email_normalizado}' já existe em outro funcionário - permitido")
+            
+            # Normaliza dados antes de inserir
+            dados_normalizados = dados.copy()
+            dados_normalizados['nome'] = nome_normalizado
+            if dados.get('email'):
+                dados_normalizados['email'] = email_normalizado
+            
+            # Cria o funcionário
+            result = self.db.table(self.table).insert(dados_normalizados).execute()
+            
+            if not result.data:
+                raise DatabaseException("Erro ao criar funcionário")
+            
+            return result.data[0]
+        
+        except ConflictException:
+            raise
+        except Exception as e:
+            logger.error(f"Erro ao criar funcionário: {str(e)}")
+            raise DatabaseException(f"Erro ao criar funcionário: {str(e)}")
+    
+    async def atualizar(
+        self,
+        funcionario_id: str,
+        dados: Dict[str, Any],
+        loja_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Atualiza dados de um funcionário
+        
+        Args:
+            funcionario_id: ID do funcionário
+            dados: Dados a atualizar
+            loja_id: ID da loja (para filtrar por loja)
+            
+        Returns:
+            Funcionário atualizado
+            
+        Raises:
+            NotFoundException: Se funcionário não encontrado
+            ConflictException: Se nome já existe em outro funcionário (email pode repetir)
+        """
+        try:
+            # Verifica se funcionário existe
+            funcionario_atual = await self.buscar_por_id(funcionario_id, loja_id)
+            logger.info(f"Atualizando funcionário {funcionario_id}: dados={dados}")
+            
+            # Se está mudando o nome, verifica duplicidade
+            if 'nome' in dados:
+                nome_novo = dados['nome'].strip() if dados['nome'] else ''
+                nome_atual = funcionario_atual['nome'].strip() if funcionario_atual['nome'] else ''
+                if nome_novo and nome_novo != nome_atual:
+                    existe_nome = await self.buscar_por_nome(nome_novo, loja_id)
+                    if existe_nome:
+                        logger.warning(f"CONFLICT: Nome '{nome_novo}' já existe no funcionário {existe_nome['id']}")
+                        raise ConflictException(
+                            f"Funcionário com nome '{nome_novo}' já cadastrado"
+                        )
+            
+            # Email pode se repetir - apenas logamos para auditoria na atualização
+            if 'email' in dados:
+                email_novo = dados['email'].strip().lower() if dados['email'] else None
+                email_atual = funcionario_atual['email'].strip().lower() if funcionario_atual['email'] else None
+                if email_novo and email_novo != email_atual:
+                    existe_email = await self.buscar_por_email(email_novo, loja_id)
+                    if existe_email:
+                        logger.info(f"INFO: Email '{email_novo}' já existe em outro funcionário - permitido na atualização")
+            
+            # Atualiza apenas campos fornecidos
+            dados_limpos = {k: v for k, v in dados.items() if v is not None}
+            
+            # Atualiza o funcionário
+            query = self.db.table(self.table).update(dados_limpos).eq('id', funcionario_id)
+            
+            # Aplica filtro de loja se fornecido
+            if loja_id is not None:
+                query = query.eq('loja_id', loja_id)
+                
+            result = query.execute()
+            
+            if not result.data:
+                raise DatabaseException("Erro ao atualizar funcionário")
+            
+            return result.data[0]
+        
+        except (NotFoundException, ConflictException):
+            raise
+        except Exception as e:
+            logger.error(f"Erro ao atualizar funcionário {funcionario_id}: {str(e)}")
+            raise DatabaseException(f"Erro ao atualizar funcionário: {str(e)}")
+    
+    async def excluir(self, funcionario_id: str, loja_id: Optional[str] = None) -> bool:
+        """
+        Exclui um funcionário (soft delete - marca como inativo)
+        
+        Args:
+            funcionario_id: ID do funcionário
+            loja_id: ID da loja (para filtrar por loja)
+            
+        Returns:
+            True se excluído com sucesso
+            
+        Raises:
+            NotFoundException: Se funcionário não encontrado
+        """
+        try:
+            # Verifica se existe
+            await self.buscar_por_id(funcionario_id, loja_id)
+            
+            # Marca como inativo em vez de deletar fisicamente
+            query = self.db.table(self.table).update({'ativo': False}).eq('id', funcionario_id)
+            
+            # Aplica filtro de loja se fornecido
+            if loja_id is not None:
+                query = query.eq('loja_id', loja_id)
+                
+            result = query.execute()
+            
+            return bool(result.data)
+        
+        except NotFoundException:
+            raise
+        except Exception as e:
+            logger.error(f"Erro ao excluir funcionário {funcionario_id}: {str(e)}")
+            raise DatabaseException(f"Erro ao excluir funcionário: {str(e)}")
+    
+    # MÉTODO EXCLUIR (HARD DELETE) REMOVIDO INTENCIONALMENTE
+    # Usamos apenas soft delete através do método excluir()
+    # Isso garante que dados nunca sejam perdidos permanentemente 

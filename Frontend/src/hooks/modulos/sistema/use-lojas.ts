@@ -1,2 +1,2 @@
-// Re-export do hook refatorado para manter compatibilidade
-export { useLojas } from './lojas/use-lojas-refactored';
+// Re-export do hook simplificado para manter compatibilidade
+export { useLojas } from './use-lojas-simple';

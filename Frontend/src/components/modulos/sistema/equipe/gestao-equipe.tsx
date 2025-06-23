@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -22,9 +22,16 @@ export function GestaoEquipe() {
     alternarStatusFuncionario,
     excluirFuncionario,
     buscarFuncionarios,
+    carregarFuncionarios,
+    // ✅ Status básico (removidas funções problemáticas)
     lojas,
     setores
   } = useEquipe();
+
+  // Carregar dados ao inicializar
+  useEffect(() => {
+    carregarFuncionarios();
+  }, [carregarFuncionarios]);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingFuncionario, setEditingFuncionario] = useState<any>(null);
@@ -36,7 +43,7 @@ export function GestaoEquipe() {
     nome: '',
     email: '',
     telefone: '',
-    setor: '',
+    setorId: '',
     lojaId: '',
     salario: 0,
     comissao: 0,
@@ -68,7 +75,7 @@ export function GestaoEquipe() {
       nome: funcionario.nome,
       email: funcionario.email,
       telefone: funcionario.telefone,
-      setor: funcionario.setor,
+      setorId: funcionario.setorId,
       lojaId: funcionario.lojaId,
       salario: funcionario.salario,
       comissao: funcionario.comissao,
@@ -87,7 +94,7 @@ export function GestaoEquipe() {
       nome: '',
       email: '',
       telefone: '',
-      setor: '',
+      setorId: '',
       lojaId: '',
       salario: 0,
       comissao: 0,
@@ -106,7 +113,7 @@ export function GestaoEquipe() {
       nome: '',
       email: '',
       telefone: '',
-      setor: '',
+      setorId: '',
       lojaId: '',
       salario: 0,
       comissao: 0,
@@ -329,7 +336,7 @@ export function GestaoEquipe() {
 
                               <FormField
                                 control={form.control}
-                                name="setor"
+                                name="setorId"
                                 render={({ field }) => (
                                   <FormItem>
                                     <FormLabel className="text-xs font-medium text-slate-700">Setor</FormLabel>

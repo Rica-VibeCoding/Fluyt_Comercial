@@ -15,7 +15,6 @@ export { default as GestaoLojas } from './lojas/gestao-lojas';
 
 // Equipe
 export { GestaoEquipe } from './equipe/gestao-equipe';
-export { FuncionarioForm } from './equipe/funcionario-form';
 export { FuncionarioTable } from './equipe/funcionario-table';
 
 // Setores

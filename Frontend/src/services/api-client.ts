@@ -450,6 +450,108 @@ class ApiClient {
     return this.request<any>(endpoint);
   }
 
+  // ============= MÉTODOS ESPECÍFICOS PARA FUNCIONÁRIOS =============
+
+  // Listar funcionários com filtros
+  async listarFuncionarios(filtros?: {
+    busca?: string;
+    perfil?: string;
+    setor_id?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<ApiResponse<ApiListResponse<any>>> {
+    const params = new URLSearchParams();
+    
+    if (filtros?.busca) params.append('busca', filtros.busca);
+    if (filtros?.perfil) params.append('perfil', filtros.perfil);
+    if (filtros?.setor_id) params.append('setor_id', filtros.setor_id);
+    if (filtros?.page) params.append('page', filtros.page.toString());
+    if (filtros?.limit) params.append('limit', filtros.limit.toString());
+
+    let endpoint = API_CONFIG.ENDPOINTS.FUNCIONARIOS;
+    if (params.toString()) {
+      endpoint += `?${params.toString()}`;
+    }
+
+    return this.request<ApiListResponse<any>>(endpoint);
+  }
+
+  // Buscar funcionário por ID
+  async buscarFuncionarioPorId(id: string): Promise<ApiResponse<any>> {
+    const endpoint = `${API_CONFIG.ENDPOINTS.FUNCIONARIOS}/${id}`;
+    return this.request<any>(endpoint);
+  }
+
+  // Criar funcionário
+  async criarFuncionario(dados: any): Promise<ApiResponse<any>> {
+    // Converter dados do frontend para backend
+    const payload = this.converterFuncionarioParaBackend(dados);
+    
+    const endpoint = API_CONFIG.ENDPOINTS.FUNCIONARIOS;
+    return this.request<any>(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // Atualizar funcionário
+  async atualizarFuncionario(id: string, dados: any): Promise<ApiResponse<any>> {
+    // Converter dados do frontend para backend
+    const payload = this.converterFuncionarioParaBackend(dados);
+    
+    const endpoint = `${API_CONFIG.ENDPOINTS.FUNCIONARIOS}/${id}`;
+    return this.request<any>(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // Excluir funcionário (soft delete)
+  async excluirFuncionario(id: string): Promise<ApiResponse<void>> {
+    const endpoint = `${API_CONFIG.ENDPOINTS.FUNCIONARIOS}/${id}`;
+    return this.request<void>(endpoint, {
+      method: 'DELETE',
+    });
+  }
+
+  // Converter dados do frontend para backend
+  private converterFuncionarioParaBackend(dados: any): any {
+    const payload: any = {
+      nome: dados.nome,
+      email: dados.email,
+      telefone: dados.telefone,
+      loja_id: dados.lojaId,           // camelCase → snake_case
+      setor_id: dados.setorId,         // camelCase → snake_case
+      perfil: dados.tipoFuncionario,   // tipoFuncionario → perfil
+      nivel_acesso: dados.nivelAcesso, // camelCase → snake_case
+      salario: dados.salario,
+      data_admissao: dados.dataAdmissao, // camelCase → snake_case
+    };
+
+    // Lógica especial para comissão baseada no perfil
+    if (dados.tipoFuncionario === 'VENDEDOR' && dados.comissao) {
+      payload.comissao_percentual_vendedor = dados.comissao;
+    } else if (dados.tipoFuncionario === 'GERENTE' && dados.comissao) {
+      payload.comissao_percentual_gerente = dados.comissao;
+    }
+
+    // Mapear configurações para campos separados do banco
+    if (dados.configuracoes) {
+      if (dados.configuracoes.limiteDesconto) {
+        payload.limite_desconto = dados.configuracoes.limiteDesconto;
+      }
+      if (dados.configuracoes.valorMedicao) {
+        payload.valor_medicao = dados.configuracoes.valorMedicao;
+      }
+      if (dados.configuracoes.minimoGarantido) {
+        payload.valor_minimo_garantido = dados.configuracoes.minimoGarantido;
+        payload.tem_minimo_garantido = true;
+      }
+    }
+
+    return payload;
+  }
+
   // ============= MÉTODOS DE AUTENTICAÇÃO =============
 
   // Renovar token de acesso

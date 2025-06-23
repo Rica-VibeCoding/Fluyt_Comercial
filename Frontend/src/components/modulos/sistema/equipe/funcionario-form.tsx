@@ -188,10 +188,10 @@ export function FuncionarioForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="setor">Setor *</Label>
+            <Label htmlFor="setorId">Setor *</Label>
             <Select
-              value={formData.setor}
-              onValueChange={(value) => handleChange('setor', value)}
+              value={formData.setorId}
+              onValueChange={(value) => handleChange('setorId', value)}
               disabled={loading}
             >
               <SelectTrigger>
@@ -199,7 +199,7 @@ export function FuncionarioForm({
               </SelectTrigger>
               <SelectContent>
                 {setores.map((setor) => (
-                  <SelectItem key={setor.id} value={setor.nome}>
+                  <SelectItem key={setor.id} value={setor.id}>
                     {setor.nome}
                   </SelectItem>
                 ))}

@@ -67,7 +67,8 @@ export interface Funcionario extends BaseEntity {
   nome: string;
   email: string;
   telefone: string;
-  setor: string;
+  setorId: string;  // ⚠️ MUDOU: agora é UUID, não nome!
+  setor?: string;   // ✅ OPCIONAL: nome do setor (via JOIN)
   lojaId: string;
   loja?: string;
   salario: number;
@@ -92,7 +93,7 @@ export interface FuncionarioFormData {
   nome: string;
   email: string;
   telefone: string;
-  setor: string;
+  setorId: string;  // ⚠️ MUDOU: agora é UUID, não nome!
   lojaId: string;
   salario: number;
   comissao: number;

@@ -75,11 +75,7 @@ export function FuncionarioTable({
     return variants[nivel as keyof typeof variants] || 'outline';
   };
 
-  const getPerformanceColor = (performance: number) => {
-    if (performance >= 80) return 'bg-green-500';
-    if (performance >= 60) return 'bg-yellow-500';
-    return 'bg-red-500';
-  };
+
 
   if (funcionarios.length === 0) {
     return (
@@ -102,7 +98,7 @@ export function FuncionarioTable({
             <TableHead className="font-semibold text-slate-700 h-10">Código</TableHead>
             <TableHead className="font-semibold text-slate-700 h-10">Funcionário</TableHead>
             <TableHead className="font-semibold text-slate-700 h-10">Cargo</TableHead>
-            <TableHead className="font-semibold text-slate-700 h-10">Performance</TableHead>
+            <TableHead className="font-semibold text-slate-700 h-10">Setor</TableHead>
             <TableHead className="font-semibold text-slate-700 h-10">Status</TableHead>
             <TableHead className="text-right font-semibold text-slate-700 h-10">Ações</TableHead>
           </TableRow>
@@ -143,17 +139,9 @@ export function FuncionarioTable({
                   </Badge>
                 </TableCell>
 
-                {/* Performance - COMPACTA */}
+                {/* Setor */}
                 <TableCell className="py-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-12 bg-gray-200 rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full ${getPerformanceColor(funcionario.performance)}`}
-                        style={{ width: `${funcionario.performance}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-xs font-medium">{funcionario.performance}%</span>
-                  </div>
+                  <span className="text-sm text-slate-900">{funcionario.setor || '--'}</span>
                 </TableCell>
 
                 {/* Status */}
@@ -288,28 +276,17 @@ export function FuncionarioTable({
                           </div>
                         </div>
 
-                        {/* COLUNA 3 - PERFORMANCE E STATUS */}
+                        {/* COLUNA 3 - STATUS E ADMISSÃO */}
                         <div className="space-y-2">
-                          <h4 className="text-xs font-semibold text-slate-700 mb-2 uppercase tracking-wide">Performance</h4>
+                          <h4 className="text-xs font-semibold text-slate-700 mb-2 uppercase tracking-wide">Status</h4>
                           
-                          {/* Performance Detalhada */}
+                          {/* Admissão */}
                           <div className="flex items-center gap-2">
-                            <TrendingUp className="h-3 w-3 text-green-500" />
-                            <span className="text-xs font-medium text-slate-600 min-w-[50px]">Índice:</span>
-                            <div className="flex items-center gap-2">
-                              <div className="w-16 bg-gray-200 rounded-full h-2">
-                                <div 
-                                  className={`h-2 rounded-full ${getPerformanceColor(funcionario.performance)}`}
-                                  style={{ width: `${funcionario.performance}%` }}
-                                ></div>
-                              </div>
-                              <span className={`text-xs font-medium ${
-                                funcionario.performance >= 80 ? 'text-green-600' :
-                                funcionario.performance >= 60 ? 'text-yellow-600' : 'text-red-600'
-                              }`}>
-                                {funcionario.performance}%
-                              </span>
-                            </div>
+                            <TrendingUp className="h-3 w-3 text-blue-500" />
+                            <span className="text-xs font-medium text-slate-600 min-w-[50px]">Admissão:</span>
+                            <span className="text-xs text-slate-900">
+                              {funcionario.dataAdmissao ? new Date(funcionario.dataAdmissao).toLocaleDateString('pt-BR') : '--'}
+                            </span>
                           </div>
 
                           {/* Status Visual */}
