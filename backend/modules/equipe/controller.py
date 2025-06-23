@@ -5,6 +5,7 @@ Define todas as rotas HTTP para gerenciar funcionários
 import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, status, HTTPException, Request
+from datetime import datetime
 
 from core.auth import get_current_user, User
 from core.rate_limiter import limiter
@@ -14,6 +15,7 @@ from core.dependencies import (
     SuccessResponse
 )
 from core.exceptions import NotFoundException, ConflictException
+from middleware.field_converter import field_converter
 
 from .schemas import (
     FuncionarioCreate,
@@ -27,7 +29,7 @@ from .services import FuncionarioService
 logger = logging.getLogger(__name__)
 
 # Router do módulo
-router = APIRouter(prefix="/funcionarios", tags=["funcionarios"])
+router = APIRouter(prefix="/equipe", tags=["equipe"])
 
 # Instância do serviço
 funcionario_service = FuncionarioService()
@@ -99,11 +101,9 @@ async def listar_funcionarios(
         
         # Se data_inicio e data_fim foram fornecidas, converte para datetime
         if data_inicio:
-            from datetime import datetime
             filtros.data_inicio = datetime.fromisoformat(data_inicio)
         
         if data_fim:
-            from datetime import datetime
             filtros.data_fim = datetime.fromisoformat(data_fim)
         
         # Chama o serviço
@@ -113,11 +113,24 @@ async def listar_funcionarios(
             pagination=pagination
         )
         
+        # REMOVIDA DUPLA CONVERSÃO - Conversão agora é feita apenas no frontend service
+        # resultado_convertido = FuncionarioListResponse(
+        #     items=[
+        #         FuncionarioResponse(**field_converter.convert_response_fields(item.dict()))
+        #         for item in resultado.items
+        #     ],
+        #     total=resultado.total,
+        #     page=resultado.page,
+        #     limit=resultado.limit,
+        #     pages=resultado.pages
+        # )
+        
         logger.info(
             f"Listagem de funcionários: {len(resultado.items)} itens "
             f"(página {pagination.page}) para usuário {current_user.id}"
         )
         
+        # Retorna dados direto sem conversão (conversão feita no frontend)
         return resultado
     
     except Exception as e:
@@ -162,8 +175,14 @@ async def buscar_funcionario(
     try:
         funcionario = await funcionario_service.buscar_funcionario(funcionario_id, current_user)
         
+        # REMOVIDA DUPLA CONVERSÃO - Conversão agora é feita apenas no frontend service
+        # funcionario_convertido = FuncionarioResponse(
+        #     **field_converter.convert_response_fields(funcionario.dict())
+        # )
+        
         logger.info(f"Funcionário consultado: {funcionario_id} por usuário {current_user.id}")
         
+        # Retorna dados direto sem conversão
         return funcionario
     
     except Exception as e:
@@ -173,7 +192,7 @@ async def buscar_funcionario(
 
 @router.post("/", response_model=FuncionarioResponse, status_code=status.HTTP_201_CREATED)
 async def criar_funcionario(
-    dados: FuncionarioCreate,
+    dados_raw: dict,
     current_user: User = Depends(get_current_user)
 ) -> FuncionarioResponse:
     """
@@ -204,10 +223,20 @@ async def criar_funcionario(
     - Loja e setor devem existir se informados
     """
     try:
+        # REMOVIDA DUPLA CONVERSÃO - Frontend já envia no formato correto
+        # dados_convertidos = field_converter.convert_request_fields(dados_raw)
+        dados = FuncionarioCreate(**dados_raw)
+        
         funcionario = await funcionario_service.criar_funcionario(dados, current_user)
+        
+        # REMOVIDA DUPLA CONVERSÃO
+        # funcionario_convertido = FuncionarioResponse(
+        #     **field_converter.convert_response_fields(funcionario.dict())
+        # )
         
         logger.info(f"Funcionário criado: {funcionario.id} por usuário {current_user.id}")
         
+        # Retorna dados direto sem conversão
         return funcionario
     
     except Exception as e:
@@ -218,7 +247,7 @@ async def criar_funcionario(
 @router.put("/{funcionario_id}", response_model=FuncionarioResponse)
 async def atualizar_funcionario(
     funcionario_id: str,
-    dados: FuncionarioUpdate,
+    dados_raw: dict,
     current_user: User = Depends(get_current_user)
 ) -> FuncionarioResponse:
     """
@@ -246,10 +275,20 @@ async def atualizar_funcionario(
     - Loja e setor devem existir se alterados
     """
     try:
+        # REMOVIDA DUPLA CONVERSÃO - Frontend já envia no formato correto
+        # dados_convertidos = field_converter.convert_request_fields(dados_raw)
+        dados = FuncionarioUpdate(**dados_raw)
+        
         funcionario = await funcionario_service.atualizar_funcionario(funcionario_id, dados, current_user)
+        
+        # REMOVIDA DUPLA CONVERSÃO
+        # funcionario_convertido = FuncionarioResponse(
+        #     **field_converter.convert_response_fields(funcionario.dict())
+        # )
         
         logger.info(f"Funcionário atualizado: {funcionario_id} por usuário {current_user.id}")
         
+        # Retorna dados direto sem conversão
         return funcionario
     
     except Exception as e:
@@ -342,4 +381,20 @@ async def verificar_nome(
     
     except Exception as e:
         logger.error(f"Erro ao verificar nome {nome}: {str(e)}")
-        raise 
+        raise
+
+
+# ============= ROTAS PÚBLICAS PARA TESTE =============
+
+@router.get("/test/public")
+async def teste_publico_equipe():
+    """Endpoint público para teste de conectividade - não requer autenticação"""
+    return {
+        "message": "Endpoint equipe está funcionando",
+        "timestamp": datetime.now(),
+        "auth_required": False,
+        "route": "/api/v1/equipe/test/public"
+    }
+
+
+# ============= ROTAS PROTEGIDAS ============= 

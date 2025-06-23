@@ -184,8 +184,17 @@ export function FuncionarioTable({
                         <AlertDialogHeader>
                           <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Tem certeza que deseja excluir o funcionário <strong>{funcionario.nome}</strong>?
-                            Esta ação não pode ser desfeita.
+                            <div className="space-y-2">
+                              <p>Tem certeza que deseja excluir o funcionário?</p>
+                              <div className="bg-red-50 border border-red-200 rounded p-3 space-y-1">
+                                <p className="font-semibold text-red-900">{funcionario.nome}</p>
+                                <p className="text-sm text-red-700">{funcionario.email}</p>
+                                <p className="text-sm text-red-700">Cargo: {funcionario.tipoFuncionario}</p>
+                              </div>
+                              <p className="text-sm text-gray-600">
+                                Esta ação marcará o funcionário como inativo. Os dados serão preservados para auditoria.
+                              </p>
+                            </div>
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -194,7 +203,7 @@ export function FuncionarioTable({
                             onClick={() => onDelete(funcionario.id)}
                             className="bg-red-600 hover:bg-red-700"
                           >
-                            Excluir
+                            Confirmar Exclusão
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>

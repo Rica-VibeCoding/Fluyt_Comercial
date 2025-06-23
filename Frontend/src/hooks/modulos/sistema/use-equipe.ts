@@ -4,7 +4,7 @@ import type { Funcionario, FuncionarioFormData } from '@/types/sistema';
 import { useEmpresas } from './use-empresas';
 import { useLojas } from './use-lojas';
 import { useSetores } from './use-setores';
-import { apiClient } from '@/services/api-client';
+import { equipeService } from '@/services/equipe-service';
 
 export function useEquipe() {
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
@@ -95,15 +95,14 @@ export function useEquipe() {
         return false;
       }
 
-      // ✅ CHAMAR API REAL (com tratamento de offline)
-      const response = await apiClient.criarFuncionario(dados);
+      // ✅ CHAMAR SERVIÇO DEDICADO (com conversões centralizadas)
+      const response = await equipeService.criar(dados);
       
       if (response.success && response.data) {
-        // ✅ SUCESSO: Converter dados do backend para frontend
-        const novoFuncionario = converterBackendParaFrontend(response.data);
-        setFuncionarios(prev => [...prev, novoFuncionario]);
+        // ✅ SUCESSO: Dados já vêm convertidos do serviço
+        setFuncionarios(prev => [...prev, response.data!]);
         toast.success('Funcionário criado com sucesso!');
-        console.log('✅ Funcionário criado:', novoFuncionario.nome);
+        console.log('✅ Funcionário criado:', response.data.nome);
         return true;
       } else {
         // Backend retornou erro específico
@@ -141,14 +140,13 @@ export function useEquipe() {
         return false;
       }
 
-      // ✅ CHAMADA REAL DA API (não mais simulação fake)
-      const response = await apiClient.atualizarFuncionario(id, dados);
+      // ✅ CHAMAR SERVIÇO DEDICADO (com conversões centralizadas)
+      const response = await equipeService.atualizar(id, dados);
       
       if (response.success && response.data) {
-        // Converter dados do backend para frontend
-        const funcionarioAtualizado = converterBackendParaFrontend(response.data);
+        // ✅ SUCESSO: Dados já vêm convertidos do serviço
         setFuncionarios(prev => prev.map(funcionario => 
-          funcionario.id === id ? funcionarioAtualizado : funcionario
+          funcionario.id === id ? response.data! : funcionario
         ));
         toast.success('Funcionário atualizado com sucesso!');
         return true;
@@ -180,16 +178,16 @@ export function useEquipe() {
       // Preparar dados para atualização (apenas o campo ativo)
       const dadosAtualizacao = { ativo: !funcionario.ativo };
       
-      // ✅ CHAMADA REAL DA API 
-      const response = await apiClient.atualizarFuncionario(id, dadosAtualizacao);
+      // ✅ CHAMAR SERVIÇO DEDICADO (com conversões centralizadas)
+      const response = await equipeService.atualizar(id, dadosAtualizacao);
       
       if (response.success && response.data) {
-        const funcionarioAtualizado = converterBackendParaFrontend(response.data);
+        // ✅ SUCESSO: Dados já vêm convertidos do serviço
         setFuncionarios(prev => prev.map(f => 
-          f.id === id ? funcionarioAtualizado : f
+          f.id === id ? response.data! : f
         ));
         
-        const novoStatus = funcionarioAtualizado.ativo ? 'ativado' : 'desativado';
+        const novoStatus = response.data!.ativo ? 'ativado' : 'desativado';
         toast.success(`Funcionário ${novoStatus} com sucesso!`);
       } else {
         toast.error(response.error || 'Erro ao alterar status do funcionário');
@@ -208,8 +206,8 @@ export function useEquipe() {
     setLoading(true);
     
     try {
-      // Chamar API real
-      const response = await apiClient.excluirFuncionario(id);
+      // Chamar serviço dedicado
+      const response = await equipeService.excluir(id);
       
       if (response.success) {
         setFuncionarios(prev => prev.filter(f => f.id !== id));
@@ -270,85 +268,85 @@ export function useEquipe() {
     setLoading(true);
     
     try {
-      // ✅ CARREGAR FUNCIONÁRIOS DIRETAMENTE (teste de conectividade removido)
-      console.log('🔄 Carregando funcionários da API...');
-      const response = await apiClient.listarFuncionarios();
+      // ✅ CARREGAR FUNCIONÁRIOS VIA SERVIÇO DEDICADO
+      console.log('🔄 Carregando funcionários via serviço...');
+      
+      // Usar serviço com conversões centralizadas
+      const response = await equipeService.listar();
       
       if (response.success && response.data) {
-        // ✅ SUCESSO: Converter dados do backend para frontend
-        const funcionariosConvertidos = response.data.items.map(converterBackendParaFrontend);
-        setFuncionarios(funcionariosConvertidos);
-        console.log(`✅ ${funcionariosConvertidos.length} funcionários carregados da API`);
-        
-        // ✅ Funcionários carregados com sucesso
+        // ✅ SUCESSO: Dados já vêm convertidos do serviço
+        setFuncionarios(response.data.items);
+        console.log(`✅ ${response.data.items.length} funcionários carregados via serviço`);
       } else {
         // Backend retornou erro específico (400, 401, 500, etc)
         console.warn('⚠️ Backend retornou erro:', response.error);
+        toast.error(response.error || 'Erro ao carregar funcionários');
         setFuncionarios([]); // Lista vazia, não dados fake
-        toast.error(`Erro do servidor: ${response.error || 'Erro desconhecido'}`);
+      }
+    } catch (error: any) {
+      // Tratar especificamente erro de autenticação
+      if (error?.message?.includes('403') || error?.message?.includes('Not authenticated')) {
+        console.error('🚫 Erro de autenticação - usuário não está logado ou token expirado');
+        toast.error('Faça login para acessar funcionários', {
+          description: 'Sua sessão pode ter expirado'
+        });
+        // Limpar dados de autenticação inválidos
+        localStorage.removeItem('fluyt_auth_token');
+        localStorage.removeItem('fluyt_refresh_token');
+        localStorage.removeItem('fluyt_user');
+        
+        // Redirecionar para login se não estiver na página de login
+        if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
+      } else {
+        console.error('❌ Erro ao carregar funcionários:', error);
+        toast.error('Erro ao carregar funcionários - Verifique se está logado');
       }
       
-    } catch (error) {
-      // Erro inesperado na comunicação
-      console.error('🚨 Erro inesperado ao carregar funcionários:', error);
-      setFuncionarios([]);
-      
-      toast.error('Erro de comunicação com o servidor', {
-        description: 'Tente novamente em alguns segundos'
-      });
+      setFuncionarios([]); // Lista vazia em caso de erro
     } finally {
       setLoading(false);
     }
-  }, []); // ✅ Dependência removida - função não existe mais
+  }, []);
 
-  // ✅ Converter dados do backend (snake_case) para frontend (camelCase) 
-  // Esta função traduz os nomes dos campos entre as duas camadas
-  const converterBackendParaFrontend = (dadosBackend: any): Funcionario => {
-    return {
-      // IDs e campos básicos (já vêm certos)
-      id: dadosBackend.id,
-      nome: dadosBackend.nome,
-      email: dadosBackend.email,
-      telefone: dadosBackend.telefone,
-      
-      // Relacionamentos com outras tabelas
-      setorId: dadosBackend.setorId || dadosBackend.setor_id, // Backend pode vir nos dois formatos
-      setor: dadosBackend.setor_nome || dadosBackend.setor, // Nome do setor via JOIN
-      lojaId: dadosBackend.lojaId || dadosBackend.loja_id, // Backend pode vir nos dois formatos  
-      loja: dadosBackend.loja_nome || dadosBackend.loja, // Nome da loja via JOIN
-      
-      // Campos financeiros (com fallback para zero)
-      salario: dadosBackend.salario || 0,
-      comissao: dadosBackend.comissao || dadosBackend.comissao_percentual_vendedor || dadosBackend.comissao_percentual_gerente || 0,
-      
-      // Campos de trabalho
-      dataAdmissao: dadosBackend.dataAdmissao || dadosBackend.data_admissao,
-      ativo: dadosBackend.ativo !== undefined ? dadosBackend.ativo : true, // Padrão ativo
-      
-      // ⚠️ ATENÇÃO: Backend usa 'perfil', Frontend usa 'tipoFuncionario' 
-      tipoFuncionario: dadosBackend.tipoFuncionario || dadosBackend.perfil || 'VENDEDOR',
-      nivelAcesso: dadosBackend.nivelAcesso || dadosBackend.nivel_acesso || 'USUARIO',
-      
-      // Campo calculado no frontend (sempre zero por enquanto)
-      performance: 0, 
-      
-      // Configurações específicas por tipo de funcionário
-      configuracoes: {
-        limiteDesconto: dadosBackend.configuracoes?.limiteDesconto || dadosBackend.limite_desconto || 0,
-        valorMedicao: dadosBackend.configuracoes?.valorMedicao || dadosBackend.valor_medicao || 0,
-        minimoGarantido: dadosBackend.configuracoes?.minimoGarantido || dadosBackend.valor_minimo_garantido || 0,
-      },
-      
-      // Timestamps (sempre presentes)
-      createdAt: dadosBackend.criadoEm || dadosBackend.created_at || new Date().toISOString(),
-      updatedAt: dadosBackend.atualizadoEm || dadosBackend.updated_at || new Date().toISOString(),
-    };
-  };
-
-  // Carregar dados na inicialização
+  // ✅ Carregar dados ao montar - simplificado para React 18 StrictMode
   useEffect(() => {
-    carregarFuncionarios();
+    let mounted = true;
+    
+    const loadData = async () => {
+      if (!mounted) return;
+      
+      // Verificar se há token JWT antes de fazer a requisição
+      const authToken = localStorage.getItem('fluyt_auth_token');
+      if (!authToken) {
+        console.warn('🚫 Token JWT não encontrado - usuário não está logado');
+        setFuncionarios([]);
+        setLoading(false);
+        return;
+      }
+      
+      // Token JWT já é usado automaticamente pelo equipeService
+      
+      // Pequeno delay para garantir que o apiClient esteja inicializado
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      if (!mounted) return;
+      
+      await carregarFuncionarios();
+    };
+    
+    loadData();
+    
+    // Cleanup function simples para React 18 StrictMode
+    return () => {
+      mounted = false;
+    };
   }, [carregarFuncionarios]);
+
+  // REMOVIDA função converterBackendParaFrontend
+  // Agora todas as conversões são feitas no equipe-service.ts de forma centralizada
 
   return {
     funcionarios,

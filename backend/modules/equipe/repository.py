@@ -27,7 +27,7 @@ class FuncionarioRepository:
         self.db = db
         self.table = 'cad_equipe'
     
-    async def listar(
+    def listar(
         self,
         loja_id: Optional[str] = None,
         filtros: Dict[str, Any] = None,
@@ -48,12 +48,8 @@ class FuncionarioRepository:
             Dicionário com items e informações de paginação
         """
         try:
-            # Nested select para buscar funcionários + loja + setor em UMA query só
-            query = self.db.table(self.table).select('''
-                *,
-                loja:c_lojas(id, nome),
-                setor:cad_setores(id, nome)
-            ''').eq('ativo', True)  # Apenas funcionários ativos (soft delete)
+            # Buscar funcionários (sem joins devido a limitação do cliente Python)
+            query = self.db.table(self.table).select('*').eq('ativo', True)
             
             # Aplica filtro de loja se fornecido
             if loja_id is not None:
@@ -102,18 +98,30 @@ class FuncionarioRepository:
             # Executa a query OTIMIZADA
             result = query.execute()
             
-            # Processa os dados já unidos
+            # Processa os dados e busca nomes relacionados separadamente
             items = []
             for item in result.data:
-                # Extrai dados da loja
-                if item.get('loja'):
-                    item['loja_nome'] = item['loja'].get('nome')
-                    del item['loja']
+                # Busca nome da loja se houver loja_id
+                if item.get('loja_id'):
+                    try:
+                        loja_result = self.db.table('c_lojas').select('nome').eq('id', item['loja_id']).execute()
+                        if loja_result.data:
+                            item['loja_nome'] = loja_result.data[0]['nome']
+                    except:
+                        item['loja_nome'] = None
+                else:
+                    item['loja_nome'] = None
                 
-                # Extrai dados do setor
-                if item.get('setor'):
-                    item['setor_nome'] = item['setor'].get('nome')
-                    del item['setor']
+                # Busca nome do setor se houver setor_id
+                if item.get('setor_id'):
+                    try:
+                        setor_result = self.db.table('cad_setores').select('nome').eq('id', item['setor_id']).execute()
+                        if setor_result.data:
+                            item['setor_nome'] = setor_result.data[0]['nome']
+                    except:
+                        item['setor_nome'] = None
+                else:
+                    item['setor_nome'] = None
                 
                 items.append(item)
             
@@ -129,7 +137,7 @@ class FuncionarioRepository:
             logger.error(f"Erro ao listar funcionários: {str(e)}")
             raise DatabaseException(f"Erro ao listar funcionários: {str(e)}")
     
-    async def buscar_por_id(self, funcionario_id: str, loja_id: Optional[str] = None) -> Dict[str, Any]:
+    def buscar_por_id(self, funcionario_id: str, loja_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Busca um funcionário específico pelo ID
         OTIMIZADO: Usa nested select para evitar problema N+1
@@ -145,12 +153,8 @@ class FuncionarioRepository:
             NotFoundException: Se o funcionário não for encontrado
         """
         try:
-            # Nested select para buscar funcionário + loja + setor em UMA query só
-            query = self.db.table(self.table).select('''
-                *,
-                loja:c_lojas(id, nome),
-                setor:cad_setores(id, nome)
-            ''').eq('id', funcionario_id).eq('ativo', True)
+            # Buscar funcionário (sem joins devido a limitação do cliente Python)
+            query = self.db.table(self.table).select('*').eq('id', funcionario_id).eq('ativo', True)
             
             # Aplica filtro de loja se fornecido
             if loja_id is not None:
@@ -163,14 +167,28 @@ class FuncionarioRepository:
             
             funcionario = result.data[0]
             
-            # Processa dados relacionados
-            if funcionario.get('loja'):
-                funcionario['loja_nome'] = funcionario['loja'].get('nome')
-                del funcionario['loja']
+            # Busca dados relacionados separadamente
+            # Busca nome da loja se houver loja_id
+            if funcionario.get('loja_id'):
+                try:
+                    loja_result = self.db.table('c_lojas').select('nome').eq('id', funcionario['loja_id']).execute()
+                    if loja_result.data:
+                        funcionario['loja_nome'] = loja_result.data[0]['nome']
+                except:
+                    funcionario['loja_nome'] = None
+            else:
+                funcionario['loja_nome'] = None
             
-            if funcionario.get('setor'):
-                funcionario['setor_nome'] = funcionario['setor'].get('nome')
-                del funcionario['setor']
+            # Busca nome do setor se houver setor_id
+            if funcionario.get('setor_id'):
+                try:
+                    setor_result = self.db.table('cad_setores').select('nome').eq('id', funcionario['setor_id']).execute()
+                    if setor_result.data:
+                        funcionario['setor_nome'] = setor_result.data[0]['nome']
+                except:
+                    funcionario['setor_nome'] = None
+            else:
+                funcionario['setor_nome'] = None
             
             return funcionario
         
@@ -180,7 +198,7 @@ class FuncionarioRepository:
             logger.error(f"Erro ao buscar funcionário {funcionario_id}: {str(e)}")
             raise DatabaseException(f"Erro ao buscar funcionário: {str(e)}")
     
-    async def buscar_por_nome(self, nome: str, loja_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    def buscar_por_nome(self, nome: str, loja_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
         Busca funcionário pelo nome exato
         
@@ -209,7 +227,7 @@ class FuncionarioRepository:
             logger.error(f"Erro ao buscar por nome: {str(e)}")
             raise DatabaseException(f"Erro ao buscar funcionário: {str(e)}")
     
-    async def buscar_por_email(self, email: str, loja_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    def buscar_por_email(self, email: str, loja_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
         Busca funcionário pelo email
         
@@ -238,7 +256,7 @@ class FuncionarioRepository:
             logger.error(f"Erro ao buscar por email: {str(e)}")
             raise DatabaseException(f"Erro ao buscar funcionário: {str(e)}")
     
-    async def criar(self, dados: Dict[str, Any]) -> Dict[str, Any]:
+    def criar(self, dados: Dict[str, Any]) -> Dict[str, Any]:
         """
         Cria um novo funcionário
         
@@ -261,7 +279,7 @@ class FuncionarioRepository:
             
             # Verifica se nome já existe (considerando loja se fornecida)
             loja_id = dados.get('loja_id')
-            existe_nome = await self.buscar_por_nome(nome_normalizado, loja_id)
+            existe_nome = self.buscar_por_nome(nome_normalizado, loja_id)
             if existe_nome:
                 logger.warning(f"CONFLICT: Nome '{nome_normalizado}' já existe no funcionário {existe_nome['id']}")
                 raise ConflictException(
@@ -272,7 +290,7 @@ class FuncionarioRepository:
             if dados.get('email'):
                 email_normalizado = dados['email'].strip().lower() if dados['email'] else ''
                 if email_normalizado:
-                    existe_email = await self.buscar_por_email(email_normalizado, loja_id)
+                    existe_email = self.buscar_por_email(email_normalizado, loja_id)
                     if existe_email:
                         logger.info(f"INFO: Email '{email_normalizado}' já existe em outro funcionário - permitido")
             

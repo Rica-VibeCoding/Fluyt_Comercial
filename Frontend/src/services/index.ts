@@ -7,6 +7,7 @@
 export { apiClient } from './api-client';
 export { clienteService } from './cliente-service';
 export { empresaService } from './empresa-service';
+export { setoresService } from './setores-service';
 
 // Tipos
 export type {

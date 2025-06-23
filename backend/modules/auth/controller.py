@@ -5,10 +5,12 @@ import logging
 from typing import Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPAuthorizationCredentials
+from supabase import Client as Supabase
 
 from core.auth import get_current_user, security, User
 from core.dependencies import SuccessResponse
 from core.exceptions import UnauthorizedException, ValidationException
+from core.database import get_database
 
 from .schemas import (
     LoginRequest,
@@ -29,74 +31,120 @@ router = APIRouter()
 auth_service = AuthService()
 
 
-@router.post("/login", response_model=LoginResponse)
-async def login(request: Request, credentials: LoginRequest) -> LoginResponse:
+@router.post("/login", response_model=LoginResponse, summary="Login de usuário")
+async def login(
+    credentials: LoginRequest,
+    request: Request,
+    db: Supabase = Depends(get_database)
+) -> LoginResponse:
     """
-    Endpoint de login
+    Autentica um usuário no sistema
     
-    Autentica usuário e retorna tokens de acesso
+    - **email**: Email do usuário
+    - **password**: Senha do usuário
     
-    **Payload:**
-    ```json
-    {
-        "email": "usuario@empresa.com",
-        "password": "minhasenha123"
-    }
-    ```
-    
-    **Response:**
-    ```json
-    {
-        "success": true,
-        "message": "Login realizado com sucesso",
-        "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
-        "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
-        "token_type": "bearer",
-        "expires_in": 3600,
-        "user": {
-            "id": "uuid",
-            "email": "usuario@empresa.com",
-            "nome": "João Silva",
-            "perfil": "VENDEDOR",
-            "loja_id": "loja-uuid",
-            "empresa_id": "empresa-uuid"
-        }
-    }
-    ```
+    Retorna tokens de acesso e informações do usuário
     """
-    # Rate limiting simples
-    from core.simple_rate_limit import rate_limiter
-    
-    # Pega IP do cliente (funciona atrás de proxy também)
-    client_ip = request.client.host
-    if request.headers.get("X-Forwarded-For"):
-        client_ip = request.headers.get("X-Forwarded-For").split(",")[0].strip()
-    
-    # Verifica limite por IP
-    if not rate_limiter.verificar_limite(client_ip):
-        tempo_espera = rate_limiter.tempo_restante(client_ip)
-        minutos = tempo_espera // 60
-        segundos = tempo_espera % 60
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"Muitas tentativas de login. Tente novamente em {minutos}m {segundos}s"
-        )
-    
     try:
-        result = await auth_service.login(
+        # Log da tentativa de login
+        logger.info(f"Tentativa de login: {credentials.email}")
+        
+        # Tentar autenticar com Supabase Auth
+        try:
+            auth_response = db.auth.sign_in_with_password({
+                "email": credentials.email,
+                "password": credentials.password
+            })
+            
+            if not auth_response.user:
+                logger.warning(f"Falha na autenticação: {credentials.email}")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Email ou senha incorretos"
+                )
+                
+        except Exception as auth_error:
+            # Se for erro de credenciais, retornar 401 ao invés de 500
+            if "Invalid login credentials" in str(auth_error) or "invalid_credentials" in str(auth_error):
+                logger.warning(f"Credenciais inválidas para: {credentials.email}")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Email ou senha incorretos"
+                )
+            else:
+                # Outros erros (conexão, etc.)
+                logger.error(f"Erro interno na autenticação: {str(auth_error)}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Erro interno do servidor"
+                )
+        
+        user_id = auth_response.user.id
+        access_token = auth_response.session.access_token
+        refresh_token = auth_response.session.refresh_token
+        expires_in = auth_response.session.expires_in or 3600
+        
+        # Buscar dados do usuário na tabela cad_equipe (Equipe)
+        try:
+            equipe_response = db.table("cad_equipe")\
+                .select("*")\
+                .eq("email", credentials.email)\
+                .eq("ativo", True)\
+                .maybe_single()\
+                .execute()
+            
+            if not equipe_response.data:
+                logger.warning(f"Usuário {credentials.email} não encontrado na equipe")
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Usuário não autorizado no sistema"
+                )
+                
+            membro_equipe = equipe_response.data
+            
+        except Exception as db_error:
+            logger.error(f"Erro ao buscar dados da equipe: {str(db_error)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Erro ao acessar dados do usuário"
+            )
+        
+        # Construir dados do usuário baseado nos dados da equipe
+        user_data = UserResponse(
+            id=user_id,
             email=credentials.email,
-            password=credentials.password
+            nome=membro_equipe.get("nome", ""),
+            perfil=membro_equipe.get("perfil", "VENDEDOR"),
+            loja_id=membro_equipe.get("loja_id"),
+            empresa_id=membro_equipe.get("empresa_id"),
+            ativo=membro_equipe.get("ativo", True),
+            funcao=membro_equipe.get("perfil", "VENDEDOR"),
+            loja_nome=None,
+            empresa_nome=None
         )
         
-        # Login bem-sucedido - reseta o contador
-        rate_limiter.resetar(client_ip)
+        logger.info(f"Login bem-sucedido: {credentials.email} ({user_data.perfil})")
         
-        logger.info(f"Login successful for user: {credentials.email}")
-        return result
-    
-    except Exception as e:
-        logger.error(f"Login failed for {credentials.email}: {str(e)}")
+        return LoginResponse(
+            success=True,
+            message="Login realizado com sucesso",
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+            expires_in=expires_in,
+            user=user_data
+        )
+        
+    except HTTPException:
+        # Re-lançar HTTPExceptions sem modificar
         raise
+    except Exception as e:
+        # Capturar outros erros não tratados
+        logger.error(f"Erro inesperado no login: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro interno do servidor"
+        )
 
 
 @router.post("/refresh", response_model=RefreshResponse)

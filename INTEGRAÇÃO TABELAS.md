@@ -53,6 +53,18 @@ Criar um **padrão definitivo** para integração de todas as tabelas, garantind
    - Problema: N+1 queries ao listar empresas + lojas
    - Solução: Nested selects do Supabase
 
+8. **DUPLA CONVERSÃO DE CAMPOS (NOVO - cad_equipe)**
+   - Problema: Backend e Frontend convertendo campos duplicadamente (snake_case ↔ camelCase)
+   - Solução: Criar service dedicado no frontend centralizando conversões
+
+9. **BACKEND TRAVANDO/INSTÁVEL (NOVO - cad_equipe)**
+   - Problema: Backend com reload agressivo causando travamentos
+   - Solução: Ajustar configurações uvicorn (reload_delay, timeout_keep_alive)
+
+10. **TABELAS COM NOMES INCORRETOS (NOVO - cad_equipe)**
+    - Problema: Frontend esperava `cad_lojas`, banco tem `c_lojas`
+    - Solução: Sempre verificar nomes exatos das tabelas no Supabase
+
 ### **✅ SOLUÇÕES DEFINITIVAS IMPLEMENTADAS:**
 
 1. **CONSTRAINTS CORRETAS** - Apenas nome único, CPF/CNPJ podem repetir
@@ -62,6 +74,9 @@ Criar um **padrão definitivo** para integração de todas as tabelas, garantind
 5. **VALIDADORES CONSISTENTES** - Todos retornam `None` para valores vazios  
 6. **SOFT DELETE REAL** - Campo `ativo` + filtros em todas as queries
 7. **PERFORMANCE OTIMIZADA** - Queries únicas eliminando N+1
+8. **SERVICE LAYER NO FRONTEND** - Centraliza conversões e lógica de API
+9. **BACKEND ESTÁVEL** - Configurações otimizadas para desenvolvimento
+10. **MAPEAMENTO CORRETO DE TABELAS** - Sempre verificar nomes exatos
 
 ---
 
@@ -113,6 +128,65 @@ ALTER TABLE c_lojas DROP CONSTRAINT IF EXISTS c_lojas_telefone_key;
 ALTER TABLE c_clientes DROP CONSTRAINT IF EXISTS c_clientes_cpf_cnpj_key;
 -- Resultado: Sistema funcionando perfeitamente
 ```
+
+---
+
+## 🎯 **CASO DE SUCESSO: INTEGRAÇÃO CAD_EQUIPE**
+
+### **PROBLEMA INICIAL:**
+- Tabela mostrava "Nenhum funcionário cadastrado"
+- Erros 200 OK mas sem dados
+- Backend travando constantemente
+
+### **DIAGNÓSTICO COMPLETO:**
+1. **Dupla conversão de campos** - Backend e Frontend convertendo snake_case ↔ camelCase
+2. **Backend instável** - Configurações agressivas de reload
+3. **Falta de service layer** - Frontend sem padrão como outros módulos
+4. **Tabela relacionada incorreta** - Esperava `cad_lojas`, era `c_lojas`
+
+### **SOLUÇÃO IMPLEMENTADA:**
+
+#### 1. **Criado equipe-service.ts** (Frontend)
+```typescript
+// Centraliza conversões e lógica
+export class EquipeService {
+  private converterParaFrontend(funcionarioBackend: FuncionarioBackend): Funcionario {
+    return {
+      tipoFuncionario: funcionarioBackend.perfil, // Conversão crítica
+      // ... outras conversões
+    };
+  }
+}
+```
+
+#### 2. **Removida dupla conversão** (Backend)
+```python
+# ANTES (errado):
+# funcionario_convertido = FuncionarioResponse(**field_converter.convert_response_fields(funcionario.dict()))
+
+# DEPOIS (correto):
+return funcionario  # Retorna direto sem converter
+```
+
+#### 3. **Estabilizado backend** (main.py)
+```python
+uvicorn_config = {
+    "reload_delay": 5.0,  # Aumentado de 2.0
+    "timeout_keep_alive": 10,  # Aumentado de 5
+    "limit_max_requests": 5000,  # Aumentado de 1000
+}
+```
+
+#### 4. **Verificado tabelas corretas**
+- `c_lojas` (não `cad_lojas`)
+- `cad_setores` existe com dados
+- `cad_equipe` com 6 funcionários
+
+### **RESULTADO:**
+✅ 6 funcionários carregados com sucesso
+✅ Conversões funcionando perfeitamente
+✅ Backend estável sem travamentos
+✅ Padrão consistente com outros módulos
 
 ---
 
@@ -490,10 +564,52 @@ export interface [Tabela]FormData {
 }
 ```
 
-#### **4.3 Hook de API (PATTERN DEFINITIVO)**
+#### **4.3 Service Layer (PADRÃO OBRIGATÓRIO - NOVO)**
+```typescript
+// src/services/[tabela]-service.ts
+// SEMPRE criar service dedicado para centralizar conversões
+export class [Tabela]Service {
+  private apiClient: ApiClientStable;
+  
+  constructor() {
+    this.apiClient = new ApiClientStable();
+  }
+  
+  // Centraliza conversões backend → frontend
+  private converterParaFrontend(itemBackend: any): [Tabela] {
+    return {
+      // Conversões específicas aqui
+      // Ex: tipoFuncionario: itemBackend.perfil
+    };
+  }
+  
+  // Centraliza conversões frontend → backend
+  private converterParaBackend(itemFrontend: any): any {
+    return {
+      // Conversões específicas aqui
+      // Ex: perfil: itemFrontend.tipoFuncionario
+    };
+  }
+  
+  async listar() {
+    const response = await this.apiClient.get('/[tabela]/');
+    if (response.success && response.data) {
+      // Aplicar conversões em todos os itens
+      response.data.items = response.data.items.map(item => 
+        this.converterParaFrontend(item)
+      );
+    }
+    return response;
+  }
+}
+
+export const [tabela]Service = new [Tabela]Service();
+```
+
+#### **4.4 Hook de API (USA SERVICE LAYER)**
 ```typescript
 import { useState, useCallback } from 'react';
-import { apiClient } from '@/services/api-client';
+import { [tabela]Service } from '@/services/[tabela]-service';
 import type { [Tabela], [Tabela]FormData } from '@/types/[tabela]';
 
 export const use[Tabela]Api = () => {
@@ -505,7 +621,8 @@ export const use[Tabela]Api = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiClient.listar[Tabela]s();
+      // USA SERVICE LAYER - conversões já feitas
+      const response = await [tabela]Service.listar();
       if (response.success && response.data) {
         setData(response.data.items);
       } else {
@@ -595,6 +712,32 @@ curl -s http://localhost:3000/api/v1/health
 curl -s http://localhost:8000/api/v1/health
 ```
 
+### **VERIFICAÇÃO DE NOMES DE TABELAS (NOVO)**
+
+```python
+# Script para verificar nomes exatos das tabelas
+# backend/verificar_tabelas.py
+import os
+from supabase import create_client
+from dotenv import load_dotenv
+
+load_dotenv()
+supabase = create_client(os.getenv('SUPABASE_URL'), os.getenv('SUPABASE_SERVICE_KEY'))
+
+# Lista de possíveis nomes
+tabelas_teste = [
+    'cad_equipe', 'cad_setores', 'c_lojas', 'cad_lojas',
+    'cad_empresas', 'c_empresas', 'c_clientes', 'cad_clientes'
+]
+
+for tabela in tabelas_teste:
+    try:
+        result = supabase.table(tabela).select('*').limit(1).execute()
+        print(f"✅ {tabela} - EXISTE")
+    except:
+        print(f"❌ {tabela} - não existe")
+```
+
 ### **VERIFICAÇÃO DE SERIALIZAÇÃO UUID**
 
 ```bash
@@ -675,9 +818,9 @@ SOLUÇÃO: Executar SQL de remoção ou usar auditoria
 3. **`c_clientes`** ✅ - Dependente de lojas
 4. **`cad_procedencias`** ✅ - Origem dos clientes
 
-### **🟡 FASE 2: ESTRUTURAS PRONTAS**
-5. **`cad_equipe`** - Funcionários (1 registro existente)
-6. **`cad_setores`** - Setores organizacionais
+### **✅ FASE 2: CONCLUÍDA**
+5. **`cad_equipe`** ✅ - Funcionários (6 registros - INTEGRAÇÃO COMPLETA)
+6. **`cad_setores`** ✅ - Setores organizacionais (2 registros)
 7. **`cad_montadores`** - Prestadores de montagem
 8. **`cad_transportadoras`** - Empresas de transporte
 9. **`cad_bancos`** - Instituições bancárias
@@ -780,3 +923,4 @@ Seguindo este guia **baseado em experiência real e auditoria completa**, cada n
 **LEMBRE-SE:** Este guia foi atualizado após resolvermos TODOS os problemas reais encontrados. Seguindo-o à risca, você evitará semanas de debugging e refatoração!
 
 **As tabelas Clientes, Empresas e Lojas são os modelos PERFEITOS** - todas as demais devem seguir exatamente os mesmos padrões, estruturas e soluções implementadas e testadas nelas.
+

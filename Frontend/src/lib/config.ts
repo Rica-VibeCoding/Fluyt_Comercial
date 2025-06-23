@@ -26,7 +26,7 @@ export const API_CONFIG = {
     CLIENTES: '/api/v1/clientes',
     EMPRESAS: '/api/v1/empresas',
     LOJAS: '/api/v1/lojas',
-    FUNCIONARIOS: '/api/v1/funcionarios',
+    FUNCIONARIOS: '/api/v1/equipe',
     DOCS: '/api/v1/docs',
   }
 } as const;

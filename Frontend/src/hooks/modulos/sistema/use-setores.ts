@@ -1,12 +1,12 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import type { Setor, SetorFormData } from '@/types/sistema';
-import { useLocalStorage } from '@/hooks/globais/use-local-storage';
+// import { setoresService } from '@/services/setores-service'; // Temporariamente comentado
 
-// Mock data para desenvolvimento
+// Mock data para desenvolvimento - usando UUIDs reais do banco
 const mockSetores: Setor[] = [
   {
-    id: '1',
+    id: '2faea93f-ed12-476a-8320-48ee7cda5695', // UUID real do banco
     nome: 'Vendas',
     descricao: 'Equipe responsável pela venda de produtos e atendimento ao cliente',
     funcionarios: 8,
@@ -14,7 +14,7 @@ const mockSetores: Setor[] = [
     createdAt: '2024-01-10T10:00:00Z'
   },
   {
-    id: '2',
+    id: 'b54209a6-50ac-41f6-bf2c-996b6fe0bf2d', // UUID real do banco
     nome: 'Medição',
     descricao: 'Profissionais responsáveis por medições e projetos técnicos',
     funcionarios: 3,
@@ -22,7 +22,7 @@ const mockSetores: Setor[] = [
     createdAt: '2024-01-15T10:00:00Z'
   },
   {
-    id: '3',
+    id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', // UUID válido para Montagem
     nome: 'Montagem',
     descricao: 'Equipe de montadores e instaladores',
     funcionarios: 5,
@@ -30,7 +30,7 @@ const mockSetores: Setor[] = [
     createdAt: '2024-02-01T10:00:00Z'
   },
   {
-    id: '4',
+    id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901', // UUID válido para Administrativo
     nome: 'Administrativo',
     descricao: 'Setor administrativo e financeiro',
     funcionarios: 0,
@@ -40,7 +40,7 @@ const mockSetores: Setor[] = [
 ];
 
 export function useSetores() {
-  const [setores, setSetores, clearSetores] = useLocalStorage<Setor[]>('fluyt_setores', mockSetores);
+  const [setores, setSetores] = useState<Setor[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Validar dados do setor
@@ -86,8 +86,17 @@ export function useSetores() {
       // Simular API call
       await new Promise(resolve => setTimeout(resolve, 1000));
 
+      // Gerar UUID v4 válido
+      const generateUUID = () => {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          const r = Math.random() * 16 | 0;
+          const v = c === 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+      };
+
       const novoSetor: Setor = {
-        id: Date.now().toString(),
+        id: generateUUID(),
         ...dados,
         funcionarios: 0,
         ativo: true,
@@ -230,11 +239,43 @@ export function useSetores() {
     totalFuncionarios: setores.reduce((total, setor) => total + (setor.funcionarios || 0), 0)
   };
 
-  // Resetar dados para mock inicial
-  const resetarDados = useCallback(() => {
-    clearSetores();
-    toast.success('Dados resetados para configuração inicial!');
-  }, [clearSetores]);
+  // Carregar setores do banco
+  const carregarSetores = useCallback(async () => {
+    setLoading(true);
+    
+    try {
+      // Temporariamente usar apenas mocks para evitar erro
+      console.warn('⚠️ Usando setores mockados temporariamente');
+      setSetores(mockSetores);
+      
+      /* TODO: Reativar quando o erro for resolvido
+      console.log('🔄 Carregando setores...');
+      const response = await setoresService.listar();
+      
+      if (response.success && response.data) {
+        setSetores(response.data.items);
+        console.log(`✅ ${response.data.items.length} setores carregados`);
+      } else {
+        // Se falhar, usar dados mockados
+        console.warn('⚠️ Usando setores mockados (backend offline?)');
+        setSetores(mockSetores);
+      }
+      */
+    } catch (error) {
+      console.error('❌ Erro ao carregar setores:', error);
+      // Usar dados mockados como fallback
+      setSetores(mockSetores);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Carregar setores ao montar
+  useEffect(() => {
+    // Carregar dados mockados imediatamente
+    setSetores(mockSetores);
+    // carregarSetores();
+  }, []);
 
   return {
     setores,
@@ -247,6 +288,6 @@ export function useSetores() {
     obterSetoresAtivos,
     obterSetorPorId,
     buscarSetores,
-    resetarDados
+    carregarSetores
   };
 }

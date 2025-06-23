@@ -114,9 +114,20 @@ class ApiClient {
   // Headers com autenticação
   private getHeaders(): Record<string, string> {
     const headers = { ...this.defaultHeaders };
+    
+    // Adicionar token de autenticação se disponível
     if (this.authToken) {
       headers.Authorization = `Bearer ${this.authToken}`;
+    } else {
+      // Tentar buscar token do localStorage se não estiver carregado
+      const storedToken = localStorage.getItem('fluyt_auth_token');
+      if (storedToken) {
+        this.authToken = storedToken;
+        headers.Authorization = `Bearer ${storedToken}`;
+        console.log('🔑 Token recuperado do localStorage para requisição');
+      }
     }
+    
     return headers;
   }
 
@@ -226,10 +237,20 @@ class ApiClient {
       console.error('📍 URL que falhou:', url);
       console.error('🔧 Tipo do erro:', error.constructor.name);
       
+      // Melhor detecção de tipos de erro
       if (error instanceof TypeError && error.message.includes('fetch')) {
-        console.error('🌐 Erro de rede - backend pode estar offline');
+        // Verificar se é realmente erro de rede ou apenas erro HTTP
+        if (error.message.includes('NetworkError') || 
+            error.message.includes('ERR_NETWORK') ||
+            error.message.includes('ERR_INTERNET_DISCONNECTED')) {
+          console.error('🌐 Erro de rede real - backend pode estar offline');
+        } else {
+          console.error('⚠️ Erro HTTP capturado como TypeError - verificar resposta');
+        }
       } else if (error.name === 'AbortError') {
         console.error('⏱️ Timeout - requisição demorou mais que', this.timeout, 'ms');
+      } else if (error.message?.includes('403') || error.message?.includes('401')) {
+        console.error('🚫 Erro de autenticação - token inválido ou expirado');
       }
       
       console.groupEnd();
@@ -459,6 +480,7 @@ class ApiClient {
     setor_id?: string;
     page?: number;
     limit?: number;
+    signal?: AbortSignal;
   }): Promise<ApiResponse<ApiListResponse<any>>> {
     const params = new URLSearchParams();
     
@@ -473,7 +495,26 @@ class ApiClient {
       endpoint += `?${params.toString()}`;
     }
 
-    return this.request<ApiListResponse<any>>(endpoint);
+    // Passar o signal se fornecido, mas com timeout personalizado
+    const options: RequestInit = {
+      method: 'GET'
+    };
+    
+    // Se signal foi fornecido, verificar se já está abortado
+    if (filtros?.signal) {
+      if (filtros.signal.aborted) {
+        console.log('🛑 Signal já abortado antes da requisição');
+        return {
+          success: false,
+          error: 'Requisição cancelada',
+          timestamp: new Date().toISOString(),
+        };
+      }
+      options.signal = filtros.signal;
+      console.log('🔄 Requisição funcionários com AbortSignal');
+    }
+
+    return this.request<ApiListResponse<any>>(endpoint, options);
   }
 
   // Buscar funcionário por ID

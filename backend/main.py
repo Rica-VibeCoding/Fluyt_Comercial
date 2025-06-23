@@ -225,13 +225,13 @@ if __name__ == "__main__":
         "log_level": settings.log_level.lower(),
         "access_log": True,
         "use_colors": True,
-        "reload_delay": 2.0,  # Delay para evitar reloads excessivos
+        "reload_delay": 5.0,  # Aumentado para evitar reloads excessivos
         "reload_dirs": ["modules/", "core/"],  # Limita diretórios monitorados
         "reload_excludes": ["logs/", "temp/", "uploads/", "__pycache__/", "*.pyc"],
         "workers": 1,  # Força single worker para evitar conflitos
-        "timeout_keep_alive": 5,  # Reduz timeout para liberar conexões
+        "timeout_keep_alive": 10,  # Aumentado para conexões mais estáveis
         "limit_concurrency": 100,  # Limita conexões simultâneas
-        "limit_max_requests": 1000,  # Reinicia worker após muitas requests
+        "limit_max_requests": 5000,  # Aumentado para evitar reinicializações frequentes
     }
     
     if settings.is_development:

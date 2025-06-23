@@ -11,6 +11,9 @@ import { useEquipe } from '@/hooks/modulos/sistema/use-equipe';
 import { FuncionarioTable } from './funcionario-table';
 import type { FuncionarioFormData } from '@/types/sistema';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { funcionarioSchemaCompleto } from '@/lib/validations/equipe';
+import { toast } from 'sonner';
 
 export function GestaoEquipe() {
   const {
@@ -39,17 +42,23 @@ export function GestaoEquipe() {
   const [abaAtiva, setAbaAtiva] = useState('dados');
 
   const form = useForm<FuncionarioFormData>({
+    resolver: zodResolver(funcionarioSchemaCompleto),
     defaultValues: {
-    nome: '',
-    email: '',
-    telefone: '',
-    setorId: '',
-    lojaId: '',
-    salario: 0,
-    comissao: 0,
-    dataAdmissao: '',
-    nivelAcesso: 'USUARIO',
-    tipoFuncionario: 'VENDEDOR'
+      nome: '',
+      email: '',
+      telefone: '',
+      setorId: undefined,
+      lojaId: '',
+      salario: 0,
+      comissao: 0,
+      dataAdmissao: new Date().toISOString().split('T')[0],
+      nivelAcesso: 'USUARIO',
+      tipoFuncionario: 'VENDEDOR',
+      configuracoes: {
+        limiteDesconto: 10,
+        valorMedicao: 0,
+        minimoGarantido: 0
+      }
     }
   });
 
@@ -57,33 +66,65 @@ export function GestaoEquipe() {
   const funcionariosFiltrados = termoBusca ? buscarFuncionarios(termoBusca) : funcionarios;
 
   const handleSubmit = async (data: FuncionarioFormData) => {
-    let sucesso = false;
-    if (editingFuncionario) {
-      sucesso = await atualizarFuncionario(editingFuncionario.id, data);
-    } else {
-      sucesso = await criarFuncionario(data);
-    }
+    try {
+      let sucesso = false;
+      
+      // Preparar dados para envio
+      const dadosParaEnvio = {
+        ...data,
+        // Garantir que campos numéricos sejam números
+        salario: Number(data.salario) || 0,
+        comissao: Number(data.comissao) || 0,
+        // Converter setorId vazio para null
+        setorId: data.setorId && data.setorId.trim() !== '' ? data.setorId : null,
+        // Configurações específicas por tipo
+        configuracoes: data.tipoFuncionario === 'MEDIDOR' || data.tipoFuncionario === 'GERENTE' 
+          ? data.configuracoes 
+          : undefined
+      };
+      
+      if (editingFuncionario) {
+        sucesso = await atualizarFuncionario(editingFuncionario.id, dadosParaEnvio);
+      } else {
+        sucesso = await criarFuncionario(dadosParaEnvio);
+      }
 
-    if (sucesso) {
-      handleCloseDialog();
+      if (sucesso) {
+        toast.success(editingFuncionario ? 'Funcionário atualizado!' : 'Funcionário criado!');
+        handleCloseDialog();
+      }
+    } catch (error) {
+      console.error('Erro ao salvar funcionário:', error);
+      toast.error('Erro ao salvar funcionário');
     }
   };
 
   const handleEdit = (funcionario: any) => {
     setEditingFuncionario(funcionario);
+    
+    // Formatar data para o formato do input date
+    const dataFormatada = funcionario.dataAdmissao 
+      ? new Date(funcionario.dataAdmissao).toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0];
+    
     form.reset({
-      nome: funcionario.nome,
-      email: funcionario.email,
-      telefone: funcionario.telefone,
-      setorId: funcionario.setorId,
-      lojaId: funcionario.lojaId,
-      salario: funcionario.salario,
-      comissao: funcionario.comissao,
-      dataAdmissao: funcionario.dataAdmissao,
-      nivelAcesso: funcionario.nivelAcesso,
-      tipoFuncionario: funcionario.tipoFuncionario,
-      configuracoes: funcionario.configuracoes
+      nome: funcionario.nome || '',
+      email: funcionario.email || '',
+      telefone: funcionario.telefone || '',
+      setorId: funcionario.setorId || undefined,
+      lojaId: funcionario.lojaId || '',
+      salario: funcionario.salario || 0,
+      comissao: funcionario.comissao || 0,
+      dataAdmissao: dataFormatada,
+      nivelAcesso: funcionario.nivelAcesso || 'USUARIO',
+      tipoFuncionario: funcionario.tipoFuncionario || 'VENDEDOR',
+      configuracoes: {
+        limiteDesconto: funcionario.configuracoes?.limiteDesconto || 10,
+        valorMedicao: funcionario.configuracoes?.valorMedicao || 0,
+        minimoGarantido: funcionario.configuracoes?.minimoGarantido || 0
+      }
     });
+    setAbaAtiva('dados');
     setIsDialogOpen(true);
   };
 
@@ -94,13 +135,18 @@ export function GestaoEquipe() {
       nome: '',
       email: '',
       telefone: '',
-      setorId: '',
+      setorId: undefined,
       lojaId: '',
       salario: 0,
       comissao: 0,
-      dataAdmissao: '',
+      dataAdmissao: new Date().toISOString().split('T')[0],
       nivelAcesso: 'USUARIO',
-      tipoFuncionario: 'VENDEDOR'
+      tipoFuncionario: 'VENDEDOR',
+      configuracoes: {
+        limiteDesconto: 10,
+        valorMedicao: 0,
+        minimoGarantido: 0
+      }
     });
     setIsDialogOpen(true);
   };
@@ -113,13 +159,18 @@ export function GestaoEquipe() {
       nome: '',
       email: '',
       telefone: '',
-      setorId: '',
+      setorId: undefined,
       lojaId: '',
       salario: 0,
       comissao: 0,
-      dataAdmissao: '',
+      dataAdmissao: new Date().toISOString().split('T')[0],
       nivelAcesso: 'USUARIO',
-      tipoFuncionario: 'VENDEDOR'
+      tipoFuncionario: 'VENDEDOR',
+      configuracoes: {
+        limiteDesconto: 10,
+        valorMedicao: 0,
+        minimoGarantido: 0
+      }
     });
   };
 
@@ -300,8 +351,8 @@ export function GestaoEquipe() {
                                       <SelectContent>
                                         <SelectItem value="VENDEDOR">Vendedor</SelectItem>
                                         <SelectItem value="GERENTE">Gerente</SelectItem>
-                                        <SelectItem value="SUPERVISOR">Supervisor</SelectItem>
-                                        <SelectItem value="ADMINISTRATIVO">Administrativo</SelectItem>
+                                        <SelectItem value="MEDIDOR">Medidor</SelectItem>
+                                        <SelectItem value="ADMIN_MASTER">Admin Master</SelectItem>
                                       </SelectContent>
                                     </Select>
                                     <FormMessage />
@@ -340,7 +391,7 @@ export function GestaoEquipe() {
                                 render={({ field }) => (
                                   <FormItem>
                                     <FormLabel className="text-xs font-medium text-slate-700">Setor</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value || ''}>
                                       <FormControl>
                                         <SelectTrigger className="h-8 text-sm border-slate-300 focus:border-slate-400">
                                           <SelectValue placeholder="Selecione o setor" />
@@ -428,7 +479,7 @@ export function GestaoEquipe() {
 
                       <TabsContent value="config" className="h-full p-2 mt-0">
                         <div className="h-full">
-                          <div className="space-y-1">
+                          <div className="space-y-3">
                             <div className="grid grid-cols-1 gap-1">
                               <FormField
                                 control={form.control}
@@ -444,9 +495,9 @@ export function GestaoEquipe() {
                                       </FormControl>
                                       <SelectContent>
                                         <SelectItem value="USUARIO">Usuário</SelectItem>
+                                        <SelectItem value="SUPERVISOR">Supervisor</SelectItem>
                                         <SelectItem value="GERENTE">Gerente</SelectItem>
                                         <SelectItem value="ADMIN">Administrador</SelectItem>
-                                        <SelectItem value="MASTER">Master</SelectItem>
                                       </SelectContent>
                                     </Select>
                                     <FormDescription className="text-xs text-slate-500">
@@ -457,6 +508,98 @@ export function GestaoEquipe() {
                                 )}
                               />
                             </div>
+
+                            {/* Configurações Especiais por Tipo */}
+                            {form.watch('tipoFuncionario') && (
+                              <div className="space-y-2 pt-2 border-t border-slate-200">
+                                <h4 className="text-xs font-medium text-slate-700">Configurações Especiais</h4>
+                                
+                                {/* Limite de Desconto (Vendedor/Gerente) */}
+                                {(form.watch('tipoFuncionario') === 'VENDEDOR' || form.watch('tipoFuncionario') === 'GERENTE') && (
+                                  <FormField
+                                    control={form.control}
+                                    name="configuracoes.limiteDesconto"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel className="text-xs font-medium text-slate-700">Limite de Desconto (%)</FormLabel>
+                                        <FormControl>
+                                          <Input 
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            step="0.1"
+                                            placeholder="10.0"
+                                            className="h-8 text-sm border-slate-300 focus:border-slate-400"
+                                            {...field}
+                                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)}
+                                          />
+                                        </FormControl>
+                                        <FormDescription className="text-xs text-slate-500">
+                                          Desconto máximo que pode conceder
+                                        </FormDescription>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                )}
+
+                                {/* Valor por Medição (Medidor) */}
+                                {form.watch('tipoFuncionario') === 'MEDIDOR' && (
+                                  <FormField
+                                    control={form.control}
+                                    name="configuracoes.valorMedicao"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel className="text-xs font-medium text-slate-700">Valor por Medição (R$) *</FormLabel>
+                                        <FormControl>
+                                          <Input 
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            placeholder="150.00"
+                                            className="h-8 text-sm border-slate-300 focus:border-slate-400"
+                                            {...field}
+                                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)}
+                                          />
+                                        </FormControl>
+                                        <FormDescription className="text-xs text-slate-500">
+                                          Valor pago por cada medição realizada
+                                        </FormDescription>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                )}
+
+                                {/* Mínimo Garantido (Gerente) */}
+                                {form.watch('tipoFuncionario') === 'GERENTE' && (
+                                  <FormField
+                                    control={form.control}
+                                    name="configuracoes.minimoGarantido"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel className="text-xs font-medium text-slate-700">Mínimo Garantido (R$)</FormLabel>
+                                        <FormControl>
+                                          <Input 
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            placeholder="2000.00"
+                                            className="h-8 text-sm border-slate-300 focus:border-slate-400"
+                                            {...field}
+                                            onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)}
+                                          />
+                                        </FormControl>
+                                        <FormDescription className="text-xs text-slate-500">
+                                          Valor mínimo garantido de comissão
+                                        </FormDescription>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </TabsContent>

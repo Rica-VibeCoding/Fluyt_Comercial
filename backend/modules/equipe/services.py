@@ -78,7 +78,7 @@ class FuncionarioService:
             loja_id = None if user.perfil in ["ADMIN_MASTER", "SUPER_ADMIN"] else user.loja_id
             
             # Busca no repository
-            resultado = await repository.listar(
+            resultado = repository.listar(
                 loja_id=loja_id,
                 filtros=filtros_dict,
                 page=pagination.page,
@@ -124,7 +124,7 @@ class FuncionarioService:
             repository = FuncionarioRepository(db)
             
             # Busca o funcionário
-            funcionario_data = await repository.buscar_por_id(funcionario_id, loja_id)
+            funcionario_data = repository.buscar_por_id(funcionario_id, loja_id)
             
             return FuncionarioResponse(**funcionario_data)
         
@@ -132,7 +132,7 @@ class FuncionarioService:
             logger.error(f"Erro ao buscar funcionário {funcionario_id}: {str(e)}")
             raise
     
-    async def validar_relacionamentos(self, loja_id: Optional[str], setor_id: Optional[str]) -> Dict[str, Any]:
+    def validar_relacionamentos(self, loja_id: Optional[str], setor_id: Optional[str]) -> Dict[str, Any]:
         """
         Valida se loja e setor existem
         

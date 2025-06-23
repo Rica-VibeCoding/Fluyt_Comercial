@@ -4,8 +4,8 @@
  */
 
 const API_URLS = {
-  // Primeira tentativa: usar proxy do Next.js
-  proxy: '/api/v1',
+  // Temporariamente forçar conexão direta até resolver proxy
+  proxy: 'http://localhost:8000/api/v1',
   // Fallback: conexão direta
   direct: 'http://localhost:8000/api/v1'
 };

@@ -63,7 +63,7 @@ Criar módulo completo de **equipe/funcionários** no backend FastAPI, usando a 
 ## 🎯 **PLANO DE EXECUÇÃO EM ETAPAS**
 
 ### **ETAPA 0: PRÉ-REQUISITO** 🚨
-- [ ] Criar tabela `cad_setores` no Supabase
+- [ ] Criar tabela `cad_setores` no Supabase caso não exista..
 - [ ] Popular com setores básicos (Vendas, Administrativo, etc.)
 - [ ] Confirmar relacionamento funcionando
 
