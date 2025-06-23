@@ -136,13 +136,28 @@ class ApiClient {
       signal: AbortSignal.timeout(this.timeout),
     };
 
-    // Debug logs removidos para produção
+    // 🔧 DEBUG LOGS DETALHADOS
+    console.group(`🌐 API Request: ${options.method || 'GET'} ${endpoint}`);
+    console.log('📍 URL completa:', url);
+    console.log('🔑 Headers:', requestOptions.headers);
+    console.log('📦 Body:', options.body);
+    console.log('🔄 É retry?', isRetry);
+    console.groupEnd();
 
     try {
       const response = await fetch(url, requestOptions);
       
+      // 🔧 DEBUG RESPONSE DETALHADO
+      console.group(`📥 API Response: ${response.status} ${response.statusText}`);
+      console.log('📍 URL:', url);
+      console.log('📊 Status:', response.status);
+      console.log('📝 Status Text:', response.statusText);
+      console.log('🏷️ Headers:', Object.fromEntries(response.headers.entries()));
+      
       // Se for 401 e não for retry, tentar renovar token
       if (response.status === 401 && !isRetry && this.authToken) {
+        console.log('🔄 Token expirado, tentando renovar...');
+        console.groupEnd();
         
         const refreshed = await this.refreshToken();
         
