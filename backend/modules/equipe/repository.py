@@ -57,13 +57,11 @@ class FuncionarioRepository:
             
             # Aplica filtros opcionais
             if filtros:
-                # Busca textual (nome, email)
+                # Busca textual (nome, email) - SOLUÇÃO ALTERNATIVA sem .or_()
                 if filtros.get('busca'):
-                    busca = f"%{filtros['busca']}%"
-                    query = query.or_(
-                        f"nome.ilike.{busca},"
-                        f"email.ilike.{busca}"
-                    )
+                    termo_busca = f"%{filtros['busca']}%"
+                    # Como .or_() não funciona, usar apenas busca por nome
+                    query = query.ilike('nome', termo_busca)
                 
                 # Perfil do funcionário
                 if filtros.get('perfil'):
@@ -300,6 +298,19 @@ class FuncionarioRepository:
             if dados.get('email'):
                 dados_normalizados['email'] = email_normalizado
             
+            # Converte UUIDs e dates para string (correção para erro de serialização)
+            if dados_normalizados.get('loja_id'):
+                dados_normalizados['loja_id'] = str(dados_normalizados['loja_id'])
+            if dados_normalizados.get('setor_id'):
+                dados_normalizados['setor_id'] = str(dados_normalizados['setor_id'])
+            if dados_normalizados.get('data_admissao'):
+                # Converter date para string ISO
+                if hasattr(dados_normalizados['data_admissao'], 'isoformat'):
+                    dados_normalizados['data_admissao'] = dados_normalizados['data_admissao'].isoformat()
+                elif isinstance(dados_normalizados['data_admissao'], str):
+                    # Já é string, manter como está
+                    pass
+            
             # Cria o funcionário
             result = self.db.table(self.table).insert(dados_normalizados).execute()
             
@@ -314,7 +325,7 @@ class FuncionarioRepository:
             logger.error(f"Erro ao criar funcionário: {str(e)}")
             raise DatabaseException(f"Erro ao criar funcionário: {str(e)}")
     
-    async def atualizar(
+    def atualizar(
         self,
         funcionario_id: str,
         dados: Dict[str, Any],
@@ -337,7 +348,7 @@ class FuncionarioRepository:
         """
         try:
             # Verifica se funcionário existe
-            funcionario_atual = await self.buscar_por_id(funcionario_id, loja_id)
+            funcionario_atual = self.buscar_por_id(funcionario_id, loja_id)
             logger.info(f"Atualizando funcionário {funcionario_id}: dados={dados}")
             
             # Se está mudando o nome, verifica duplicidade
@@ -345,7 +356,7 @@ class FuncionarioRepository:
                 nome_novo = dados['nome'].strip() if dados['nome'] else ''
                 nome_atual = funcionario_atual['nome'].strip() if funcionario_atual['nome'] else ''
                 if nome_novo and nome_novo != nome_atual:
-                    existe_nome = await self.buscar_por_nome(nome_novo, loja_id)
+                    existe_nome = self.buscar_por_nome(nome_novo, loja_id)
                     if existe_nome:
                         logger.warning(f"CONFLICT: Nome '{nome_novo}' já existe no funcionário {existe_nome['id']}")
                         raise ConflictException(
@@ -357,12 +368,25 @@ class FuncionarioRepository:
                 email_novo = dados['email'].strip().lower() if dados['email'] else None
                 email_atual = funcionario_atual['email'].strip().lower() if funcionario_atual['email'] else None
                 if email_novo and email_novo != email_atual:
-                    existe_email = await self.buscar_por_email(email_novo, loja_id)
+                    existe_email = self.buscar_por_email(email_novo, loja_id)
                     if existe_email:
                         logger.info(f"INFO: Email '{email_novo}' já existe em outro funcionário - permitido na atualização")
             
             # Atualiza apenas campos fornecidos
             dados_limpos = {k: v for k, v in dados.items() if v is not None}
+            
+            # Converte UUIDs e dates para string (correção para erro de serialização)
+            if dados_limpos.get('loja_id'):
+                dados_limpos['loja_id'] = str(dados_limpos['loja_id'])
+            if dados_limpos.get('setor_id'):
+                dados_limpos['setor_id'] = str(dados_limpos['setor_id'])
+            if dados_limpos.get('data_admissao'):
+                # Converter date para string ISO
+                if hasattr(dados_limpos['data_admissao'], 'isoformat'):
+                    dados_limpos['data_admissao'] = dados_limpos['data_admissao'].isoformat()
+                elif isinstance(dados_limpos['data_admissao'], str):
+                    # Já é string, manter como está
+                    pass
             
             # Atualiza o funcionário
             query = self.db.table(self.table).update(dados_limpos).eq('id', funcionario_id)
@@ -384,7 +408,7 @@ class FuncionarioRepository:
             logger.error(f"Erro ao atualizar funcionário {funcionario_id}: {str(e)}")
             raise DatabaseException(f"Erro ao atualizar funcionário: {str(e)}")
     
-    async def excluir(self, funcionario_id: str, loja_id: Optional[str] = None) -> bool:
+    def excluir(self, funcionario_id: str, loja_id: Optional[str] = None) -> bool:
         """
         Exclui um funcionário (soft delete - marca como inativo)
         
@@ -400,7 +424,7 @@ class FuncionarioRepository:
         """
         try:
             # Verifica se existe
-            await self.buscar_por_id(funcionario_id, loja_id)
+            self.buscar_por_id(funcionario_id, loja_id)
             
             # Marca como inativo em vez de deletar fisicamente
             query = self.db.table(self.table).update({'ativo': False}).eq('id', funcionario_id)

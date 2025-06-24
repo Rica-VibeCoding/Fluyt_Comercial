@@ -9,7 +9,7 @@ from datetime import datetime
 # URL base da API
 API_URL = "http://localhost:8000/api/v1"
 
-# Dados de login (ajuste conforme necessário)
+# Dados de login corretos
 LOGIN_DATA = {
     "email": "ricardo.nilton@hotmail.com",
     "password": "123456"
@@ -83,7 +83,7 @@ def testar_criar_funcionario(token, loja_id=None):
     """Testa criação de novo funcionário"""
     print("\n➕ Testando criação de funcionário...")
     
-    # Dados do novo funcionário
+    # Dados do novo funcionário - campo data em snake_case
     novo_funcionario = {
         "nome": f"Teste API {datetime.now().strftime('%H%M%S')}",
         "email": f"teste{datetime.now().strftime('%H%M%S')}@fluyt.com",
@@ -97,6 +97,8 @@ def testar_criar_funcionario(token, loja_id=None):
     # Se foi fornecido loja_id, adicionar
     if loja_id:
         novo_funcionario["loja_id"] = loja_id
+    
+    print(f"   Dados enviados: {json.dumps(novo_funcionario, indent=2)}")
     
     headers = {"Authorization": f"Bearer {token}"}
     response = requests.post(f"{API_URL}/equipe/", headers=headers, json=novo_funcionario)

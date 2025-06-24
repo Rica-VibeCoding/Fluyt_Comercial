@@ -34,7 +34,13 @@ export function GestaoEquipe() {
   // Carregar dados ao inicializar
   useEffect(() => {
     carregarFuncionarios();
+    console.log('Lojas disponíveis:', lojas);
   }, [carregarFuncionarios]);
+  
+  // Log quando lojas mudam
+  useEffect(() => {
+    console.log('Lojas atualizadas:', lojas);
+  }, [lojas]);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingFuncionario, setEditingFuncionario] = useState<any>(null);
@@ -48,7 +54,7 @@ export function GestaoEquipe() {
       email: '',
       telefone: '',
       setorId: undefined,
-      lojaId: '',
+      lojaId: lojas.length > 0 ? lojas[0].id : '',
       salario: 0,
       comissao: 0,
       dataAdmissao: new Date().toISOString().split('T')[0],
@@ -82,6 +88,10 @@ export function GestaoEquipe() {
           ? data.configuracoes 
           : undefined
       };
+      
+      console.log('Dados sendo enviados:', dadosParaEnvio);
+      console.log('Loja selecionada:', dadosParaEnvio.lojaId);
+      console.log('Lojas disponíveis:', lojas.map(l => ({ id: l.id, nome: l.nome })));
       
       if (editingFuncionario) {
         sucesso = await atualizarFuncionario(editingFuncionario.id, dadosParaEnvio);
@@ -131,12 +141,16 @@ export function GestaoEquipe() {
   const handleNewFuncionario = () => {
     setEditingFuncionario(null);
     setAbaAtiva('dados');
+    
+    // Usar a primeira loja disponível como padrão se houver
+    const primeiraLoja = lojas.length > 0 ? lojas[0].id : '';
+    
     form.reset({
       nome: '',
       email: '',
       telefone: '',
       setorId: undefined,
-      lojaId: '',
+      lojaId: primeiraLoja,
       salario: 0,
       comissao: 0,
       dataAdmissao: new Date().toISOString().split('T')[0],

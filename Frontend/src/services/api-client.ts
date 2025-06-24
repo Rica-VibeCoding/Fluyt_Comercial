@@ -529,6 +529,7 @@ class ApiClient {
     const payload = this.converterFuncionarioParaBackend(dados);
     
     const endpoint = API_CONFIG.ENDPOINTS.FUNCIONARIOS;
+    
     return this.request<any>(endpoint, {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -555,19 +556,51 @@ class ApiClient {
     });
   }
 
+  // Verificar nome de funcionário disponível
+  async verificarNomeFuncionario(nome: string, funcionarioId?: string): Promise<ApiResponse<{ disponivel: boolean; nome: string }>> {
+    let endpoint = `${API_CONFIG.ENDPOINTS.FUNCIONARIOS}/verificar-nome/${encodeURIComponent(nome)}`;
+    
+    if (funcionarioId) {
+      endpoint += `?funcionario_id=${funcionarioId}`;
+    }
+
+    return this.request<{ disponivel: boolean; nome: string }>(endpoint);
+  }
+
+  // Teste público de equipe
+  async testePublicoEquipe(): Promise<ApiResponse<any>> {
+    const endpoint = `${API_CONFIG.ENDPOINTS.FUNCIONARIOS}/test/public`;
+    return this.request<any>(endpoint);
+  }
+
   // Converter dados do frontend para backend
   private converterFuncionarioParaBackend(dados: any): any {
     const payload: any = {
       nome: dados.nome,
       email: dados.email,
       telefone: dados.telefone,
-      loja_id: dados.lojaId,           // camelCase → snake_case
-      setor_id: dados.setorId,         // camelCase → snake_case
-      perfil: dados.tipoFuncionario,   // tipoFuncionario → perfil
-      nivel_acesso: dados.nivelAcesso, // camelCase → snake_case
-      salario: dados.salario,
-      data_admissao: dados.dataAdmissao, // camelCase → snake_case
     };
+
+    // Conversões de campos obrigatórias
+    if (dados.tipoFuncionario) {
+      payload.perfil = dados.tipoFuncionario;  // tipoFuncionario → perfil
+    }
+    if (dados.nivelAcesso) {
+      payload.nivel_acesso = dados.nivelAcesso;  // camelCase → snake_case
+    }
+    if (dados.lojaId) {
+      payload.loja_id = dados.lojaId;  // camelCase → snake_case
+    }
+    if (dados.setorId) {
+      payload.setor_id = dados.setorId;  // camelCase → snake_case
+    }
+    if (dados.dataAdmissao) {
+      payload.data_admissao = dados.dataAdmissao;  // camelCase → snake_case
+    }
+
+    // Campos que não precisam conversão
+    if (dados.salario !== undefined) payload.salario = dados.salario;
+    if (dados.ativo !== undefined) payload.ativo = dados.ativo;
 
     // Lógica especial para comissão baseada no perfil
     if (dados.tipoFuncionario === 'VENDEDOR' && dados.comissao) {

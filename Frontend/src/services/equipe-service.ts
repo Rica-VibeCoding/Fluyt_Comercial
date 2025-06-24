@@ -55,25 +55,7 @@ export interface FuncionarioCreatePayload {
   override_comissao?: number;
 }
 
-export interface FuncionarioUpdatePayload {
-  nome?: string;
-  email?: string;
-  telefone?: string;
-  perfil?: string;
-  nivel_acesso?: string;
-  loja_id?: string;
-  setor_id?: string;
-  salario?: number;
-  data_admissao?: string;
-  limite_desconto?: number;
-  comissao_percentual_vendedor?: number;
-  comissao_percentual_gerente?: number;
-  tem_minimo_garantido?: boolean;
-  valor_minimo_garantido?: number;
-  valor_medicao?: number;
-  override_comissao?: number;
-  ativo?: boolean;
-}
+// Interface removida - conversão agora é feita no api-client
 
 export interface FuncionarioListResponse {
   items: FuncionarioBackend[];
@@ -111,8 +93,8 @@ class EquipeService {
       telefone: dados.telefone || undefined,
       perfil: dados.tipoFuncionario, // tipoFuncionario → perfil
       nivel_acesso: dados.nivelAcesso,
-      loja_id: dados.lojaId,
-      setor_id: dados.setorId,
+      loja_id: dados.lojaId || undefined, // Não enviar se vazio
+      setor_id: dados.setorId || undefined, // Não enviar se vazio
       salario: dados.salario || undefined,
       data_admissao: dados.dataAdmissao || undefined,
       
@@ -260,11 +242,11 @@ class EquipeService {
   async criar(dados: FuncionarioFormData): Promise<{ success: boolean; data?: Funcionario; error?: string }> {
     try {
       logConfig('📡 Criando funcionário via API...', { nome: dados.nome });
+      logConfig('📦 Dados originais:', dados);
       
-      // Converter dados do frontend para backend
-      const payload = this.converterParaBackend(dados);
-      
-      const response = await apiClient.criarFuncionario(payload);
+      // NÃO converter aqui - apiClient já faz a conversão
+      // Passar direto os dados do formulário
+      const response = await apiClient.criarFuncionario(dados);
 
       if (response.success && response.data) {
         const funcionarioCriado = this.converterParaFrontend(response.data);
@@ -285,6 +267,8 @@ class EquipeService {
         mensagemErro = 'Já existe um funcionário com este nome';
       } else if (error.message?.includes('validation')) {
         mensagemErro = 'Verifique os dados informados';
+      } else if (error.message?.includes('Failed to fetch')) {
+        mensagemErro = 'Erro de conexão com o servidor';
       }
 
       logConfig('❌ Erro ao criar funcionário:', error.message);
@@ -302,29 +286,9 @@ class EquipeService {
     try {
       logConfig('📡 Atualizando funcionário via API...', { id });
       
-      // Converter apenas campos fornecidos
-      const payload: FuncionarioUpdatePayload = {};
-      
-      if (dados.nome !== undefined) payload.nome = dados.nome;
-      if (dados.email !== undefined) payload.email = dados.email || undefined;
-      if (dados.telefone !== undefined) payload.telefone = dados.telefone || undefined;
-      if (dados.tipoFuncionario !== undefined) payload.perfil = dados.tipoFuncionario;
-      if (dados.nivelAcesso !== undefined) payload.nivel_acesso = dados.nivelAcesso;
-      if (dados.lojaId !== undefined) payload.loja_id = dados.lojaId;
-      if (dados.setorId !== undefined) payload.setor_id = dados.setorId;
-      if (dados.salario !== undefined) payload.salario = dados.salario;
-      if (dados.dataAdmissao !== undefined) payload.data_admissao = dados.dataAdmissao;
-      
-      // Atualizar comissão baseada no tipo
-      if (dados.comissao !== undefined) {
-        if (dados.tipoFuncionario === 'VENDEDOR') {
-          payload.comissao_percentual_vendedor = dados.comissao;
-        } else if (dados.tipoFuncionario === 'GERENTE') {
-          payload.comissao_percentual_gerente = dados.comissao;
-        }
-      }
-      
-      const response = await apiClient.atualizarFuncionario(id, payload);
+      // NÃO converter aqui - apiClient já faz a conversão
+      // Passar direto os dados parciais
+      const response = await apiClient.atualizarFuncionario(id, dados);
 
       if (response.success && response.data) {
         const funcionarioAtualizado = this.converterParaFrontend(response.data);

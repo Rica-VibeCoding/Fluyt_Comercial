@@ -107,7 +107,7 @@ async def listar_funcionarios(
             filtros.data_fim = datetime.fromisoformat(data_fim)
         
         # Chama o serviço
-        resultado = await funcionario_service.listar_funcionarios(
+        resultado = funcionario_service.listar_funcionarios(
             user=current_user,
             filtros=filtros,
             pagination=pagination
@@ -173,7 +173,7 @@ async def buscar_funcionario(
     ```
     """
     try:
-        funcionario = await funcionario_service.buscar_funcionario(funcionario_id, current_user)
+        funcionario = funcionario_service.buscar_funcionario(funcionario_id, current_user)
         
         # REMOVIDA DUPLA CONVERSÃO - Conversão agora é feita apenas no frontend service
         # funcionario_convertido = FuncionarioResponse(
@@ -223,11 +223,28 @@ async def criar_funcionario(
     - Loja e setor devem existir se informados
     """
     try:
-        # REMOVIDA DUPLA CONVERSÃO - Frontend já envia no formato correto
-        # dados_convertidos = field_converter.convert_request_fields(dados_raw)
-        dados = FuncionarioCreate(**dados_raw)
+
         
-        funcionario = await funcionario_service.criar_funcionario(dados, current_user)
+        # Aplicar conversão de campos camelCase → snake_case
+        dados_convertidos = dados_raw.copy()
+        
+        # Mapeamento de campos camelCase → snake_case
+        conversoes = {
+            'lojaId': 'loja_id',
+            'setorId': 'setor_id',
+            'dataAdmissao': 'data_admissao',
+            'nivelAcesso': 'nivel_acesso',
+            'tipoFuncionario': 'perfil',
+            'limiteDesconto': 'limite_desconto'
+        }
+        
+        for camel, snake in conversoes.items():
+            if camel in dados_convertidos:
+                dados_convertidos[snake] = dados_convertidos.pop(camel)
+        
+        dados = FuncionarioCreate(**dados_convertidos)
+        
+        funcionario = funcionario_service.criar_funcionario(dados, current_user)
         
         # REMOVIDA DUPLA CONVERSÃO
         # funcionario_convertido = FuncionarioResponse(
@@ -275,11 +292,26 @@ async def atualizar_funcionario(
     - Loja e setor devem existir se alterados
     """
     try:
-        # REMOVIDA DUPLA CONVERSÃO - Frontend já envia no formato correto
-        # dados_convertidos = field_converter.convert_request_fields(dados_raw)
-        dados = FuncionarioUpdate(**dados_raw)
+        # Aplicar conversão de campos se necessário
+        dados_convertidos = dados_raw.copy()
         
-        funcionario = await funcionario_service.atualizar_funcionario(funcionario_id, dados, current_user)
+        # Mapeamento de campos camelCase → snake_case
+        conversoes = {
+            'lojaId': 'loja_id',
+            'setorId': 'setor_id',
+            'dataAdmissao': 'data_admissao',
+            'nivelAcesso': 'nivel_acesso',
+            'tipoFuncionario': 'perfil',
+            'limiteDesconto': 'limite_desconto'
+        }
+        
+        for camel, snake in conversoes.items():
+            if camel in dados_convertidos:
+                dados_convertidos[snake] = dados_convertidos.pop(camel)
+        
+        dados = FuncionarioUpdate(**dados_convertidos)
+        
+        funcionario = funcionario_service.atualizar_funcionario(funcionario_id, dados, current_user)
         
         # REMOVIDA DUPLA CONVERSÃO
         # funcionario_convertido = FuncionarioResponse(
@@ -324,7 +356,7 @@ async def excluir_funcionario(
     ```
     """
     try:
-        sucesso = await funcionario_service.excluir_funcionario(funcionario_id, current_user)
+        sucesso = funcionario_service.excluir_funcionario(funcionario_id, current_user)
         
         if sucesso:
             logger.info(f"Funcionário excluído (soft delete): {funcionario_id} por usuário {current_user.id}")

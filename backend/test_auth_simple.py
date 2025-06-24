@@ -34,8 +34,8 @@ def testar_auth():
         # Tentar fazer login
         try:
             response = supabase_anon.auth.sign_in_with_password({
-                "email": "admin@fluyt.com.br",
-                "password": "Admin@123"
+                "email": "ricardo.nilton@hotmail.com",
+                "password": "123456"
             })
             print("✅ Login bem-sucedido!")
             print(f"   User ID: {response.user.id}")
@@ -58,13 +58,13 @@ def testar_auth():
                         print(f"   ID: {user.id}")
                         print(f"   Created: {user.created_at}")
                         
-                        # Verificar se tem dados em cad_funcionarios
-                        func_result = supabase_admin.table('cad_funcionarios').select('*').eq('user_id', user.id).execute()
+                        # Verificar se tem dados em cad_equipe
+                        func_result = supabase_admin.table('cad_equipe').select('*').eq('user_id', user.id).execute()
                         if func_result.data:
                             print(f"   Nome: {func_result.data[0].get('nome', 'N/A')}")
                             print(f"   Perfil: {func_result.data[0].get('perfil', 'N/A')}")
                         else:
-                            print("   ⚠️  Sem dados em cad_funcionarios")
+                            print("   ⚠️  Sem dados em cad_equipe")
                             
                 except Exception as admin_e:
                     print(f"❌ Erro ao listar usuários: {str(admin_e)}")
