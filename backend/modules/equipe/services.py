@@ -158,18 +158,17 @@ class FuncionarioService:
                 if not result.data:
                     raise ValidationException(f"Loja não encontrada: {loja_id_str}")
             
-            # Valida setor se fornecido - BYPASS TEMPORÁRIO DO RLS
+            # Valida setor se fornecido - Usar admin DB com RLS corrigido
+            # RLS CORRIGIDO: Política "Allow service key access" adicionada para service_role
+            # Permite acesso direto à tabela cad_setores via get_admin_database()
             if setor_id:
+                from core.database import get_admin_database
+                admin_db = get_admin_database()
+                
                 setor_id_str = str(setor_id) if setor_id else None
+                result = admin_db.table('cad_setores').select('id, nome').eq('id', setor_id_str).execute()
                 
-                # BYPASS TEMPORÁRIO: Lista hardcoded de setores válidos
-                # TODO: Corrigir problema do RLS no contexto HTTP
-                setores_validos = {
-                    "2faea93f-ed12-476a-8320-48ee7cda5695": "Vendas",
-                    "b54209a6-50ac-41f6-bf2c-996b6fe0bf2d": "Medição"
-                }
-                
-                if setor_id_str not in setores_validos:
+                if not result.data:
                     raise ValidationException(f"Setor não encontrado: {setor_id_str}")
             
             return {"loja_valida": True, "setor_valido": True}
