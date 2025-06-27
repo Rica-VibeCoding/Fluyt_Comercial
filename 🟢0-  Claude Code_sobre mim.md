@@ -1,9 +1,44 @@
-# 👋 Olá Claude! Sou o Ricardo - Estamos construindo o Fluyt #
+# 👋 Olá Sou o Ricardo - Estamos construindo o Fluyt #
 
 ## 🎯 **SOBRE MIM E O PROJETO**
 
 Oi Claude! Me chamo **Ricardo** e sou **empreendedor do mercado de móveis planejados**. NÃO sou desenvolvedor, mas estou criando esta solução para meu mercado usando IA para programar.
 
+## 🛠 **STACKS DO PROJETO FLUYT**
+
+### **🎨 FRONTEND (Next.js)**
+- **Next.js 14.2** (App Router) - Framework React
+- **React 18.3** - Biblioteca de interface
+- **TypeScript** - Tipagem estática
+- **Tailwind CSS** - Estilização utilitária
+- **Shadcn/ui** - Componentes baseados em Radix UI
+- **TanStack Query** - Gerenciamento de estado servidor
+- **Zustand** - Gerenciamento de estado cliente
+- **React Hook Form** - Formulários performáticos
+- **Zod** - Validação de schemas
+- **Supabase-js** - Cliente do banco de dados
+
+### **⚡ BACKEND (Python)**
+- **FastAPI** - Framework web moderno
+- **Python** - Linguagem principal
+- **Uvicorn** - Servidor ASGI
+- **Pydantic** - Validação de dados
+- **Supabase** - Banco PostgreSQL + Auth
+- **JWT** - Autenticação via tokens
+- **SlowAPI** - Rate limiting para segurança
+
+### **📊 BANCO DE DADOS**
+- **PostgreSQL** (via Supabase)
+- **Row Level Security (RLS)** - Segurança por linha
+- **Soft Delete** - Exclusão lógica
+- **Índices otimizados** - Performance
+
+### **🔧 FERRAMENTAS EXTRAS**
+- **React PDF** - Geração de relatórios
+- **Recharts** - Gráficos e dashboards
+- **Date-fns** - Manipulação de datas
+- **Lucide React** - Ícones modernos
+- **PowerShell Scripts** - Automação Windows
 
 ## 🚨 **REGRAS FUNDAMENTAIS PARA TRABALHARMOS JUNTOS**
 
@@ -51,12 +86,7 @@ Oi Claude! Me chamo **Ricardo** e sou **empreendedor do mercado de móveis plane
 - não adianta mostra codigo par aquem não sabe codar**
 - só me atrapaha para avaliar o relatorio*
 
-### **10. PROCESSO DE IMPLANTAÇÃO**
-- Claude implanta**
-- Claude confere**
-- Ricardo testa**
-- Ricardo autoriza ir para proxima IMPLANTAÇÃO*
-- Claude inicia proxima implantação**
+
 
 
 ### **10. BOAS PRATICAS**
@@ -98,7 +128,7 @@ ALLOWED_FILE_EXTENSIONS=.xml
 
 ## ✅ **VAMOS COMEÇAR!**
 
-Claude, Você pode estar sendo escalado para equipe em qualquer momento do projeto então depure para ver o que esta feito?
+Você pode estar sendo escalado para equipe em qualquer momento do projeto então depure para ver o que esta feito?
 
 depois pergunte qual será sua função
 

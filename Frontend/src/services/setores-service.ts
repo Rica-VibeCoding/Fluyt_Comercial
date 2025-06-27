@@ -6,6 +6,7 @@ interface SetorBackend {
   nome: string;
   descricao?: string;
   ativo: boolean;
+  total_funcionarios: number;
   created_at: string;
   updated_at?: string;
 }
@@ -19,10 +20,9 @@ interface SetoresListResponse {
 }
 
 export class SetoresService {
-  private apiClient: ApiClientStable;
-
+  // ✅ CORREÇÃO: ApiClientStable tem métodos estáticos, não precisa de instância
   constructor() {
-    this.apiClient = new ApiClientStable();
+    // Removido: this.apiClient = new ApiClientStable();
   }
 
   // Converter do backend para frontend
@@ -32,7 +32,7 @@ export class SetoresService {
       nome: setorBackend.nome,
       descricao: setorBackend.descricao || '',
       ativo: setorBackend.ativo,
-      funcionarios: 0, // TODO: Adicionar contagem real quando disponível
+      funcionarios: setorBackend.total_funcionarios,
       createdAt: setorBackend.created_at,
       updatedAt: setorBackend.updated_at
     };
@@ -42,25 +42,28 @@ export class SetoresService {
   private converterParaBackend(setorFrontend: SetorFormData): any {
     return {
       nome: setorFrontend.nome,
-      descricao: setorFrontend.descricao || null
+      descricao: setorFrontend.descricao?.trim() || null
     };
   }
 
   async listar() {
     try {
-      const response = await this.apiClient.get<SetoresListResponse>('/setores/');
+      // ✅ CORREÇÃO: Usar método estático
+      const response = await ApiClientStable.get<SetoresListResponse>('/setores');
       
       if (response.success && response.data) {
-        // Converter todos os itens
-        const itemsConvertidos = response.data.items.map(item => 
-          this.converterParaFrontend(item)
+        const setoresConvertidos = response.data.items.map(setor => 
+          this.converterParaFrontend(setor)
         );
         
         return {
           success: true,
           data: {
-            ...response.data,
-            items: itemsConvertidos
+            items: setoresConvertidos,
+            total: response.data.total,
+            page: response.data.page,
+            limit: response.data.limit,
+            pages: response.data.pages
           }
         };
       }
@@ -78,7 +81,8 @@ export class SetoresService {
   async criar(dados: SetorFormData) {
     try {
       const dadosBackend = this.converterParaBackend(dados);
-      const response = await this.apiClient.post<SetorBackend>('/setores/', dadosBackend);
+      // ✅ CORREÇÃO: Usar método estático
+      const response = await ApiClientStable.post<SetorBackend>('/setores/', dadosBackend);
       
       if (response.success && response.data) {
         return {
@@ -100,7 +104,8 @@ export class SetoresService {
   async atualizar(id: string, dados: SetorFormData) {
     try {
       const dadosBackend = this.converterParaBackend(dados);
-      const response = await this.apiClient.put<SetorBackend>(`/setores/${id}`, dadosBackend);
+      // ✅ CORREÇÃO: Usar método estático
+      const response = await ApiClientStable.put<SetorBackend>(`/setores/${id}`, dadosBackend);
       
       if (response.success && response.data) {
         return {
@@ -121,7 +126,8 @@ export class SetoresService {
 
   async excluir(id: string) {
     try {
-      const response = await this.apiClient.delete(`/setores/${id}`);
+      // ✅ CORREÇÃO: Usar método estático
+      const response = await ApiClientStable.delete(`/setores/${id}`);
       return response;
     } catch (error) {
       console.error('Erro ao excluir setor:', error);

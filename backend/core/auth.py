@@ -38,6 +38,16 @@ class User(BaseModel):
     nome: Optional[str] = None
     ativo: bool = True
     metadata: Dict[str, Any] = {}
+    
+    @property
+    def is_admin(self) -> bool:
+        """Verifica se usuário é admin ou super admin"""
+        return self.perfil in ['ADMIN', 'SUPER_ADMIN']
+    
+    @property
+    def is_super_admin(self) -> bool:
+        """Verifica se usuário é super admin"""
+        return self.perfil == 'SUPER_ADMIN'
 
 
 class AuthResponse(BaseModel):

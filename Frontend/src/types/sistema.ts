@@ -108,14 +108,14 @@ export interface FuncionarioFormData {
 // ========================================
 export interface Setor extends BaseEntity {
   nome: string;
-  descricao: string;
+  descricao?: string;
   funcionarios: number;
   ativo: boolean;
 }
 
 export interface SetorFormData {
   nome: string;
-  descricao: string;
+  descricao?: string;
 }
 
 // ========================================

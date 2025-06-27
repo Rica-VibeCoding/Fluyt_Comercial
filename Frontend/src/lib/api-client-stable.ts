@@ -18,6 +18,15 @@ interface ApiResponse<T = any> {
 }
 
 export class ApiClientStable {
+  // ✅ CORRIGIDO: Método para obter token do localStorage
+  private static getAuthToken(): string | null {
+    if (typeof window !== 'undefined') {
+      // ✅ CORRIGIDO: Buscar pela chave correta que o login usa
+      return localStorage.getItem('fluyt_auth_token') || localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+    }
+    return null;
+  }
+
   private static async tryFetch(
     endpoint: string,
     options: RequestInit,
@@ -26,17 +35,23 @@ export class ApiClientStable {
     const baseUrl = useProxy ? API_URLS.proxy : API_URLS.direct;
     const url = `${baseUrl}${endpoint}`;
     
+    // ✅ ADICIONADO: Token de autenticação
+    const token = this.getAuthToken();
+    const authHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
+    
     // Declarar startTime ANTES do try para estar disponível no catch
     const startTime = Date.now();
     
     try {
       console.log(`🔗 Tentando ${useProxy ? 'primeira conexão' : 'segunda tentativa'}: ${url}`);
+      console.log(`🔐 Token: ${token ? 'Presente' : 'Ausente'}`);
       
       const response = await fetch(url, {
         ...options,
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          ...authHeaders,  // ✅ ADICIONADO: Headers de autenticação
           ...options.headers,
         },
         // Timeout aumentado para dar tempo ao backend responder

@@ -96,30 +96,32 @@ class FuncionarioRepository:
             # Executa a query OTIMIZADA
             result = query.execute()
             
-            # Processa os dados e busca nomes relacionados separadamente
+            # Otimização: Buscar todos os nomes de lojas e setores de uma vez
+            
+            # Coletar IDs únicos
+            loja_ids = list(set(item['loja_id'] for item in result.data if item.get('loja_id')))
+            setor_ids = list(set(item['setor_id'] for item in result.data if item.get('setor_id')))
+            
+            # Buscar todos os nomes de lojas de uma vez
+            lojas_map = {}
+            if loja_ids:
+                lojas_result = self.db.table('c_lojas').select('id, nome').in_('id', loja_ids).execute()
+                lojas_map = {loja['id']: loja['nome'] for loja in lojas_result.data}
+            
+            # Buscar todos os nomes de setores de uma vez
+            setores_map = {}
+            if setor_ids:
+                setores_result = self.db.table('cad_setores').select('id, nome').in_('id', setor_ids).execute()
+                setores_map = {setor['id']: setor['nome'] for setor in setores_result.data}
+            
+            # Adicionar nomes aos itens
             items = []
             for item in result.data:
-                # Busca nome da loja se houver loja_id
-                if item.get('loja_id'):
-                    try:
-                        loja_result = self.db.table('c_lojas').select('nome').eq('id', item['loja_id']).execute()
-                        if loja_result.data:
-                            item['loja_nome'] = loja_result.data[0]['nome']
-                    except:
-                        item['loja_nome'] = None
-                else:
-                    item['loja_nome'] = None
+                # Adiciona nome da loja
+                item['loja_nome'] = lojas_map.get(item['loja_id']) if item.get('loja_id') else None
                 
-                # Busca nome do setor se houver setor_id
-                if item.get('setor_id'):
-                    try:
-                        setor_result = self.db.table('cad_setores').select('nome').eq('id', item['setor_id']).execute()
-                        if setor_result.data:
-                            item['setor_nome'] = setor_result.data[0]['nome']
-                    except:
-                        item['setor_nome'] = None
-                else:
-                    item['setor_nome'] = None
+                # Adiciona nome do setor
+                item['setor_nome'] = setores_map.get(item['setor_id']) if item.get('setor_id') else None
                 
                 items.append(item)
             

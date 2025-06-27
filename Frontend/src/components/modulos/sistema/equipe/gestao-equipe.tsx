@@ -75,23 +75,21 @@ export function GestaoEquipe() {
     try {
       let sucesso = false;
       
-      // Preparar dados para envio
-      const dadosParaEnvio = {
+      // ✅ SETORES AGORA FUNCIONAM - incluir setorId nos dados
+      const dadosParaEnvio: FuncionarioFormData = {
         ...data,
         // Garantir que campos numéricos sejam números
         salario: Number(data.salario) || 0,
         comissao: Number(data.comissao) || 0,
-        // Converter setorId vazio para null
-        setorId: data.setorId && data.setorId.trim() !== '' ? data.setorId : null,
         // Configurações específicas por tipo
         configuracoes: data.tipoFuncionario === 'MEDIDOR' || data.tipoFuncionario === 'GERENTE' 
           ? data.configuracoes 
           : undefined
       };
       
-      console.log('Dados sendo enviados:', dadosParaEnvio);
-      console.log('Loja selecionada:', dadosParaEnvio.lojaId);
-      console.log('Lojas disponíveis:', lojas.map(l => ({ id: l.id, nome: l.nome })));
+      console.log('✅ Dados sendo enviados (COM setorId):', dadosParaEnvio);
+      console.log('✅ SetorId incluído:', dadosParaEnvio.setorId);
+      console.log('✅ Setor selecionado:', setores.find(s => s.id === dadosParaEnvio.setorId)?.nome);
       
       if (editingFuncionario) {
         sucesso = await atualizarFuncionario(editingFuncionario.id, dadosParaEnvio);
@@ -121,7 +119,7 @@ export function GestaoEquipe() {
       nome: funcionario.nome || '',
       email: funcionario.email || '',
       telefone: funcionario.telefone || '',
-      setorId: funcionario.setorId || undefined,
+      setorId: funcionario.setorId || '',
       lojaId: funcionario.lojaId || '',
       salario: funcionario.salario || 0,
       comissao: funcionario.comissao || 0,
@@ -149,7 +147,7 @@ export function GestaoEquipe() {
       nome: '',
       email: '',
       telefone: '',
-      setorId: undefined,
+      setorId: '',
       lojaId: primeiraLoja,
       salario: 0,
       comissao: 0,
@@ -173,7 +171,7 @@ export function GestaoEquipe() {
       nome: '',
       email: '',
       telefone: '',
-      setorId: undefined,
+      setorId: '',
       lojaId: '',
       salario: 0,
       comissao: 0,
@@ -404,7 +402,7 @@ export function GestaoEquipe() {
                                 name="setorId"
                                 render={({ field }) => (
                                   <FormItem>
-                                    <FormLabel className="text-xs font-medium text-slate-700">Setor</FormLabel>
+                                    <FormLabel className="text-xs font-medium text-slate-700">Setor *</FormLabel>
                                     <Select onValueChange={field.onChange} value={field.value || ''}>
                                       <FormControl>
                                         <SelectTrigger className="h-8 text-sm border-slate-300 focus:border-slate-400">
@@ -419,6 +417,9 @@ export function GestaoEquipe() {
                                         ))}
                                       </SelectContent>
                                     </Select>
+                                    <FormDescription className="text-xs text-slate-500">
+                                      Defina o setor onde o funcionário atuará
+                                    </FormDescription>
                                     <FormMessage />
                                   </FormItem>
                                 )}

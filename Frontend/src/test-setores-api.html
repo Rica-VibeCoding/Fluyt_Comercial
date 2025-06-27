@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste - API Setores</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        button { padding: 10px 15px; margin: 5px; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Teste da API de Setores</h1>
+    
+    <div class="test-section">
+        <h2>1. Teste de Conectividade</h2>
+        <button onclick="testarConectividade()">Testar Backend</button>
+        <div id="conectividade-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Teste do SetoresService</h2>
+        <button onclick="testarSetoresService()">Testar Service</button>
+        <div id="service-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Teste com Mock Token</h2>
+        <button onclick="testarComToken()">Simular Login</button>
+        <div id="token-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Log de Depuração</h2>
+        <button onclick="limparLog()">Limpar Log</button>
+        <div id="debug-log"></div>
+    </div>
+
+    <script>
+        // Simular ambiente do módulo para teste
+        class MockApiClientStable {
+            static async request(endpoint, options = {}) {
+                const baseUrl = 'http://localhost:8000/api/v1';
+                const url = `${baseUrl}${endpoint}`;
+                
+                try {
+                    log(`🔗 Fazendo requisição: ${url}`);
+                    log(`📄 Método: ${options.method || 'GET'}`);
+                    
+                    const response = await fetch(url, {
+                        ...options,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            ...options.headers,
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        log(`✅ Sucesso: ${response.status}`, 'success');
+                        return { success: true, data };
+                    } else {
+                        log(`❌ Erro: ${response.status}`, 'error');
+                        return { success: false, error: data.message || 'Erro na requisição' };
+                    }
+                } catch (error) {
+                    log(`💥 Erro de conexão: ${error.message}`, 'error');
+                    return { success: false, error: error.message };
+                }
+            }
+            
+            static async get(endpoint) {
+                return this.request(endpoint, { method: 'GET' });
+            }
+            
+            static async post(endpoint, body) {
+                return this.request(endpoint, { 
+                    method: 'POST', 
+                    body: JSON.stringify(body) 
+                });
+            }
+        }
+
+        class MockSetoresService {
+            async listar() {
+                try {
+                    const response = await MockApiClientStable.get('/setores');
+                    return response;
+                } catch (error) {
+                    log(`Erro no service: ${error.message}`, 'error');
+                    return { success: false, error: error.message };
+                }
+            }
+        }
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('debug-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+            logDiv.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function limparLog() {
+            document.getElementById('debug-log').innerHTML = '';
+        }
+
+        async function testarConectividade() {
+            const resultDiv = document.getElementById('conectividade-result');
+            resultDiv.innerHTML = '<p>🔄 Testando conectividade...</p>';
+            
+            try {
+                // Testar endpoint público primeiro
+                const response = await fetch('http://localhost:8000/api/v1/setores/debug/publico');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `
+                        <div class="success">✅ Backend Conectado!</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                    log('Backend está rodando', 'success');
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">❌ Erro de Conectividade</div>
+                    <p>Erro: ${error.message}</p>
+                    <p>Verifique se o backend está rodando em http://localhost:8000</p>
+                `;
+                log(`Erro de conectividade: ${error.message}`, 'error');
+            }
+        }
+
+        async function testarSetoresService() {
+            const resultDiv = document.getElementById('service-result');
+            resultDiv.innerHTML = '<p>🔄 Testando SetoresService...</p>';
+            
+            try {
+                const service = new MockSetoresService();
+                const resultado = await service.listar();
+                
+                if (resultado.success) {
+                    resultDiv.innerHTML = `
+                        <div class="success">✅ SetoresService Funcionando!</div>
+                        <pre>${JSON.stringify(resultado, null, 2)}</pre>
+                    `;
+                    log('SetoresService funcionando', 'success');
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">❌ SetoresService com Erro</div>
+                        <p>Erro: ${resultado.error}</p>
+                        <p>Isso é esperado se não houver autenticação</p>
+                    `;
+                    log(`SetoresService erro: ${resultado.error}`, 'error');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">❌ Erro no SetoresService</div>
+                    <p>Erro: ${error.message}</p>
+                `;
+                log(`Erro crítico no service: ${error.message}`, 'error');
+            }
+        }
+
+        async function testarComToken() {
+            const resultDiv = document.getElementById('token-result');
+            resultDiv.innerHTML = '<p>🔄 Simulando login...</p>';
+            
+            // Simular token de teste
+            localStorage.setItem('auth_token', 'fake-token-for-test');
+            
+            try {
+                const response = await MockApiClientStable.get('/setores');
+                
+                resultDiv.innerHTML = `
+                    <div class="info">🔐 Teste com Token Executado</div>
+                    <p>Status: ${response.success ? 'Sucesso' : 'Falha'}</p>
+                    <pre>${JSON.stringify(response, null, 2)}</pre>
+                `;
+                
+                log(`Teste com token: ${response.success ? 'sucesso' : 'falha'}`, response.success ? 'success' : 'error');
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">❌ Erro no teste com token</div>
+                    <p>Erro: ${error.message}</p>
+                `;
+                log(`Erro no teste com token: ${error.message}`, 'error');
+            } finally {
+                // Remover token de teste
+                localStorage.removeItem('auth_token');
+            }
+        }
+
+        // Inicializar log
+        window.onload = () => {
+            log('🚀 Sistema de teste carregado');
+            log('📋 Testes disponíveis: Conectividade, SetoresService, Token');
+        };
+    </script>
+</body>
+</html> 

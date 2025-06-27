@@ -1,7 +1,7 @@
 🟡 Refatoração
 
 1
-estamos integrando a tabela (Lojas)  no circuito frontend, backand e supabase 
+estamos integrando a tabela (Setores)  no circuito frontend, backand e supabase 
 o código de confecção esta sendo criado e você pode entrar no inicio, meio ou fim do processo
 seu papel é refatorar as demandas de implantação, para isso vc precisa se especialista em refatoração
 a demanda atual é
@@ -23,8 +23,7 @@ Analise o projeto e identifique: 1) Componentes que foram criados mas nunca impo
 5
  análise e gerar tarefas e sub-tarefas e criar em um arquivo .md para cada, backend e frontend
 
-6
-na próxima rodada,  marque com um ✅, o que foi feito e atualize o arquivo ..md (backend_tabela ("").md - backend_tabela ("").md
+
 
 7
 orientação importante, código tem que ser limpo,  

@@ -35,8 +35,7 @@ export function useEquipe() {
       erros.push('Telefone inválido');
     }
 
-
-    if (!dados.setorId) {
+    if (!dados.setorId || dados.setorId.trim() === '') {
       erros.push('Setor é obrigatório');
     }
 
@@ -328,9 +327,6 @@ export function useEquipe() {
       }
       
       // Token JWT já é usado automaticamente pelo equipeService
-      
-      // Pequeno delay para garantir que o apiClient esteja inicializado
-      await new Promise(resolve => setTimeout(resolve, 200));
       
       if (!mounted) return;
       
