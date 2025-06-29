@@ -4,7 +4,6 @@ Define como os dados de ambiente devem ser enviados e recebidos pela API
 """
 from typing import Optional, Dict, Any
 from datetime import datetime, date, time
-from uuid import UUID
 from pydantic import BaseModel, field_validator
 from decimal import Decimal
 

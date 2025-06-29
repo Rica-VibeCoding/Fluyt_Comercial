@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Users, DollarSign, Settings, FileText, Building2, Store, UserCog, Layers } from 'lucide-react';
 import Link from 'next/link';
-import { GestaoEmpresas, GestaoLojas, GestaoEquipe, GestaoSetores, GestaoComissoes, ConfigLoja, GestaoConfigLoja, GestaoMontadores, GestaoTransportadoras } from '@/components/modulos/sistema';
+import { GestaoEmpresas, GestaoLojas, GestaoEquipe, GestaoSetores, GestaoComissoes, ConfigLoja, GestaoConfigLoja, GestaoTiposColaboradores, GestaoColaboradoresIndividuais } from '@/components/modulos/sistema';
 import { ResetDados } from '@/components/modulos/sistema/configuracoes/reset-dados';
 import { TesteConectividade } from '@/components/modulos/sistema/configuracoes/teste-conectividade';
 
@@ -30,17 +30,17 @@ export default function ConfiguracoesPage() {
       label: 'Lojas',
       icon: Store
     }, {
-      id: 'equipe',
-      label: 'Equipe',
-      icon: UserCog
-    }, {
       id: 'setores',
       label: 'Setores',
       icon: Layers
+    }, {
+      id: 'equipe',
+      label: 'Equipe',
+      icon: UserCog
     }]
   }, {
-    id: 'financeiro',
-    label: 'Financeiro',
+    id: 'configuracoes',
+    label: 'Configurações',
     icon: DollarSign,
     iconColor: 'green',
     description: 'Configurações críticas do sistema',
@@ -57,16 +57,16 @@ export default function ConfiguracoesPage() {
     }]
   }, {
     id: 'operacional',
-    label: 'Operacional',
+    label: 'Colaboradores',
     icon: Settings,
     iconColor: 'orange',
-    description: 'Prestadores de serviços',
+    description: 'Gestão de colaboradores externos',
     items: [{
-      id: 'montadores',
-      label: 'Montadores'
+      id: 'tipos-colaboradores',
+      label: 'Tipos de Colaboradores'
     }, {
-      id: 'transportadoras',
-      label: 'Transportadoras'
+      id: 'colaboradores-individuais',
+      label: 'Colaboradores Individuais'
     }]
   }, {
     id: 'sistema',
@@ -97,11 +97,11 @@ export default function ConfiguracoesPage() {
         return <GestaoEquipe />;
       case 'pessoas-setores':
         return <GestaoSetores />;
-      case 'financeiro-comissoes':
+      case 'configuracoes-comissoes':
         return <GestaoComissoes />;
-      case 'financeiro-config-loja':
+      case 'configuracoes-config-loja':
         return <GestaoConfigLoja />;
-      case 'financeiro-status':
+      case 'configuracoes-status':
         return (
           <Card className="shadow-md border-0 bg-white">
             <CardContent className="p-6">
@@ -112,10 +112,10 @@ export default function ConfiguracoesPage() {
             </CardContent>
           </Card>
         );
-      case 'operacional-montadores':
-        return <GestaoMontadores />;
-      case 'operacional-transportadoras':
-        return <GestaoTransportadoras />;
+      case 'operacional-tipos-colaboradores':
+        return <GestaoTiposColaboradores />;
+      case 'operacional-colaboradores-individuais':
+        return <GestaoColaboradoresIndividuais />;
       case 'sistema-auditoria':
         return (
           <Card className="shadow-md border-0 bg-white">

@@ -46,6 +46,23 @@ export const formatarData = (data: string | Date): string => {
   return dataObj.toLocaleDateString('pt-BR');
 };
 
+// Formatar data e hora para padrão brasileiro
+export const formatarDataHora = (dataIso?: string | null): string => {
+  if (!dataIso) return '--';
+  
+  const data = new Date(dataIso);
+  if (isNaN(data.getTime())) return '--';
+  
+  return data.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }) + ' - ' + data.toLocaleTimeString('pt-BR', {
+    hour: '2-digit', 
+    minute: '2-digit'
+  });
+};
+
 // Formatar data para input (YYYY-MM-DD) - SEM problemas de fuso horário
 export const formatarDataInput = (data: string | Date): string => {
   if (typeof data === 'string') {

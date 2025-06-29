@@ -28,6 +28,72 @@ class AmbienteRepository:
         self.table_ambientes = 'c_ambientes'
         self.table_materiais = 'c_ambientes_material'
     
+    def _converter_decimal_para_float(self, dados: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Converte valores Decimal para float em campos monetários
+        
+        Args:
+            dados: Dicionário com dados
+            
+        Returns:
+            Dicionário com valores convertidos
+        """
+        dados_limpos = {}
+        campos_monetarios = ['valor_custo_fabrica', 'valor_venda']
+        
+        for k, v in dados.items():
+            if v is not None:
+                # Converte Decimal para float em campos monetários
+                if k in campos_monetarios and hasattr(v, '__float__'):
+                    dados_limpos[k] = float(v)
+                else:
+                    dados_limpos[k] = v
+        
+        return dados_limpos
+    
+    def _aplicar_filtros(self, query, filtros: Dict[str, Any] = None):
+        """
+        Aplica filtros a uma query do Supabase
+        
+        Args:
+            query: Query do Supabase
+            filtros: Dicionário com filtros
+            
+        Returns:
+            Query com filtros aplicados
+        """
+        if not filtros:
+            return query
+            
+        # Busca textual (nome do ambiente)
+        if filtros.get('busca'):
+            busca = f"%{filtros['busca']}%"
+            query = query.ilike('nome', busca)
+        
+        # Cliente específico
+        if filtros.get('cliente_id'):
+            query = query.eq('cliente_id', filtros['cliente_id'])
+        
+        # Origem (xml ou manual)
+        if filtros.get('origem'):
+            query = query.eq('origem', filtros['origem'])
+        
+        # Período de importação
+        if filtros.get('data_inicio'):
+            query = query.gte('data_importacao', filtros['data_inicio'].date())
+        
+        if filtros.get('data_fim'):
+            query = query.lte('data_importacao', filtros['data_fim'].date())
+        
+        # Faixa de valores
+        if filtros.get('valor_min'):
+            query = query.gte('valor_venda', float(filtros['valor_min']))
+        
+        if filtros.get('valor_max'):
+            query = query.lte('valor_venda', float(filtros['valor_max']))
+            
+        return query
+
     async def listar(
         self,
         filtros: Dict[str, Any] = None,
@@ -76,58 +142,15 @@ class AmbienteRepository:
                     materiais:c_ambientes_material!ambiente_id(materiais_json, xml_hash)
                 """
             
+            # Query principal com filtros aplicados
             query = self.db.table(self.table_ambientes).select(select_fields)
+            query = self._aplicar_filtros(query, filtros)
             
-            # Aplica filtros opcionais
-            if filtros:
-                # Busca textual (nome do ambiente)
-                if filtros.get('busca'):
-                    busca = f"%{filtros['busca']}%"
-                    query = query.ilike('nome', busca)
-                
-                # Cliente específico
-                if filtros.get('cliente_id'):
-                    query = query.eq('cliente_id', filtros['cliente_id'])
-                
-                # Origem (xml ou manual)
-                if filtros.get('origem'):
-                    query = query.eq('origem', filtros['origem'])
-                
-                # Período de importação
-                if filtros.get('data_inicio'):
-                    query = query.gte('data_importacao', filtros['data_inicio'].date())
-                
-                if filtros.get('data_fim'):
-                    query = query.lte('data_importacao', filtros['data_fim'].date())
-                
-                # Faixa de valores
-                if filtros.get('valor_min'):
-                    query = query.gte('valor_venda', float(filtros['valor_min']))
-                
-                if filtros.get('valor_max'):
-                    query = query.lte('valor_venda', float(filtros['valor_max']))
-            
-            # Conta total de registros (sem paginação)
+            # Query de contagem com mesmos filtros
             count_query = self.db.table(self.table_ambientes).select('id', count='exact')
+            count_query = self._aplicar_filtros(count_query, filtros)
             
-            # Aplica mesmos filtros na contagem
-            if filtros:
-                if filtros.get('busca'):
-                    busca = f"%{filtros['busca']}%"
-                    count_query = count_query.ilike('nome', busca)
-                if filtros.get('cliente_id'):
-                    count_query = count_query.eq('cliente_id', filtros['cliente_id'])
-                if filtros.get('origem'):
-                    count_query = count_query.eq('origem', filtros['origem'])
-                if filtros.get('data_inicio'):
-                    count_query = count_query.gte('data_importacao', filtros['data_inicio'].date())
-                if filtros.get('data_fim'):
-                    count_query = count_query.lte('data_importacao', filtros['data_fim'].date())
-                if filtros.get('valor_min'):
-                    count_query = count_query.gte('valor_venda', float(filtros['valor_min']))
-                if filtros.get('valor_max'):
-                    count_query = count_query.lte('valor_venda', float(filtros['valor_max']))
-            
+            # Executa contagem
             count_result = count_query.execute()
             total = count_result.count or 0
             
@@ -247,14 +270,7 @@ class AmbienteRepository:
         """
         try:
             # Converte valores Decimal para float se necessário
-            dados_limpos = {}
-            for k, v in dados.items():
-                if v is not None:
-                    # Converte Decimal para float
-                    if k in ['valor_custo_fabrica', 'valor_venda'] and hasattr(v, '__float__'):
-                        dados_limpos[k] = float(v)
-                    else:
-                        dados_limpos[k] = v
+            dados_limpos = self._converter_decimal_para_float(dados)
             
             # Cria o ambiente
             result = self.db.table(self.table_ambientes).insert(dados_limpos).execute()
@@ -291,13 +307,7 @@ class AmbienteRepository:
             await self.buscar_por_id(ambiente_id)
             
             # Converte valores Decimal para float se necessário
-            dados_limpos = {}
-            for k, v in dados.items():
-                if v is not None:
-                    if k in ['valor_custo_fabrica', 'valor_venda'] and hasattr(v, '__float__'):
-                        dados_limpos[k] = float(v)
-                    else:
-                        dados_limpos[k] = v
+            dados_limpos = self._converter_decimal_para_float(dados)
             
             # Atualiza o ambiente
             query = self.db.table(self.table_ambientes).update(dados_limpos).eq('id', ambiente_id)
@@ -379,6 +389,23 @@ class AmbienteRepository:
             logger.error(f"Erro ao criar material ambiente: {str(e)}")
             raise DatabaseException(f"Erro ao salvar materiais: {str(e)}")
     
+    async def verificar_xml_hash_existe(self, xml_hash: str) -> bool:
+        """
+        Verifica se um XML com este hash já foi importado
+        
+        Args:
+            xml_hash: Hash SHA256 do XML
+            
+        Returns:
+            True se já existe, False caso contrário
+        """
+        try:
+            result = self.db.table(self.table_materiais).select('id').eq('xml_hash', xml_hash).execute()
+            return len(result.data) > 0
+        except Exception as e:
+            logger.error(f"Erro ao verificar hash XML: {str(e)}")
+            return False
+    
     async def obter_materiais_ambiente(self, ambiente_id: str) -> Optional[Dict[str, Any]]:
         """
         Obtém materiais de um ambiente específico
@@ -402,30 +429,4 @@ class AmbienteRepository:
             logger.error(f"Erro ao obter materiais do ambiente {ambiente_id}: {str(e)}")
             raise DatabaseException(f"Erro ao obter materiais: {str(e)}")
     
-    async def atualizar_material_ambiente(
-        self,
-        ambiente_id: str,
-        dados: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """
-        Atualiza materiais de um ambiente
-        
-        Args:
-            ambiente_id: ID do ambiente
-            dados: Novos dados dos materiais
-            
-        Returns:
-            Material atualizado
-        """
-        try:
-            query = self.db.table(self.table_materiais).update(dados).eq('ambiente_id', ambiente_id)
-            result = query.execute()
-            
-            if not result.data:
-                raise DatabaseException("Erro ao atualizar materiais do ambiente")
-            
-            return result.data[0]
-        
-        except Exception as e:
-            logger.error(f"Erro ao atualizar materiais do ambiente {ambiente_id}: {str(e)}")
-            raise DatabaseException(f"Erro ao atualizar materiais: {str(e)}") 
+ 

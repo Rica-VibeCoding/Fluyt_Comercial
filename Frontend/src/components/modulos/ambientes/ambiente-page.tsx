@@ -1,41 +1,34 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { useClienteSelecionado } from '../../../hooks/globais/use-cliente-selecionado';
 import { useSessao } from '../../../store/sessao-store';
 import { Button } from '../../ui/button';
+import { Card, CardContent } from '../../ui/card';
 import { Badge } from '../../ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
-import { Download, Plus, Upload, User, Home, ArrowLeft, ArrowRight, Trash2, RefreshCw, AlertCircle } from 'lucide-react';
+import { Plus, Upload, ArrowLeft, ArrowRight, RefreshCw, AlertCircle } from 'lucide-react';
 import { useAmbientes } from '../../../hooks/modulos/ambientes/use-ambientes';
-import { useClientesApi } from '../../../hooks/modulos/clientes/use-clientes-api';
 import { useSessaoSimples } from '../../../hooks/globais/use-sessao-simples';
 import { AmbienteModal } from './ambiente-modal';
 import { AmbienteTable } from './ambiente-table';
 import { ClienteSelectorUniversal } from '../../shared/cliente-selector-universal';
 import { Alert, AlertDescription } from '../../ui/alert';
+import { ambientesService } from '@/services/ambientes-service';
+import { useToast } from '../../ui/use-toast';
+import { formatarMoeda } from '@/lib/formatters';
 
 export function AmbientePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const { toast } = useToast();
   const { clienteId, clienteNome } = useClienteSelecionado();
   const clienteCarregado = clienteId && clienteNome ? { nome: clienteNome } : null;
   
-  // Verificar se deve forçar troca de cliente
-  const forcarTroca = searchParams.get('forcar') === 'true';
-  
-  const { clientes } = useClientesApi();
   const {
     cliente,
-    ambientes: ambientesSessao,
-    definirCliente,
-    definirAmbientes,
     adicionarAmbiente: adicionarAmbienteSessao,
     removerAmbiente: removerAmbienteSessao,
-    podeGerarOrcamento,
-    limparSessaoCompleta
+    podeGerarOrcamento
   } = useSessao();
   
   const { definirAmbientes: definirAmbientesSimples } = useSessaoSimples();
@@ -68,8 +61,8 @@ export function AmbientePage() {
 
   // Debug: monitorar mudanças de clienteId
   useEffect(() => {
-    console.log('🔍 AmbientePage: clienteId mudou para:', clienteId, { forcarTroca });
-  }, [clienteId, forcarTroca]);
+    console.log('🔍 AmbientePage: clienteId mudou para:', clienteId);
+  }, [clienteId]);
 
   // Sincronizar ambientes com sessão simples
   useEffect(() => {
@@ -100,11 +93,6 @@ export function AmbientePage() {
     }
   };
 
-  const handleEditarAmbiente = (ambiente: any) => {
-    // TODO: Implementar edição
-    console.log('Editar ambiente:', ambiente);
-  };
-
   const handleAvancarParaOrcamento = () => {
     if (!podeGerarOrcamento) return;
     
@@ -116,6 +104,15 @@ export function AmbientePage() {
   };
 
   const handleImportarXML = async () => {
+    if (!clienteId) {
+      toast({
+        title: 'Atenção',
+        description: 'Selecione um cliente antes de importar XML',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     // Criar input file invisível
     const input = document.createElement('input');
     input.type = 'file';
@@ -128,29 +125,43 @@ export function AmbientePage() {
       
       // Verificar se é XML
       if (!file.name.toLowerCase().endsWith('.xml')) {
-        alert('Por favor, selecione um arquivo XML');
+        toast({
+          title: 'Arquivo inválido',
+          description: 'Por favor, selecione um arquivo XML',
+          variant: 'destructive'
+        });
         return;
       }
       
       try {
-        // Ler conteúdo do arquivo
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-          const xmlContent = event.target?.result as string;
-          
-          // Por enquanto, apenas log para teste
-          console.log('📄 Arquivo XML selecionado:', file.name);
-          console.log('📊 Tamanho:', (file.size / 1024).toFixed(2), 'KB');
-          console.log('🔍 Primeiros caracteres:', xmlContent.substring(0, 200));
-          
-          // TODO: Enviar para backend processar
-          alert(`XML "${file.name}" selecionado! Próxima etapa: processar no backend.`);
-        };
+        // Mostrar que está processando
+        toast({
+          title: 'Importando XML',
+          description: 'Enviando arquivo para processamento...'
+        });
         
-        reader.readAsText(file);
-      } catch (error) {
-        console.error('Erro ao ler arquivo:', error);
-        alert('Erro ao ler o arquivo XML');
+        // Enviar para backend
+        const response = await ambientesService.importarXML(clienteId, file);
+        
+        console.log('✅ Resposta do backend:', response.data);
+        
+        // Sucesso
+        toast({
+          title: 'XML recebido!',
+          description: `Arquivo "${file.name}" processado com sucesso`,
+          variant: 'default'
+        });
+        
+        // Recarregar lista de ambientes
+        recarregar();
+        
+      } catch (error: any) {
+        console.error('Erro ao importar XML:', error);
+        toast({
+          title: 'Erro ao importar',
+          description: error.response?.data?.detail || 'Erro ao processar arquivo XML',
+          variant: 'destructive'
+        });
       }
     };
     
@@ -287,10 +298,7 @@ export function AmbientePage() {
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Valor:</span>
                 <span className="font-bold text-primary tabular-nums">
-                  {valorTotalGeral.toLocaleString('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL'
-                  })}
+                  {formatarMoeda(valorTotalGeral)}
                 </span>
               </div>
             </div>
@@ -319,7 +327,6 @@ export function AmbientePage() {
             
             <AmbienteTable 
               ambientes={ambientes}
-              onEdit={handleEditarAmbiente}
               onDelete={handleRemoverAmbiente}
               loading={isLoading}
             />

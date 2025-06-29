@@ -34,10 +34,5 @@ export { ConfigLojaForm } from './configuracoes/config-loja-form';
 export { ResetDados } from './configuracoes/reset-dados';
 export { TesteConectividade } from './configuracoes/teste-conectividade';
 
-// Prestadores
-export { GestaoMontadores } from './prestadores/gestao-montadores';
-export { GestaoTransportadoras } from './prestadores/gestao-transportadoras';
-export { MontadorForm } from './prestadores/montador-form';
-export { MontadorTable } from './prestadores/montador-table';
-export { TransportadoraForm } from './prestadores/transportadora-form';
-export { TransportadoraTable } from './prestadores/transportadora-table';
+// Colaboradores (substitui Prestadores)
+export { GestaoTiposColaboradores, GestaoColaboradoresIndividuais } from './colaboradores';

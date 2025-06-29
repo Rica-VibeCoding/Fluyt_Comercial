@@ -5,8 +5,9 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { ambienteService } from '@/services/ambientes-service';
+import { ambientesService } from '@/services/ambientes-service';
 import { logConfig } from '@/lib/config';
+import { extractErrorMessage } from '@/lib/error-handler';
 import type { 
   Ambiente, 
   AmbienteFormData, 
@@ -32,7 +33,7 @@ export const useAmbientes = (clienteId?: string) => {
       // Se tiver clienteId, filtrar por ele
       const filtrosComCliente = clienteId ? { ...filtros, clienteId } : filtros;
       
-      const response = await ambienteService.listarAmbientes(filtrosComCliente);
+      const response = await ambientesService.listar(filtrosComCliente);
       
       if (response.success && response.data) {
         setAmbientes(response.data.items);
@@ -47,7 +48,7 @@ export const useAmbientes = (clienteId?: string) => {
         logConfig('❌ Erro ao carregar ambientes:', response.error);
       }
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      const errorMsg = extractErrorMessage(error);
       setError(errorMsg);
       setIsConnected(false);
       logConfig('❌ Erro inesperado ao carregar ambientes:', errorMsg);
@@ -76,7 +77,7 @@ export const useAmbientes = (clienteId?: string) => {
         origem: dados.origem || 'manual'
       };
       
-      const response = await ambienteService.criarAmbiente(dadosCompletos);
+      const response = await ambientesService.criar(dadosCompletos);
       
       if (response.success && response.data) {
         // Adicionar o novo ambiente à lista
@@ -94,7 +95,7 @@ export const useAmbientes = (clienteId?: string) => {
         return false;
       }
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      const errorMsg = extractErrorMessage(error);
       setError(errorMsg);
       setIsConnected(false);
       logConfig('❌ Erro inesperado ao criar ambiente:', errorMsg);
@@ -112,7 +113,7 @@ export const useAmbientes = (clienteId?: string) => {
     try {
       logConfig('🔄 Atualizando ambiente...', { id, dados });
       
-      const response = await ambienteService.atualizarAmbiente(id, dados);
+      const response = await ambientesService.atualizar(id, dados);
       
       if (response.success && response.data) {
         // Atualizar o ambiente na lista
@@ -134,7 +135,7 @@ export const useAmbientes = (clienteId?: string) => {
         return false;
       }
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      const errorMsg = extractErrorMessage(error);
       setError(errorMsg);
       setIsConnected(false);
       logConfig('❌ Erro inesperado ao atualizar ambiente:', errorMsg);
@@ -152,7 +153,7 @@ export const useAmbientes = (clienteId?: string) => {
     try {
       logConfig('🔄 Removendo ambiente...', { id });
       
-      const response = await ambienteService.deletarAmbiente(id);
+      const response = await ambientesService.deletar(id);
       
       if (response.success) {
         // Remover o ambiente da lista
@@ -167,7 +168,7 @@ export const useAmbientes = (clienteId?: string) => {
         return false;
       }
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      const errorMsg = extractErrorMessage(error);
       setError(errorMsg);
       setIsConnected(false);
       logConfig('❌ Erro inesperado ao remover ambiente:', errorMsg);
@@ -185,7 +186,7 @@ export const useAmbientes = (clienteId?: string) => {
     try {
       logConfig('🔄 Buscando ambiente por ID...', { id, incluirMateriais });
       
-      const response = await ambienteService.buscarAmbientePorId(id, incluirMateriais);
+      const response = await ambientesService.obterPorId(id, incluirMateriais);
       
       if (response.success && response.data) {
         setIsConnected(true);
@@ -201,7 +202,7 @@ export const useAmbientes = (clienteId?: string) => {
         return null;
       }
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      const errorMsg = extractErrorMessage(error);
       setError(errorMsg);
       setIsConnected(false);
       logConfig('❌ Erro inesperado ao buscar ambiente:', errorMsg);
@@ -214,7 +215,9 @@ export const useAmbientes = (clienteId?: string) => {
   // ============= VERIFICAR CONECTIVIDADE =============
   const verificarConectividade = async (): Promise<boolean> => {
     try {
-      const conectado = await ambienteService.verificarConectividade();
+      // Fazer uma chamada simples para verificar se o backend está acessível
+      const response = await ambientesService.listar({ limit: 1 });
+      const conectado = response.success === true;
       setIsConnected(conectado);
       return conectado;
     } catch {

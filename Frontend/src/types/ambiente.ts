@@ -60,6 +60,9 @@ export interface FiltrosAmbiente {
   valorMax?: number;
 }
 
+// Alias para compatibilidade
+export type AmbienteFiltros = FiltrosAmbiente;
+
 // ============= TIPOS PARA MATERIAIS =============
 
 export interface AmbienteMaterial {
@@ -104,26 +107,3 @@ export interface AmbienteBackend {
   updated_at: string;
 }
 
-// ============= TIPOS LEGADOS - MANTER POR COMPATIBILIDADE =============
-// TODO: Remover quando todos os componentes forem refatorados
-
-export interface Acabamento {
-  id: string;
-  tipo: 'Porta' | 'Caixa' | 'Painel' | 'Porta de Vidro';
-  cor: string;
-  espessura: string;
-  material: string;
-  valor: number;
-}
-
-// Tipo legado - será removido na próxima etapa
-export interface AmbienteLegado {
-  id: string;
-  nome: string;
-  acabamentos: Acabamento[];
-  valorTotal: number;
-  clienteId?: string;
-  criadoEm?: string;
-  importadoEm?: string;
-  origem?: 'manual' | 'xml';
-}

@@ -9,7 +9,6 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import {
   Table,
   TableBody,
@@ -30,17 +29,16 @@ import {
   User,
   FileText,
   Package,
-  MapPin,
   Building2,
   Hash,
 } from 'lucide-react';
 import type { Ambiente } from '@/types/ambiente';
+import { formatarMoeda, formatarDataHora } from '@/lib/formatters';
 
 interface AmbienteTableProps {
   ambientes: Ambiente[];
   onEdit?: (ambiente: Ambiente) => void;
   onDelete?: (id: string) => void;
-  onToggleStatus?: (id: string, ativo: boolean) => void;
   loading?: boolean;
 }
 
@@ -48,7 +46,6 @@ export function AmbienteTable({
   ambientes, 
   onEdit, 
   onDelete, 
-  onToggleStatus,
   loading = false 
 }: AmbienteTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -67,27 +64,6 @@ export function AmbienteTable({
     return String(index + 1).padStart(3, '0');
   };
 
-  const formatarDataHora = (dataIso?: string) => {
-    if (!dataIso) return '--';
-    
-    const data = new Date(dataIso);
-    return data.toLocaleDateString('pt-BR', { 
-      day: '2-digit', 
-      month: '2-digit',
-      year: 'numeric'
-    }) + ' - ' + data.toLocaleTimeString('pt-BR', {
-      hour: '2-digit', 
-      minute: '2-digit'
-    });
-  };
-
-  const formatarValor = (valor?: number) => {
-    if (!valor) return '--';
-    return valor.toLocaleString('pt-BR', { 
-      style: 'currency', 
-      currency: 'BRL' 
-    });
-  };
 
   const getOrigemBadge = (origem: 'manual' | 'xml') => {
     return origem === 'xml' ? (
@@ -182,7 +158,7 @@ export function AmbienteTable({
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-3 w-3 text-green-500" />
                     <span className="text-sm font-medium text-slate-900 tabular-nums">
-                      {formatarValor(ambiente.valorVenda || ambiente.valorCustoFabrica)}
+                      {formatarMoeda(ambiente.valorVenda || ambiente.valorCustoFabrica)}
                     </span>
                   </div>
                 </TableCell>
@@ -265,7 +241,7 @@ export function AmbienteTable({
                             <DollarSign className="h-3 w-3 text-green-500" />
                             <span className="text-xs font-medium text-slate-600 min-w-[45px]">Venda:</span>
                             <span className="text-xs text-slate-900 tabular-nums">
-                              {formatarValor(ambiente.valorVenda)}
+                              {formatarMoeda(ambiente.valorVenda)}
                             </span>
                           </div>
                           
@@ -273,7 +249,7 @@ export function AmbienteTable({
                             <DollarSign className="h-3 w-3 text-orange-500" />
                             <span className="text-xs font-medium text-slate-600 min-w-[45px]">Custo:</span>
                             <span className="text-xs text-slate-900 tabular-nums">
-                              {formatarValor(ambiente.valorCustoFabrica)}
+                              {formatarMoeda(ambiente.valorCustoFabrica)}
                             </span>
                           </div>
                           

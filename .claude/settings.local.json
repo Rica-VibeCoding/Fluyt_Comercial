@@ -60,7 +60,9 @@
       "Bash(bash:*)",
       "WebFetch(domain:momwbpxqnvgehotfmvde.supabase.co)",
       "Bash(kill:*)",
-      "WebFetch(domain:docs.anthropic.com)"
+      "WebFetch(domain:docs.anthropic.com)",
+      "Bash(npm run eslint:*)",
+      "Bash(npm run typecheck:*)"
     ],
     "deny": []
   }
