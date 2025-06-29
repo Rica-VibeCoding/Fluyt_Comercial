@@ -1,0 +1,1 @@
+# Pasta para arquivos estáticos (HTML, CSS, JS) 

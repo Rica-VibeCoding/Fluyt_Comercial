@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extrator XML Promob</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0 0 10px 0;
+            font-size: 24px;
+        }
+        
+        .linha-info {
+            font-size: 16px;
+        }
+        
+        .badge {
+            background-color: rgba(255, 255, 255, 0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        
+        .ambiente-info {
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        
+        .badge-ambiente {
+            background-color: rgba(255, 255, 255, 0.3);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        
+        /* Seções */
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-left: 4px solid #667eea;
+        }
+        
+        .section h2 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 18px;
+        }
+        
+        .content {
+            display: grid;
+            gap: 10px;
+        }
+        
+        .item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .item:last-child {
+            border-bottom: none;
+        }
+        
+        .label {
+            font-weight: bold;
+            color: #555;
+            min-width: 120px;
+        }
+        
+        .value {
+            color: #333;
+            text-align: right;
+            flex: 1;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .upload-area {
+            border: 3px dashed #bdc3c7;
+            border-radius: 10px;
+            padding: 60px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 30px;
+        }
+
+        .upload-area.dragover {
+            border-color: #3498db;
+            background-color: #ecf0f1;
+            transform: scale(1.02);
+        }
+
+        .upload-area.processing {
+            border-color: #f39c12;
+            background-color: #fef9e7;
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: #95a5a6;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+        }
+
+        .file-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1px;
+            height: 1px;
+            opacity: 0.01;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            margin: 10px;
+            display: inline-block;
+            text-decoration: none;
+            text-align: center;
+            user-select: none;
+        }
+
+        .btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-success {
+            background: #27ae60;
+        }
+
+        .btn-success:hover {
+            background: #229954;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .result-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border-left: 5px solid #3498db;
+        }
+
+        .result-card h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.4rem;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            font-weight: 600;
+            color: #34495e;
+            min-width: 150px;
+        }
+
+        .result-value {
+            color: #2c3e50;
+            text-align: right;
+            flex: 1;
+        }
+
+        .metadata {
+            background: #e8f4f8;
+            border-left-color: #16a085;
+        }
+
+        .error {
+            background: #fadbd8;
+            border-left-color: #e74c3c;
+            color: #c0392b;
+        }
+
+        .success-message {
+            background: #d5f4e6;
+            border-left-color: #27ae60;
+            color: #27ae60;
+            padding: 15px 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .actions {
+            display: none;
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .corredicuas-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .corredicuas-list li {
+            padding: 5px 0;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        .corredicuas-list li:last-child {
+            border-bottom: none;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 20px;
+            }
+            
+            .result-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .result-label {
+                margin-bottom: 5px;
+            }
+        }
+
+        /* Destacar valores importantes */
+        .highlight-custo {
+            background-color: #e8f5e8;
+            border-left: 4px solid #4CAF50;
+            padding: 8px;
+            margin: 4px 0;
+        }
+        
+        .highlight-venda {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 8px;
+            margin: 4px 0;
+        }
+        
+        .highlight-custo .label {
+            font-weight: bold;
+            color: #2e7d32;
+        }
+        
+        .highlight-venda .label {
+            font-weight: bold;
+            color: #f57c00;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Extrator XML Promob</h1>
+            <p>Sistema de extração de acabamentos para móveis planejados</p>
+        </div>
+
+        <div class="main-content">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">
+                    Arraste o arquivo XML aqui ou clique para selecionar
+                </div>
+                <button class="btn" id="selectFileBtn" onclick="document.getElementById('fileInput').click()">
+                    Selecionar Arquivo
+                </button>
+                <input type="file" id="fileInput" class="file-input" accept=".xml" />
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Processando XML...</p>
+            </div>
+
+            <div class="results" id="results"></div>
+
+            <div class="actions" id="actions">
+                <button class="btn btn-success" onclick="salvarResultados()">
+                    💾 Salvar Resultados
+                </button>
+                <button class="btn" onclick="resetar()">
+                    🔄 Novo Arquivo
+                </button>
+            </div>
+
+            <div class="success-message" id="successMessage">
+                ✅ Resultados salvos com sucesso no localStorage!
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 

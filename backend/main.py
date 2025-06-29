@@ -203,6 +203,7 @@ from modules.lojas.controller import router as lojas_router
 from modules.status_orcamento.controller import router as status_router
 from modules.equipe.controller import router as equipe_router
 from modules.setores.controller import router as setores_router
+from modules.ambientes.controller import router as ambientes_router
 
 # Registrar routers na aplicação
 app.include_router(auth_router, prefix="/api/v1/auth")
@@ -212,6 +213,7 @@ app.include_router(lojas_router, prefix="/api/v1")
 app.include_router(status_router, prefix="/api/v1")
 app.include_router(equipe_router, prefix="/api/v1")
 app.include_router(setores_router, prefix="/api/v1")
+app.include_router(ambientes_router, prefix="/api/v1")
 
 
 # Execução direta (desenvolvimento)

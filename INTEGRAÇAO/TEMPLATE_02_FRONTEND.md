@@ -2,78 +2,71 @@
 
 > **ID:** T02_FRONTEND_[MODULO]  
 > **Responsável:** IA Frontend  
-> **Status:** 🔒 Bloqueado (aguarda Backend)  
-> **Dependências:** Backend funcionando com API  
+> **Status:** 🔲 Aguardando início  
+> **Dependências:** Schema aprovado por Ricardo  
 
 ## 🎯 OBJETIVO
 
-Implementar a interface completa do módulo [NOME], removendo TODOS os dados mockados e conectando com a API real do backend, garantindo uma experiência de usuário consistente e profissional.
+Implementar a interface frontend completa do módulo [NOME], criando componentes React modernos, hooks personalizados e integração total com a API backend usando dados reais do Supabase.
 
 ## 📋 PRÉ-REQUISITOS
 
-### Informações do Backend (já implementado)
-- **Endpoint base:** `/api/v1/[modulo]`
-- **Campos da API:**
-  - Response: `{ id, nome, campo2, ativo, created_at, updated_at }`
-  - Create: `{ nome, campo2, campo3? }`
-  - Update: `{ nome?, campo2?, ativo? }`
+### Informações da Descoberta
+- **Tabela Supabase:** `c_[nome]` ou `cad_[nome]`
+- **Campos obrigatórios:** [listar]
+- **Campos opcionais:** [listar]
+- **Relacionamentos:** [descrever FKs]
+- **Conversões:** camelCase ↔ snake_case
 
-### Conversão de Dados
-| Backend (snake_case) | Frontend (camelCase) |
-|---------------------|---------------------|
-| `nome_completo` | `nomeCompleto` |
-| `created_at` | `createdAt` |
-| `updated_at` | `updatedAt` |
-
-### Módulo de Referência
-- **Usar como base:** `/Frontend/src/components/modulos/lojas/`
-- **Copiar estrutura de componentes**
-- **Manter padrões visuais**
+### Módulos de Referência
+- **Service:** `/Frontend/src/services/cliente-service.ts`
+- **Hook:** `/Frontend/src/hooks/modulos/sistema/use-setores.ts`
+- **Componentes:** `/Frontend/src/components/modulos/sistema/`
 
 ## 📁 ESTRUTURA DE ARQUIVOS
 
 ```bash
 Frontend/src/
-├── types/
-│   └── [modulo].ts                    # Interfaces TypeScript
-├── hooks/modulos/[modulo]/
-│   └── use-[modulo].ts               # Hook principal
-├── services/
-│   └── [modulo]-service.ts          # Chamadas API
-├── store/
-│   └── [modulo]-store.ts            # Estado Zustand
-└── components/modulos/[modulo]/
-    ├── index.ts                      # Exports
-    ├── [modulo]-page.tsx            # Página principal
-    ├── [modulo]-tabela.tsx          # Lista/tabela
-    ├── [modulo]-modal.tsx           # Criar/editar
-    ├── [modulo]-filtros.tsx         # Filtros de busca
-    └── [modulo]-actions.tsx         # Ações (botões)
+├── types/[modulo].ts                    # Interfaces TypeScript
+├── services/[modulo]-service.ts         # Integração com API
+├── hooks/modulos/[modulo]/             # Hooks personalizados
+│   └── use-[modulo].ts
+├── components/modulos/[modulo]/        # Componentes React
+│   ├── [modulo]-form.tsx               # Formulário criar/editar
+│   ├── [modulo]-table.tsx              # Tabela com listagem
+│   ├── [modulo]-modal.tsx              # Modal de confirmações
+│   └── gestao-[modulo].tsx             # Página principal
+└── store/[modulo]-store.ts             # Estado Zustand (opcional)
 ```
 
 ## ✅ CHECKLIST DE IMPLEMENTAÇÃO
 
-### 1️⃣ TYPES - Interfaces TypeScript
+### 1️⃣ TYPES/[MODULO].TS - Interfaces TypeScript
 
 ```typescript
-// types/[modulo].ts
+/**
+ * Tipos e interfaces para o módulo [nome]
+ * Baseados na estrutura real do Supabase
+ */
+
+// Interface base (campos do Supabase)
 export interface [Modulo] {
   id: string;
   nome: string;
-  campo2: string;
-  campo3?: string;
+  // ... outros campos conforme tabela
   ativo: boolean;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
 
+// Para formulários (sem campos automáticos)
 export interface [Modulo]FormData {
   nome: string;
-  campo2: string;
-  campo3?: string;
+  // ... campos editáveis pelo usuário
 }
 
-export interface [Modulo]Filters {
+// Para filtros de busca
+export interface Filtros[Modulo] {
   busca?: string;
   ativo?: boolean;
   page?: number;
@@ -81,252 +74,502 @@ export interface [Modulo]Filters {
 }
 ```
 
-### 2️⃣ SERVICE - Integração com API
+- [ ] Interface base com todos os campos da tabela
+- [ ] Interface para formulários (sem id, timestamps)
+- [ ] Interface para filtros de busca
+- [ ] Comentários explicando cada campo
+- [ ] Tipos opcionais marcados corretamente
+
+### 2️⃣ SERVICES/[MODULO]-SERVICE.TS - Integração com API
 
 ```typescript
-// services/[modulo]-service.ts
-import { apiClient } from '@/lib/api-client';
+/**
+ * Serviço para integração com API do módulo [nome]
+ * Conecta diretamente com endpoints do backend
+ */
 
-export const [modulo]Service = {
+import { apiClient } from './api-client';
+import type { [Modulo], [Modulo]FormData } from '@/types/[modulo]';
+
+export interface [Modulo]ServiceResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  source: 'api';
+  timestamp: string;
+}
+
+export interface [Modulo]ListResponse {
+  items: [Modulo][];
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+}
+
+class [Modulo]Service {
   // Listar com filtros
-  async listar(filters?: [Modulo]Filters) {
-    const response = await apiClient.get('/[modulo]', { params: filters });
-    return response.data;
-  },
+  async listar(filtros?: Filtros[Modulo]): Promise<[Modulo]ServiceResponse<[Modulo]ListResponse>> {
+    // Implementar chamada para GET /api/v1/[modulo]
+  }
 
   // Buscar por ID
-  async buscarPorId(id: string) {
-    const response = await apiClient.get(`/[modulo]/${id}`);
-    return response.data;
-  },
+  async buscarPorId(id: string): Promise<[Modulo]ServiceResponse<[Modulo]>> {
+    // Implementar chamada para GET /api/v1/[modulo]/{id}
+  }
 
   // Criar novo
-  async criar(data: [Modulo]FormData) {
-    const response = await apiClient.post('/[modulo]', data);
-    return response.data;
-  },
-
-  // Atualizar
-  async atualizar(id: string, data: Partial<[Modulo]FormData>) {
-    const response = await apiClient.put(`/[modulo]/${id}`, data);
-    return response.data;
-  },
-
-  // Excluir
-  async excluir(id: string) {
-    const response = await apiClient.delete(`/[modulo]/${id}`);
-    return response.data;
+  async criar(dados: [Modulo]FormData): Promise<[Modulo]ServiceResponse<[Modulo]>> {
+    // Implementar chamada para POST /api/v1/[modulo]
   }
-};
-```
 
-### 3️⃣ STORE - Gerenciamento de Estado
+  // Atualizar existente
+  async atualizar(id: string, dados: [Modulo]FormData): Promise<[Modulo]ServiceResponse<[Modulo]>> {
+    // Implementar chamada para PUT /api/v1/[modulo]/{id}
+  }
 
-```typescript
-// store/[modulo]-store.ts
-import { create } from 'zustand';
-
-interface [Modulo]State {
-  [modulos]: [Modulo][];
-  loading: boolean;
-  error: string | null;
-  
-  // Actions
-  fetch[Modulos]: (filters?: [Modulo]Filters) => Promise<void>;
-  criar[Modulo]: (data: [Modulo]FormData) => Promise<void>;
-  atualizar[Modulo]: (id: string, data: Partial<[Modulo]FormData>) => Promise<void>;
-  excluir[Modulo]: (id: string) => Promise<void>;
+  // Excluir (soft delete)
+  async excluir(id: string): Promise<[Modulo]ServiceResponse<void>> {
+    // Implementar chamada para DELETE /api/v1/[modulo]/{id}
+  }
 }
+
+export const [modulo]Service = new [Modulo]Service();
 ```
 
-### 4️⃣ HOOK PRINCIPAL
+- [ ] Classe de serviço com métodos CRUD
+- [ ] Tratamento de erros específicos
+- [ ] Conversão de dados se necessário
+- [ ] Tipos de resposta padronizados
+- [ ] Logs para debugging
+- [ ] **ZERO dados mock** - apenas API real
+
+### 3️⃣ HOOKS/MODULOS/[MODULO]/USE-[MODULO].TS - Hook Personalizado
 
 ```typescript
-// hooks/modulos/[modulo]/use-[modulo].ts
-export function use[Modulos]() {
-  const { [modulos], loading, error, fetch[Modulos] } = use[Modulo]Store();
-  
-  useEffect(() => {
-    fetch[Modulos]();
+/**
+ * Hook personalizado para gerenciar estado do módulo [nome]
+ * Conecta componentes com a API de forma reativa
+ */
+
+import { useState, useCallback, useEffect } from 'react';
+import { toast } from 'sonner';
+import { [modulo]Service } from '@/services/[modulo]-service';
+import type { [Modulo], [Modulo]FormData } from '@/types/[modulo]';
+
+export function use[Modulo]() {
+  const [items, setItems] = useState<[Modulo][]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Carregar dados do Supabase
+  const carregar = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await [modulo]Service.listar();
+      if (response.success && response.data) {
+        setItems(response.data.items);
+      } else {
+        toast.error(response.error || 'Erro ao carregar dados');
+      }
+    } catch (error) {
+      toast.error('Erro de conexão com o servidor');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  return { [modulos], loading, error, refetch: fetch[Modulos] };
+  // Criar novo item
+  const criar = useCallback(async (dados: [Modulo]FormData): Promise<boolean> => {
+    setLoading(true);
+    try {
+      const response = await [modulo]Service.criar(dados);
+      if (response.success && response.data) {
+        setItems(prev => [...prev, response.data!]);
+        toast.success('Criado com sucesso!');
+        return true;
+      } else {
+        toast.error(response.error || 'Erro ao criar');
+        return false;
+      }
+    } catch (error) {
+      toast.error('Erro de conexão');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Outros métodos: atualizar, excluir, etc.
+
+  // Carregar na montagem
+  useEffect(() => {
+    carregar();
+  }, []);
+
+  return {
+    items,
+    loading,
+    carregar,
+    criar,
+    // ... outros métodos
+  };
 }
 ```
 
-### 5️⃣ COMPONENTES UI
+- [ ] Hook com estado reativo
+- [ ] Métodos CRUD completos
+- [ ] Loading states apropriados
+- [ ] Tratamento de erros com toast
+- [ ] useEffect para carregamento inicial
+- [ ] Callbacks otimizados com useCallback
 
-#### Página Principal
-- [ ] Layout com header e ações
-- [ ] Integração com hook de dados
-- [ ] Estados de loading/empty/error
-- [ ] Breadcrumbs de navegação
+### 4️⃣ COMPONENTS/MODULOS/[MODULO]/[MODULO]-FORM.TSX - Formulário
 
-#### Tabela/Lista
-- [ ] Columns definidas com tipos corretos
-- [ ] Ações por linha (editar/excluir)
-- [ ] Paginação funcionando
-- [ ] Ordenação se aplicável
-- [ ] Seleção múltipla se necessário
+```tsx
+/**
+ * Formulário para criar/editar [nome]
+ * Usando React Hook Form + Zod + Shadcn/ui
+ */
 
-#### Modal de Formulário
-- [ ] Validação com react-hook-form + zod
-- [ ] Modo criar e editar
-- [ ] Loading durante submissão
-- [ ] Feedback de sucesso/erro
-- [ ] Fechar após sucesso
+'use client';
 
-#### Filtros
-- [ ] Campo de busca com debounce
-- [ ] Filtro por status (ativo/inativo)
-- [ ] Filtros adicionais específicos
-- [ ] Botão limpar filtros
-- [ ] Persistir em URL se necessário
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import type { [Modulo], [Modulo]FormData } from '@/types/[modulo]';
 
-## 🚨 REMOÇÃO DE MOCKS - CRÍTICO!
-
-### Buscar e Remover
-```bash
-# Encontrar todos os mocks
-grep -r "mock" Frontend/src/components/modulos/[modulo]/
-grep -r "Mock" Frontend/src/components/modulos/[modulo]/
-grep -r "MOCK" Frontend/src/components/modulos/[modulo]/
-grep -r "exemplo" Frontend/src/components/modulos/[modulo]/
-```
-
-### Exemplos do que Remover
-```typescript
-// ❌ REMOVER TUDO ISSO:
-const mockData = [
-  { id: 1, nome: 'Teste' },
-  { id: 2, nome: 'Exemplo' }
-];
-
-const MOCK_[MODULOS] = [...];
-
-// Dados hardcoded
-const items = [
-  { id: 'abc', nome: 'Vendas' }
-];
-
-// ✅ SUBSTITUIR POR:
-const { [modulos], loading, error } = use[Modulos]();
-```
-
-## 🎨 UI/UX CONSISTENTE
-
-### Componentes Obrigatórios
-- [ ] Usar componentes do Shadcn/ui
-- [ ] Botões com variantes corretas
-- [ ] Cards para agrupamento
-- [ ] Skeleton durante loading
-- [ ] Empty state com ilustração
-- [ ] Mensagens de erro claras
-
-### Padrões Visuais
-```typescript
-// Botão principal
-<Button>
-  <Plus className="w-4 h-4 mr-2" />
-  Novo [Módulo]
-</Button>
-
-// Tabela com ações
-<Table>
-  <TableHeader>...</TableHeader>
-  <TableBody>
-    {loading ? (
-      <SkeletonTable />
-    ) : items.length === 0 ? (
-      <EmptyState />
-    ) : (
-      items.map(item => <TableRow key={item.id}>...</TableRow>)
-    )}
-  </TableBody>
-</Table>
-```
-
-### Responsividade
-- [ ] Mobile: Cards empilhados
-- [ ] Tablet: Layout adaptado
-- [ ] Desktop: Tabela completa
-- [ ] Testar em diferentes tamanhos
-
-## 🔄 INTEGRAÇÃO E SINCRONIZAÇÃO
-
-### Estado Global
-- [ ] Store Zustand atualizada após ações
-- [ ] Cache invalidado quando necessário
-- [ ] Loading states coordenados
-- [ ] Otimistic updates se aplicável
-
-### Feedback Visual
-```typescript
-// Sucesso
-toast({
-  title: "[Módulo] criado com sucesso",
-  description: "O registro foi adicionado ao sistema",
+// Schema de validação
+const [modulo]Schema = z.object({
+  nome: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
+  // ... outros campos com validações
 });
 
-// Erro
-toast({
-  title: "Erro ao criar [módulo]",
-  description: error.message,
-  variant: "destructive",
-});
+interface [Modulo]FormProps {
+  [modulo]?: [Modulo]; // Para edição
+  onSubmit: (dados: [Modulo]FormData) => Promise<boolean>;
+  onCancel: () => void;
+  loading?: boolean;
+}
+
+export function [Modulo]Form({ [modulo], onSubmit, onCancel, loading }: [Modulo]FormProps) {
+  const form = useForm<[Modulo]FormData>({
+    resolver: zodResolver([modulo]Schema),
+    defaultValues: {
+      nome: [modulo]?.nome || '',
+      // ... outros valores padrão
+    },
+  });
+
+  const handleSubmit = async (dados: [Modulo]FormData) => {
+    const sucesso = await onSubmit(dados);
+    if (sucesso) {
+      form.reset();
+    }
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="nome"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nome</FormLabel>
+              <FormControl>
+                <Input {...field} disabled={loading} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        {/* Outros campos */}
+
+        <div className="flex gap-2 justify-end">
+          <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? 'Salvando...' : ([modulo] ? 'Atualizar' : 'Criar')}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+}
 ```
 
-## 🧪 TESTES MANUAIS OBRIGATÓRIOS
+- [ ] React Hook Form com validação Zod
+- [ ] Campos baseados na estrutura da tabela
+- [ ] Estados de loading apropriados
+- [ ] Validações client-side
+- [ ] Design consistente com Shadcn/ui
+- [ ] Suporte para criar e editar
 
-### Fluxo Completo
-1. [ ] Acessar página do módulo
-2. [ ] Ver lista carregando do backend
-3. [ ] Criar novo registro
-4. [ ] Editar registro existente
-5. [ ] Excluir com confirmação
-6. [ ] Filtrar e buscar
-7. [ ] Paginar resultados
+### 5️⃣ COMPONENTS/MODULOS/[MODULO]/[MODULO]-TABLE.TSX - Tabela
 
-### Casos de Erro
-- [ ] API fora do ar
-- [ ] Token expirado
-- [ ] Dados inválidos
-- [ ] Sem permissão
-- [ ] Conflito (duplicado)
+```tsx
+/**
+ * Tabela para listagem de [nome]
+ * Com filtros, ordenação e ações
+ */
 
-### Performance
-- [ ] Carregamento < 1s
-- [ ] Debounce na busca
-- [ ] Sem re-renders desnecessários
-- [ ] Bundle size adequado
+'use client';
+
+import { useState } from 'react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Edit, Trash2, MoreHorizontal } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import type { [Modulo] } from '@/types/[modulo]';
+
+interface [Modulo]TableProps {
+  items: [Modulo][];
+  onEdit: (item: [Modulo]) => void;
+  onDelete: (id: string) => void;
+  onToggleStatus: (id: string) => void;
+  loading?: boolean;
+}
+
+export function [Modulo]Table({ items, onEdit, onDelete, onToggleStatus, loading }: [Modulo]TableProps) {
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  if (items.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <h3 className="text-lg font-medium mb-2">Nenhum registro encontrado</h3>
+        <p className="text-gray-500">Clique em "Novo" para criar o primeiro registro.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border rounded-lg">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Nome</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Criado em</TableHead>
+            <TableHead className="text-right">Ações</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {items.map((item) => (
+            <TableRow key={item.id}>
+              <TableCell className="font-medium">{item.nome}</TableCell>
+              <TableCell>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={item.ativo}
+                    onCheckedChange={() => onToggleStatus(item.id)}
+                    disabled={loading}
+                  />
+                  <Badge variant={item.ativo ? "default" : "secondary"}>
+                    {item.ativo ? 'Ativo' : 'Inativo'}
+                  </Badge>
+                </div>
+              </TableCell>
+              <TableCell>
+                {new Date(item.createdAt).toLocaleDateString('pt-BR')}
+              </TableCell>
+              <TableCell className="text-right">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => onEdit(item)}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Editar
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => onDelete(item.id)}
+                      className="text-red-600"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Excluir
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+```
+
+- [ ] Tabela responsiva com Shadcn/ui
+- [ ] Ações: editar, excluir, toggle status
+- [ ] Empty state quando sem dados
+- [ ] Loading states
+- [ ] Formatação de datas em PT-BR
+- [ ] Dropdown menu para ações
+
+### 6️⃣ COMPONENTS/MODULOS/[MODULO]/GESTAO-[MODULO].TSX - Página Principal
+
+```tsx
+/**
+ * Página principal de gestão de [nome]
+ * Integra todos os componentes do módulo
+ */
+
+'use client';
+
+import { useState } from 'react';
+import { Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { use[Modulo] } from '@/hooks/modulos/[modulo]/use-[modulo]';
+import { [Modulo]Form } from './[modulo]-form';
+import { [Modulo]Table } from './[modulo]-table';
+import type { [Modulo] } from '@/types/[modulo]';
+
+export function Gestao[Modulo]() {
+  const { items, loading, criar, atualizar, excluir, alternarStatus } = use[Modulo]();
+  const [modalAberto, setModalAberto] = useState(false);
+  const [itemEdicao, setItemEdicao] = useState<[Modulo] | undefined>();
+  const [itemExclusao, setItemExclusao] = useState<string | undefined>();
+
+  const handleSubmit = async (dados: [Modulo]FormData) => {
+    const sucesso = itemEdicao 
+      ? await atualizar(itemEdicao.id, dados)
+      : await criar(dados);
+    
+    if (sucesso) {
+      setModalAberto(false);
+      setItemEdicao(undefined);
+    }
+    
+    return sucesso;
+  };
+
+  const handleEdit = (item: [Modulo]) => {
+    setItemEdicao(item);
+    setModalAberto(true);
+  };
+
+  const handleDelete = async () => {
+    if (itemExclusao) {
+      await excluir(itemExclusao);
+      setItemExclusao(undefined);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold">Gestão de [Nome]</h1>
+          <p className="text-gray-600">Gerencie os registros de [nome] do sistema</p>
+        </div>
+        <Button onClick={() => setModalAberto(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Novo [Nome]
+        </Button>
+      </div>
+
+      {/* Tabela */}
+      <[Modulo]Table
+        items={items}
+        onEdit={handleEdit}
+        onDelete={setItemExclusao}
+        onToggleStatus={alternarStatus}
+        loading={loading}
+      />
+
+      {/* Modal do formulário */}
+      <Dialog open={modalAberto} onOpenChange={setModalAberto}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {itemEdicao ? 'Editar [Nome]' : 'Novo [Nome]'}
+            </DialogTitle>
+          </DialogHeader>
+          <[Modulo]Form
+            [modulo]={itemEdicao}
+            onSubmit={handleSubmit}
+            onCancel={() => {
+              setModalAberto(false);
+              setItemEdicao(undefined);
+            }}
+            loading={loading}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de confirmação de exclusão */}
+      <AlertDialog open={!!itemExclusao} onOpenChange={() => setItemExclusao(undefined)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. O registro será removido permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+```
+
+- [ ] Página completa com header
+- [ ] Integração com hook personalizado
+- [ ] Modal para formulário (criar/editar)
+- [ ] Modal de confirmação para exclusão
+- [ ] Estados de loading apropriados
+- [ ] Layout responsivo
+
+## ⚠️ PONTOS CRÍTICOS
+
+1. **ZERO Mock Data**: Todos os dados devem vir da API real
+2. **Conversões**: Implementar camelCase ↔ snake_case se necessário
+3. **Validações**: Client-side + server-side
+4. **Acessibilidade**: Labels, ARIA, navegação por teclado
+5. **Performance**: useCallback, useMemo quando apropriado
+6. **Tipos**: TypeScript rigoroso em todos os componentes
 
 ## 📊 CRITÉRIOS DE ACEITAÇÃO
 
-- [ ] ZERO dados mockados
-- [ ] Todos os componentes criados
-- [ ] Integração com API funcionando
-- [ ] CRUD completo operacional
-- [ ] UI/UX consistente com sistema
-- [ ] Responsivo em todos devices
-- [ ] Sem erros no console
-- [ ] Performance adequada
+- [ ] Todos os componentes criados e funcionando
+- [ ] Integração com API backend completa
+- [ ] CRUD funcionando com dados reais
+- [ ] Validações client-side implementadas
+- [ ] UI/UX consistente com design system
+- [ ] Responsividade em mobile/desktop
+- [ ] Loading states e error handling
+- [ ] Código comentado em PT-BR
+- [ ] Zero dados mock em produção
 
 ## 🚀 ENTREGA
 
-1. **Limpar todos os mocks** verificados
-2. **Testar fluxo completo** manualmente
-3. **Validar com diferentes perfis** de usuário
-4. **Notificar conclusão** para revisão
-5. **Demonstrar funcionando** com dados reais
-
-## ⚠️ PONTOS DE ATENÇÃO
-
-1. **Conversão de Dados**: snake_case ↔ camelCase automática
-2. **Timezone**: Datas em UTC, mostrar em local
-3. **Validação**: Client-side + server-side
-4. **Cache**: Invalidar após mutações
-5. **Acessibilidade**: Labels, ARIA, keyboard nav
+1. **Testar localmente** todos os componentes
+2. **Validar integração** com backend rodando
+3. **Verificar responsividade** em diferentes telas
+4. **Documentar** funcionalidades implementadas
+5. **Aguardar aprovação** do Claude Code
 
 ---
 
-**IMPORTANTE:** O frontend DEVE estar 100% conectado com a API real. Qualquer dado mockado será considerado falha na entrega!
+**LEMBRE-SE:** Use dados reais do Supabase, mantenha consistência visual com outros módulos e implemente todas as funcionalidades CRUD!
+

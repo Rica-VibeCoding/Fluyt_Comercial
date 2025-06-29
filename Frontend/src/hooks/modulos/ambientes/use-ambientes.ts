@@ -1,110 +1,276 @@
-import { useState } from 'react';
-import { Ambiente, AmbienteFormData } from '../../../types/ambiente';
+/**
+ * HOOK DE AMBIENTES - INTEGRAÇÃO TOTAL COM BACKEND
+ * Remove todos os dados mock e usa apenas API real
+ * Compatível com estrutura Supabase: c_ambientes + c_ambientes_material
+ */
 
-const nomesFicticios = [
-  'Cozinha',
-  'Dormitório',
-  'Sala de Estar',
-  'Banheiro',
-  'Escritório',
-  'Lavanderia',
-  'Quarto Master',
-  'Closet',
-  'Sala de Jantar',
-  'Varanda'
-];
+import { useState, useEffect, useCallback } from 'react';
+import { ambienteService } from '@/services/ambientes-service';
+import { logConfig } from '@/lib/config';
+import type { 
+  Ambiente, 
+  AmbienteFormData, 
+  AmbienteUpdateData, 
+  FiltrosAmbiente 
+} from '@/types/ambiente';
 
 export const useAmbientes = (clienteId?: string) => {
+  // ============= ESTADO =============
   const [ambientes, setAmbientes] = useState<Ambiente[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState(true);
 
-  const adicionarAmbiente = (data: AmbienteFormData) => {
-    const agora = new Date().toISOString();
-    
-    const novoAmbiente: Ambiente = {
-      id: Date.now().toString(),
-      nome: data.nome,
-      acabamentos: data.acabamentos.map((acabamento, index) => ({
-        ...acabamento,
-        id: `${Date.now()}-${index}`,
-        valor: 0 // Valor padrão pois agora o valor é único por ambiente
-      })),
-      valorTotal: data.valorTotal,
-      clienteId: clienteId,
-      // Timestamps para ambiente criado manualmente
-      criadoEm: agora,
-      origem: 'manual'
-    };
-
-    setAmbientes(prev => [...prev, novoAmbiente]);
-  };
-
-  const removerAmbiente = (id: string) => {
-    setAmbientes(prev => prev.filter(ambiente => ambiente.id !== id));
-  };
-
-  const importarXML = async () => {
-    if (!clienteId) return;
-    
+  // ============= CARREGAR AMBIENTES =============
+  const carregarAmbientes = useCallback(async (filtros?: FiltrosAmbiente) => {
     setIsLoading(true);
+    setError(null);
     
-    // Função provisória que cria um ambiente fictício
-    setTimeout(() => {
-      const nomeAleatorio = nomesFicticios[Math.floor(Math.random() * nomesFicticios.length)];
-      const agora = new Date().toISOString();
+    try {
+      logConfig('🔄 Carregando ambientes...', { clienteId, filtros });
       
-      const ambienteFicticio: Ambiente = {
-        id: 'xml-' + Date.now(),
-        nome: nomeAleatorio,
-        acabamentos: [
-          {
-            id: 'acabamento-1',
-            tipo: 'Porta',
-            cor: 'Madeira Natural',
-            espessura: '18mm',
-            material: 'MDF',
-            valor: 850
-          },
-          {
-            id: 'acabamento-2',
-            tipo: 'Caixa',
-            cor: 'Branco Texturizado',
-            espessura: '15mm',
-            material: 'MDP',
-            valor: 1200
-          },
-          {
-            id: 'acabamento-3',
-            tipo: 'Painel',
-            cor: 'Carvalho Europeu',
-            espessura: '18mm',
-            material: 'MDF',
-            valor: 950
-          }
-        ],
-        valorTotal: 3000 + Math.floor(Math.random() * 2000), // Valor entre 3000 e 5000
-        clienteId: clienteId,
-        // Timestamps para ambiente importado via XML
-        importadoEm: agora,
-        criadoEm: agora, // Mesmo timestamp para ambos neste caso
-        origem: 'xml'
-      };
-
-      setAmbientes(prev => [...prev, ambienteFicticio]);
+      // Se tiver clienteId, filtrar por ele
+      const filtrosComCliente = clienteId ? { ...filtros, clienteId } : filtros;
+      
+      const response = await ambienteService.listarAmbientes(filtrosComCliente);
+      
+      if (response.success && response.data) {
+        setAmbientes(response.data.items);
+        setIsConnected(true);
+        logConfig('✅ Ambientes carregados com sucesso', { 
+          total: response.data.items.length,
+          source: response.source 
+        });
+      } else {
+        setError(response.error || 'Erro ao carregar ambientes');
+        setIsConnected(false);
+        logConfig('❌ Erro ao carregar ambientes:', response.error);
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      setError(errorMsg);
+      setIsConnected(false);
+      logConfig('❌ Erro inesperado ao carregar ambientes:', errorMsg);
+    } finally {
       setIsLoading(false);
+    }
+  }, [clienteId]);
+
+  // ============= CRIAR AMBIENTE =============
+  const adicionarAmbiente = async (dados: AmbienteFormData): Promise<boolean> => {
+    if (!clienteId) {
+      setError('Cliente ID é obrigatório para criar ambiente');
+      return false;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      logConfig('🔄 Criando ambiente...', { nome: dados.nome, clienteId });
       
-      console.log('Ambiente fictício criado:', ambienteFicticio);
-    }, 1500);
+      // Garantir que clienteId está no payload
+      const dadosCompletos: AmbienteFormData = {
+        ...dados,
+        clienteId,
+        origem: dados.origem || 'manual'
+      };
+      
+      const response = await ambienteService.criarAmbiente(dadosCompletos);
+      
+      if (response.success && response.data) {
+        // Adicionar o novo ambiente à lista
+        setAmbientes(prev => [...prev, response.data!]);
+        setIsConnected(true);
+        logConfig('✅ Ambiente criado com sucesso', { 
+          id: response.data.id,
+          nome: response.data.nome 
+        });
+        return true;
+      } else {
+        setError(response.error || 'Erro ao criar ambiente');
+        setIsConnected(false);
+        logConfig('❌ Erro ao criar ambiente:', response.error);
+        return false;
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      setError(errorMsg);
+      setIsConnected(false);
+      logConfig('❌ Erro inesperado ao criar ambiente:', errorMsg);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const valorTotalGeral = ambientes.reduce((total, ambiente) => total + ambiente.valorTotal, 0);
+  // ============= ATUALIZAR AMBIENTE =============
+  const atualizarAmbiente = async (id: string, dados: AmbienteUpdateData): Promise<boolean> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      logConfig('🔄 Atualizando ambiente...', { id, dados });
+      
+      const response = await ambienteService.atualizarAmbiente(id, dados);
+      
+      if (response.success && response.data) {
+        // Atualizar o ambiente na lista
+        setAmbientes(prev => 
+          prev.map(ambiente => 
+            ambiente.id === id ? response.data! : ambiente
+          )
+        );
+        setIsConnected(true);
+        logConfig('✅ Ambiente atualizado com sucesso', { 
+          id: response.data.id,
+          nome: response.data.nome 
+        });
+        return true;
+      } else {
+        setError(response.error || 'Erro ao atualizar ambiente');
+        setIsConnected(false);
+        logConfig('❌ Erro ao atualizar ambiente:', response.error);
+        return false;
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      setError(errorMsg);
+      setIsConnected(false);
+      logConfig('❌ Erro inesperado ao atualizar ambiente:', errorMsg);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  // ============= REMOVER AMBIENTE =============
+  const removerAmbiente = async (id: string): Promise<boolean> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      logConfig('🔄 Removendo ambiente...', { id });
+      
+      const response = await ambienteService.deletarAmbiente(id);
+      
+      if (response.success) {
+        // Remover o ambiente da lista
+        setAmbientes(prev => prev.filter(ambiente => ambiente.id !== id));
+        setIsConnected(true);
+        logConfig('✅ Ambiente removido com sucesso', { id });
+        return true;
+      } else {
+        setError(response.error || 'Erro ao remover ambiente');
+        setIsConnected(false);
+        logConfig('❌ Erro ao remover ambiente:', response.error);
+        return false;
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      setError(errorMsg);
+      setIsConnected(false);
+      logConfig('❌ Erro inesperado ao remover ambiente:', errorMsg);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ============= BUSCAR AMBIENTE POR ID =============
+  const buscarAmbientePorId = async (id: string, incluirMateriais: boolean = false): Promise<Ambiente | null> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      logConfig('🔄 Buscando ambiente por ID...', { id, incluirMateriais });
+      
+      const response = await ambienteService.buscarAmbientePorId(id, incluirMateriais);
+      
+      if (response.success && response.data) {
+        setIsConnected(true);
+        logConfig('✅ Ambiente encontrado', { 
+          id: response.data.id,
+          nome: response.data.nome 
+        });
+        return response.data;
+      } else {
+        setError(response.error || 'Ambiente não encontrado');
+        setIsConnected(false);
+        logConfig('❌ Erro ao buscar ambiente:', response.error);
+        return null;
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      setError(errorMsg);
+      setIsConnected(false);
+      logConfig('❌ Erro inesperado ao buscar ambiente:', errorMsg);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ============= VERIFICAR CONECTIVIDADE =============
+  const verificarConectividade = async (): Promise<boolean> => {
+    try {
+      const conectado = await ambienteService.verificarConectividade();
+      setIsConnected(conectado);
+      return conectado;
+    } catch {
+      setIsConnected(false);
+      return false;
+    }
+  };
+
+  // ============= LIMPAR ERRO =============
+  const limparError = () => {
+    setError(null);
+  };
+
+  // ============= RECARREGAR =============
+  const recarregar = () => {
+    carregarAmbientes();
+  };
+
+  // ============= CARREGAR AUTOMATICAMENTE =============
+  useEffect(() => {
+    if (clienteId) {
+      carregarAmbientes();
+    }
+  }, [clienteId, carregarAmbientes]);
+
+  // ============= CÁLCULOS =============
+  const valorTotalGeral = ambientes.reduce((total, ambiente) => {
+    return total + (ambiente.valorVenda || ambiente.valorCustoFabrica || 0);
+  }, 0);
+
+  const totalAmbientes = ambientes.length;
+  const ambientesManual = ambientes.filter(a => a.origem === 'manual').length;
+  const ambientesXML = ambientes.filter(a => a.origem === 'xml').length;
+
+  // ============= RETORNO =============
   return {
+    // Dados
     ambientes,
-    adicionarAmbiente,
-    removerAmbiente,
-    importarXML,
+    totalAmbientes,
+    ambientesManual,
+    ambientesXML,
+    valorTotalGeral,
+    
+    // Estado
     isLoading,
-    valorTotalGeral
+    error,
+    isConnected,
+    
+    // Ações
+    carregarAmbientes,
+    adicionarAmbiente,
+    atualizarAmbiente,
+    removerAmbiente,
+    buscarAmbientePorId,
+    verificarConectividade,
+    limparError,
+    recarregar,
   };
 };

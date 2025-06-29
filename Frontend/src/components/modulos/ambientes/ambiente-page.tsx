@@ -8,28 +8,24 @@ import { useSessao } from '../../../store/sessao-store';
 import { Button } from '../../ui/button';
 import { Badge } from '../../ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
-import { Download, Plus, Upload, User, Home, ArrowLeft, ArrowRight, Trash2 } from 'lucide-react';
+import { Download, Plus, Upload, User, Home, ArrowLeft, ArrowRight, Trash2, RefreshCw, AlertCircle } from 'lucide-react';
 import { useAmbientes } from '../../../hooks/modulos/ambientes/use-ambientes';
 import { useClientesApi } from '../../../hooks/modulos/clientes/use-clientes-api';
 import { useSessaoSimples } from '../../../hooks/globais/use-sessao-simples';
 import { AmbienteModal } from './ambiente-modal';
-import { AmbienteCard } from './ambiente-card';
+import { AmbienteTable } from './ambiente-table';
 import { ClienteSelectorUniversal } from '../../shared/cliente-selector-universal';
+import { Alert, AlertDescription } from '../../ui/alert';
 
 export function AmbientePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { clienteId, clienteNome } = useClienteSelecionado();
   const clienteCarregado = clienteId && clienteNome ? { nome: clienteNome } : null;
-  const clienteLoading = false; // Simplificado - useClienteSelecionado não tem isLoading
   
   // Verificar se deve forçar troca de cliente
   const forcarTroca = searchParams.get('forcar') === 'true';
   
-  // Debug: monitorar mudanças de clienteId
-  useEffect(() => {
-    console.log('🔍 AmbientePage: clienteId mudou para:', clienteId, { forcarTroca });
-  }, [clienteId, forcarTroca]);
   const { clientes } = useClientesApi();
   const {
     cliente,
@@ -45,41 +41,68 @@ export function AmbientePage() {
   const { definirAmbientes: definirAmbientesSimples } = useSessaoSimples();
   
   const {
+    // Dados
     ambientes,
-    adicionarAmbiente,
-    removerAmbiente,
-    importarXML,
+    totalAmbientes,
+    ambientesManual,
+    ambientesXML,
+    valorTotalGeral,
+    
+    // Estado
     isLoading,
-    valorTotalGeral
+    error,
+    isConnected,
+    
+    // Ações
+    carregarAmbientes,
+    adicionarAmbiente,
+    atualizarAmbiente,
+    removerAmbiente,
+    buscarAmbientePorId,
+    verificarConectividade,
+    limparError,
+    recarregar,
   } = useAmbientes(clienteId || undefined);
+
   const [modalAberto, setModalAberto] = useState(false);
 
-  // Sincronizar ambientes locais com AMBAS as sessões
+  // Debug: monitorar mudanças de clienteId
+  useEffect(() => {
+    console.log('🔍 AmbientePage: clienteId mudou para:', clienteId, { forcarTroca });
+  }, [clienteId, forcarTroca]);
+
+  // Sincronizar ambientes com sessão simples
   useEffect(() => {
     if (clienteId && ambientes.length > 0) {
-      // Sessão antiga (manter compatibilidade)
-      definirAmbientes(ambientes);
-      
-      // Sessão SIMPLES (nova)
+      // Sessão SIMPLES (nova estrutura)
       const ambientesSimples = ambientes.map(amb => ({
         id: amb.id,
         nome: amb.nome,
-        valor: amb.valorTotal || 0
+        valor: amb.valorVenda || amb.valorCustoFabrica || 0
       }));
       definirAmbientesSimples(ambientesSimples);
       
       console.log('🔄 Ambientes sincronizados:', ambientesSimples);
     }
-  }, [ambientes, clienteId]); // Removido funções das dependências para evitar loops
+  }, [ambientes, clienteId, definirAmbientesSimples]);
 
-  const handleAdicionarAmbiente = (data: any) => {
-    adicionarAmbiente(data);
-    setModalAberto(false);
+  const handleAdicionarAmbiente = async (data: any) => {
+    const sucesso = await adicionarAmbiente(data);
+    if (sucesso) {
+      setModalAberto(false);
+    }
   };
 
-  const handleRemoverAmbiente = (id: string) => {
-    removerAmbiente(id);
-    removerAmbienteSessao(id);
+  const handleRemoverAmbiente = async (id: string) => {
+    const sucesso = await removerAmbiente(id);
+    if (sucesso) {
+      removerAmbienteSessao(id);
+    }
+  };
+
+  const handleEditarAmbiente = (ambiente: any) => {
+    // TODO: Implementar edição
+    console.log('Editar ambiente:', ambiente);
   };
 
   const handleAvancarParaOrcamento = () => {
@@ -90,6 +113,49 @@ export function AmbientePage() {
     
     console.log('🚀 Indo para orçamento:', url);
     router.push(url);
+  };
+
+  const handleImportarXML = async () => {
+    // Criar input file invisível
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xml';
+    
+    // Quando usuário selecionar arquivo
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      
+      // Verificar se é XML
+      if (!file.name.toLowerCase().endsWith('.xml')) {
+        alert('Por favor, selecione um arquivo XML');
+        return;
+      }
+      
+      try {
+        // Ler conteúdo do arquivo
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          const xmlContent = event.target?.result as string;
+          
+          // Por enquanto, apenas log para teste
+          console.log('📄 Arquivo XML selecionado:', file.name);
+          console.log('📊 Tamanho:', (file.size / 1024).toFixed(2), 'KB');
+          console.log('🔍 Primeiros caracteres:', xmlContent.substring(0, 200));
+          
+          // TODO: Enviar para backend processar
+          alert(`XML "${file.name}" selecionado! Próxima etapa: processar no backend.`);
+        };
+        
+        reader.readAsText(file);
+      } catch (error) {
+        console.error('Erro ao ler arquivo:', error);
+        alert('Erro ao ler o arquivo XML');
+      }
+    };
+    
+    // Abrir janela de seleção
+    input.click();
   };
 
   return (
@@ -124,7 +190,7 @@ export function AmbientePage() {
               {/* Botões - DIREITA */}
               <div className="flex items-center gap-3">
                 <Button 
-                  onClick={importarXML} 
+                  onClick={handleImportarXML} 
                   disabled={isLoading || !clienteId} 
                   variant="default" 
                   size="sm"
@@ -161,14 +227,62 @@ export function AmbientePage() {
           </CardContent>
         </Card>
 
+        {/* Status de Conectividade */}
+        {!isConnected && (
+          <Alert className="border-orange-200 bg-orange-50">
+            <AlertCircle className="h-4 w-4 text-orange-600" />
+            <AlertDescription className="text-orange-800">
+              <div className="flex items-center justify-between">
+                <span>Não foi possível conectar ao servidor. Verifique se o backend está rodando.</span>
+                <Button 
+                  onClick={verificarConectividade}
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-3 border-orange-300 text-orange-700 hover:bg-orange-100"
+                >
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  Tentar novamente
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Erro */}
+        {error && (
+          <Alert className="border-red-200 bg-red-50">
+            <AlertCircle className="h-4 w-4 text-red-600" />
+            <AlertDescription className="text-red-800">
+              <div className="flex items-center justify-between">
+                <span>{error}</span>
+                <Button 
+                  onClick={limparError}
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-3 border-red-300 text-red-700 hover:bg-red-100"
+                >
+                  Fechar
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Resumo compacto */}
-        {/* Header com informações consolidadas */}
         <div className="bg-white border rounded-lg p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Total:</span>
-                <span className="font-semibold">{ambientes.length} ambientes</span>
+                <span className="font-semibold">{totalAmbientes} ambientes</span>
+                <div className="flex gap-1">
+                  <Badge variant="outline" className="text-xs h-5">
+                    {ambientesManual} manual
+                  </Badge>
+                  <Badge variant="outline" className="text-xs h-5">
+                    {ambientesXML} XML
+                  </Badge>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Valor:</span>
@@ -180,33 +294,35 @@ export function AmbientePage() {
                 </span>
               </div>
             </div>
+            
+            {clienteId && (
+              <Button 
+                onClick={recarregar}
+                variant="outline"
+                size="sm"
+                disabled={isLoading}
+                className="h-8 px-3"
+              >
+                <RefreshCw className={`h-3 w-3 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
+                Atualizar
+              </Button>
+            )}
           </div>
         </div>
 
-        {/* Lista de Ambientes */}
+        {/* Tabela de Ambientes */}
         {clienteId && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Ambientes Cadastrados</h2>
             </div>
             
-            {ambientes.length === 0 ? (
-              <div className="bg-white border rounded-lg p-8 text-center">
-                <Home className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                <p className="text-muted-foreground">Nenhum ambiente cadastrado</p>
-                <p className="text-sm text-muted-foreground">Comece importando um XML ou criando um ambiente manualmente</p>
-              </div>
-            ) : (
-              <div className="bg-background border border-border/40 rounded-lg overflow-hidden shadow-sm">
-                {ambientes.map((ambiente) => (
-                  <AmbienteCard 
-                    key={ambiente.id} 
-                    ambiente={ambiente} 
-                    onRemover={handleRemoverAmbiente} 
-                  />
-                ))}
-              </div>
-            )}
+            <AmbienteTable 
+              ambientes={ambientes}
+              onEdit={handleEditarAmbiente}
+              onDelete={handleRemoverAmbiente}
+              loading={isLoading}
+            />
           </div>
         )}
 
@@ -214,7 +330,8 @@ export function AmbientePage() {
         <AmbienteModal 
           open={modalAberto} 
           onOpenChange={setModalAberto} 
-          onSubmit={handleAdicionarAmbiente} 
+          onSubmit={handleAdicionarAmbiente}
+          clienteId={clienteId || undefined}
         />
       </div>
     </div>

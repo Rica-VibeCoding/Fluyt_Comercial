@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Debug - Extrator XML</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: white;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(0,0,0,0.1);
+            border-radius: 15px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .test-area {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 20px;
+            border: 2px dashed rgba(255,255,255,0.3);
+        }
+
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .btn-success {
+            background: #27ae60;
+        }
+
+        .btn-success:hover {
+            background: #229954;
+        }
+
+        .file-input {
+            display: none;
+            opacity: 0;
+            position: absolute;
+            z-index: -1;
+            width: 0.1px;
+            height: 0.1px;
+            overflow: hidden;
+        }
+
+        .test-results {
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        .console-output {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 DEBUG MODE</h1>
+            <p>Diagnóstico avançado do sistema de upload</p>
+        </div>
+
+        <div class="test-area">
+            <h3>🎯 TESTE PRINCIPAL</h3>
+            <p>Clique no botão abaixo e observe o painel de debug:</p>
+            
+            <button class="btn" id="selectFileBtn">
+                📁 Selecionar Arquivo (Método Principal)
+            </button>
+            
+            <label for="fileInput" class="btn btn-success" id="selectFileLbl">
+                🏷️ Label Alternativo (SEMPRE FUNCIONA)
+            </label>
+            
+            <input type="file" id="fileInput" class="file-input" accept=".xml" />
+        </div>
+
+        <div class="test-area">
+            <h3>🧪 TESTES MANUAIS</h3>
+            <p>Execute testes específicos:</p>
+            
+            <button class="btn btn-danger" onclick="debugExtractor.diagnosticar()">
+                🔍 Executar Diagnóstico
+            </button>
+            
+            <button class="btn" onclick="debugExtractor.abrirArquivo()">
+                📂 Testar fileInput.click()
+            </button>
+            
+            <button class="btn" onclick="debugExtractor.abrirViaLabel()">
+                🏷️ Ativar Label Alternativo
+            </button>
+            
+            <button class="btn" onclick="debugExtractor.criarInputNovo()">
+                🆕 Criar Input Novo (Visível)
+            </button>
+            
+            <button class="btn btn-danger" onclick="debugExtractor.limparLogs()">
+                🧹 Limpar Logs
+            </button>
+        </div>
+
+        <div class="test-area">
+            <h3>📊 INFORMAÇÕES DO SISTEMA</h3>
+            <div class="console-output" id="systemInfo">
+                Carregando informações...
+            </div>
+        </div>
+
+        <div class="test-area">
+            <h3>📝 INSTRUÇÕES</h3>
+            <ul style="line-height: 1.6;">
+                <li><strong>Painel de Debug:</strong> Aparece no canto superior direito</li>
+                <li><strong>Console:</strong> Pressione F12 para ver logs detalhados</li>
+                <li><strong>Teste 1:</strong> Clique no botão azul principal</li>
+                <li><strong>Teste 2:</strong> Use o label verde (sempre funciona)</li>
+                <li><strong>Teste 3:</strong> Botão vermelho cria input visível</li>
+                <li><strong>Debug Manual:</strong> Use <code>debugExtractor.estado()</code> no console</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="script_debug.js"></script>
+    
+    <script>
+        // Informações adicionais do sistema
+        document.addEventListener('DOMContentLoaded', function() {
+            const systemInfo = document.getElementById('systemInfo');
+            
+            const info = `
+🌐 NAVEGADOR: ${navigator.userAgent}
+🖥️ PLATAFORMA: ${navigator.platform}
+🌍 IDIOMA: ${navigator.language}
+🍪 COOKIES: ${navigator.cookieEnabled}
+📱 TOUCH: ${navigator.maxTouchPoints > 0}
+🔒 HTTPS: ${location.protocol === 'https:'}
+📍 URL: ${location.href}
+⏰ TIMESTAMP: ${new Date().toISOString()}
+
+🔧 CAPACIDADES:
+- File API: ${typeof File !== 'undefined'}
+- FileReader: ${typeof FileReader !== 'undefined'}
+- FormData: ${typeof FormData !== 'undefined'}
+- Fetch: ${typeof fetch !== 'undefined'}
+- Local Storage: ${typeof localStorage !== 'undefined'}
+
+🎯 ELEMENTOS DOM:
+- uploadArea: ${!!document.getElementById('uploadArea')}
+- fileInput: ${!!document.getElementById('fileInput')}
+- selectFileBtn: ${!!document.getElementById('selectFileBtn')}
+- selectFileLbl: ${!!document.getElementById('selectFileLbl')}
+            `;
+            
+            systemInfo.textContent = info;
+        });
+
+        // Interceptar mudanças no input para debug
+        document.addEventListener('change', function(e) {
+            if (e.target.type === 'file') {
+                console.log('🎉 ARQUIVO SELECIONADO:', e.target.files[0]);
+                debugLog('🎉 Arquivo detectado via event listener global:', e.target.files[0].name);
+            }
+        });
+    </script>
+</body>
+</html> 

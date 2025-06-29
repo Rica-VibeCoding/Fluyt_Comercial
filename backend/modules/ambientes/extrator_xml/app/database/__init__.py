@@ -1,0 +1,1 @@
+# Conexões com banco de dados (Supabase - futura implementação) 

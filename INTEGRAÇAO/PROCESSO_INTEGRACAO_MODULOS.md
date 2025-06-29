@@ -43,17 +43,16 @@ Este documento define o processo completo para integrar um novo módulo ao siste
 ### **Fluxo Visual**
 
 ```mermaid
-graph LR
-    A[Descoberta] --> B{Ricardo Aprova?}
-    B -->|Sim| C[Backend]
-    B -->|Não| A
-    C --> D[Frontend]
-    C --> E[Integração]
-    D --> F[Validação Final]
-    E --> F
-    F --> G{Ricardo Aprova?}
-    G -->|Sim| H[Concluído]
-    G -->|Não| D
+graph TD
+    A[Descoberta Schema] --> B[Comparar Supabase vs Frontend]
+    B --> C{Ricardo decide estrutura}
+    C -->|Schema definido| D[Backend + Frontend em paralelo]
+    D --> E[Integração API]
+    E --> F[Testes]
+    F --> G[Validação Final]
+    G --> H{Ricardo Aprova?}
+    H -->|Sim| I[Concluído]
+    H -->|Não| D
 ```
 
 ---
@@ -103,7 +102,41 @@ grep -r "interface.*[Modulo]" Frontend/src/types/
 - [ ] Hierarquia definida (ex: Empresa → Loja → Setor)
 - [ ] Multi-tenant considerado (isolamento por loja)
 
-#### 1.4 Documento de Validação
+#### 1.4 Comparação e Alinhamento de Schema
+**⚠️ ETAPA CRÍTICA - DECISÃO CONJUNTA COM RICARDO**
+
+- [ ] Comparar estrutura Supabase vs Frontend atual
+- [ ] Identificar incompatibilidades
+- [ ] Documentar diferenças significativas
+
+**Opções de Decisão:**
+1. **Manter Supabase** → Frontend se adapta
+2. **Manter Frontend** → Criar/alterar schema no Supabase
+3. **Nova estrutura** → Refatorar ambos
+
+**Discussão obrigatória:**
+```markdown
+## ALINHAMENTO DE SCHEMA - [MÓDULO]
+
+### Estrutura Supabase
+- Campos: [lista do banco]
+- Tipos: [tipos reais]
+
+### Estrutura Frontend
+- Campos: [lista da interface]
+- Tipos: [TypeScript types]
+
+### Incompatibilidades
+1. [Campo X existe no banco mas não no front]
+2. [Campo Y tem tipo diferente]
+
+### Recomendação
+[Qual abordagem seguir e por quê]
+
+Ricardo, qual estrutura devemos seguir?
+```
+
+#### 1.5 Documento de Validação
 ```markdown
 ## DESCOBERTA - MÓDULO [NOME]
 
@@ -125,9 +158,10 @@ grep -r "interface.*[Modulo]" Frontend/src/types/
 ```
 
 ### **🔴 GATE: Apresentar descoberta ao Ricardo**
-- Aguardar aprovação antes de prosseguir
+- Aguardar aprovação da estrutura escolhida
+- Documentar decisão final do schema
 - Ajustar conforme feedback
-- Documentar decisões tomadas
+- Só criar documentação para IAs após aprovação
 
 ---
 
@@ -208,11 +242,12 @@ curl -X POST http://localhost:8000/api/v1/[modulo]
 **Responsável:** IA Frontend  
 **Duração:** 4-5 horas  
 **Gate:** Interface funcionando com dados reais
-**Dependências:** Backend pronto
+**Dependências:** Schema aprovado (pode iniciar junto com Backend)
 
 ### **Objetivos**
+- Ajustar UI/UX para novo schema (se necessário)
 - Remover TODOS os dados mockados
-- Conectar com API real do backend
+- Preparar services para API real
 - Implementar UI/UX consistente
 - Integrar com gerenciamento de estado
 
@@ -270,14 +305,43 @@ const { data, loading, error } = useModulo();
 - Responsividade obrigatória
 - Feedback visual para ações
 
-### **🟡 GATE: Frontend funcionando**
-- Telas carregando dados reais
-- CRUD funcionando visualmente
-- Sem erros no console
+### **🟡 GATE: Frontend preparado**
+- UI/UX ajustada para novo schema
+- Services prontos para integração
+- Componentes testados com dados mock temporários
+- Pronto para conectar com API real
 
 ---
 
-## 🧪 FASE 3B: TESTES E INTEGRAÇÃO
+## 🔌 FASE 3B: INTEGRAÇÃO API
+
+**Responsável:** IA Frontend ou IA Integração  
+**Duração:** 2-3 horas  
+**Gate:** Frontend ↔ Backend conectados
+**Dependências:** Backend e Frontend prontos
+
+### **Objetivos**
+- Conectar services do Frontend com endpoints do Backend
+- Remover últimos resquícios de mocks
+- Testar fluxo completo com dados reais
+- Ajustar conversões de dados se necessário
+
+### **Checklist de Integração**
+- [ ] Services conectados aos endpoints corretos
+- [ ] Conversão camelCase ↔ snake_case funcionando
+- [ ] Tratamento de erros da API
+- [ ] Loading states durante chamadas
+- [ ] Cache e invalidação quando necessário
+- [ ] Testes com dados reais do Supabase
+
+### **🟡 GATE: Integração completa**
+- CRUD funcionando end-to-end
+- Dados reais aparecendo na interface
+- Sem erros de CORS ou autenticação
+
+---
+
+## 🧪 FASE 3C: TESTES E VALIDAÇÃO
 
 **Responsável:** IA Testes  
 **Duração:** 2-3 horas  
