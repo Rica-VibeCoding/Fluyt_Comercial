@@ -39,8 +39,9 @@ def get_ambiente_service(db=Depends(get_database)) -> AmbienteService:
 @router.get("/", response_model=AmbienteListResponse)
 @handle_exceptions
 async def listar_ambientes(
-    # Filtros de busca
+    # Filtros de busca (aceita tanto snake_case quanto camelCase)
     cliente_id: Optional[str] = Query(None, description="UUID do cliente"),
+    clienteId: Optional[str] = Query(None, description="UUID do cliente (camelCase)"),
     nome: Optional[str] = Query(None, description="Nome do ambiente (busca parcial)"),
     origem: Optional[str] = Query(None, description="Origem: 'xml' ou 'manual'"),
     valor_min: Optional[float] = Query(None, description="Valor mínimo de venda"),
@@ -74,23 +75,30 @@ async def listar_ambientes(
     """
     logger.info(f"Listando ambientes - Usuário: {current_user.id}")
     
-    # Monta filtros
+    # Prioriza clienteId (camelCase) se fornecido, senão usa cliente_id
+    cliente_final = clienteId or cliente_id
+    
+    # Monta filtros (só campos que existem no schema)
     filtros = AmbienteFiltros(
-        cliente_id=cliente_id,
-        nome=nome,
+        cliente_id=cliente_final,
+        busca=nome,  # usa busca ao invés de nome
         origem=origem,
         valor_min=valor_min,
         valor_max=valor_max,
         data_inicio=data_inicio,
-        data_fim=data_fim,
-        page=page,
-        per_page=per_page,
-        order_by=order_by,
-        order_direction=order_direction
+        data_fim=data_fim
     )
     
+    # Paginação e ordenação tratadas separadamente
+    paginacao = {
+        'page': page,
+        'per_page': per_page,
+        'order_by': order_by,
+        'order_direction': order_direction
+    }
+    
     # Busca no service
-    resultado = await service.listar_ambientes(filtros)
+    resultado = await service.listar_ambientes(filtros, **paginacao)
     
     logger.info(f"Ambientes listados com sucesso - Total: {resultado.total}")
     return resultado

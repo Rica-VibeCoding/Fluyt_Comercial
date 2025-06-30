@@ -3,14 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useClienteSelecionado } from '../../../hooks/globais/use-cliente-selecionado';
-import { useSessao } from '../../../store/sessao-store';
+import { useAmbientesSessao } from '../../../hooks/modulos/ambientes/use-ambientes-sessao';
 import { Button } from '../../ui/button';
 import { PrimaryButton } from '../../comum/primary-button';
 import { Card, CardContent } from '../../ui/card';
 import { Badge } from '../../ui/badge';
 import { Plus, Upload, ArrowLeft, ArrowRight, RefreshCw, AlertCircle } from 'lucide-react';
 import { useAmbientes } from '../../../hooks/modulos/ambientes/use-ambientes';
-import { useSessaoSimples } from '../../../hooks/globais/use-sessao-simples';
 import { AmbienteModal } from './ambiente-modal';
 import { AmbienteTable } from './ambiente-table';
 import { ClienteSelectorUniversal } from '../../shared/cliente-selector-universal';
@@ -29,10 +28,9 @@ export function AmbientePage() {
     cliente,
     adicionarAmbiente: adicionarAmbienteSessao,
     removerAmbiente: removerAmbienteSessao,
-    podeGerarOrcamento
-  } = useSessao();
-  
-  const { definirAmbientes: definirAmbientesSimples } = useSessaoSimples();
+    podeGerarOrcamento,
+    ambientesSimples
+  } = useAmbientesSessao();
   
   const {
     // Dados
@@ -60,9 +58,9 @@ export function AmbientePage() {
 
   const [modalAberto, setModalAberto] = useState(false);
 
-  // Debug: monitorar mudanças de clienteId
+  // Atualiza ambientes quando clienteId muda
   useEffect(() => {
-    console.log('🔍 AmbientePage: clienteId mudou para:', clienteId);
+    // Removi console.log de debug
   }, [clienteId]);
 
   // Removido: Sincronização manual não é mais necessária
@@ -88,7 +86,7 @@ export function AmbientePage() {
     const clienteNome = clienteCarregado?.nome || cliente?.nome || 'Cliente';
     const url = `/painel/orcamento?clienteId=${clienteId}&clienteNome=${encodeURIComponent(clienteNome)}`;
     
-    console.log('🚀 Indo para orçamento:', url);
+    // Navega para página de orçamento com dados do cliente
     router.push(url);
   };
 
@@ -112,11 +110,33 @@ export function AmbientePage() {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       
-      // Verificar se é XML
+      // Validações de segurança para upload de XML do Promob
+      const validationErrors = [];
+      
+      // Verificar extensão
       if (!file.name.toLowerCase().endsWith('.xml')) {
+        validationErrors.push('Apenas arquivos .xml são aceitos');
+      }
+      
+      // Verificar tamanho (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        validationErrors.push('Arquivo muito grande (máx 10MB)');
+      }
+      
+      // Verificar tamanho mínimo (evita arquivos vazios)
+      if (file.size < 100) {
+        validationErrors.push('Arquivo muito pequeno ou vazio');
+      }
+      
+      // Verificar tipo MIME
+      if (file.type && !['text/xml', 'application/xml'].includes(file.type)) {
+        validationErrors.push('Tipo de arquivo inválido');
+      }
+      
+      if (validationErrors.length > 0) {
         toast({
           title: 'Arquivo inválido',
-          description: 'Por favor, selecione um arquivo XML',
+          description: validationErrors.join('. '),
           variant: 'destructive'
         });
         return;
@@ -132,7 +152,7 @@ export function AmbientePage() {
         // Enviar para backend
         const response = await ambientesService.importarXML(clienteId, file);
         
-        console.log('✅ Resposta do backend:', response.data);
+        // Arquivo XML processado com sucesso
         
         // Sucesso
         toast({

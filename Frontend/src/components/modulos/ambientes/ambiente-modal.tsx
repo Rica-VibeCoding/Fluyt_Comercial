@@ -7,6 +7,7 @@ import { Label } from '../../ui/label';
 import { Home, DollarSign } from 'lucide-react';
 import { AmbienteFormData } from '../../../types/ambiente';
 import { formatarMoeda } from '@/lib/formatters';
+import { useToast } from '../../ui/use-toast';
 
 interface AmbienteModalProps {
   open: boolean;
@@ -16,26 +17,60 @@ interface AmbienteModalProps {
 }
 
 export function AmbienteModal({ open, onOpenChange, onSubmit, clienteId }: AmbienteModalProps) {
+  const { toast } = useToast();
   const [nome, setNome] = useState('');
   const [valorCustoFabrica, setValorCustoFabrica] = useState<number | undefined>();
   const [valorVenda, setValorVenda] = useState<number | undefined>();
 
-  const handleSubmit = () => {
-    if (nome && clienteId) {
-      const data: AmbienteFormData = {
-        nome,
-        clienteId,
-        valorCustoFabrica,
-        valorVenda,
-        origem: 'manual'
-      };
-      onSubmit(data);
-      // Limpar formulário
-      setNome('');
-      setValorCustoFabrica(undefined);
-      setValorVenda(undefined);
-      onOpenChange(false);
+  // Validações de entrada para móveis planejados
+  const validarDados = () => {
+    const erros: string[] = [];
+    
+    if (!nome.trim()) {
+      erros.push('Nome do ambiente é obrigatório');
     }
+    
+    if (valorCustoFabrica !== undefined && valorCustoFabrica < 0) {
+      erros.push('Valor de custo não pode ser negativo');
+    }
+    
+    if (valorVenda !== undefined && valorVenda < 0) {
+      erros.push('Valor de venda não pode ser negativo');
+    }
+    
+    if (valorCustoFabrica && valorVenda && valorVenda < valorCustoFabrica) {
+      erros.push('Valor de venda deve ser maior que o custo');
+    }
+    
+    return erros;
+  };
+
+  const handleSubmit = () => {
+    if (!nome || !clienteId) return;
+    
+    const erros = validarDados();
+    if (erros.length > 0) {
+      toast({
+        title: 'Erro de validação',
+        description: erros.join('. '),
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    const data: AmbienteFormData = {
+      nome: nome.trim(),
+      clienteId,
+      valorCustoFabrica,
+      valorVenda,
+      origem: 'manual'
+    };
+    onSubmit(data);
+    // Limpar formulário
+    setNome('');
+    setValorCustoFabrica(undefined);
+    setValorVenda(undefined);
+    onOpenChange(false);
   };
 
   const handleCancel = () => {

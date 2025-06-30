@@ -35,16 +35,32 @@ class AmbienteService:
         self.repository = AmbienteRepository(db)
         self.xml_importer = XMLImporter(self)
     
-    async def listar_ambientes(self, filtros: Optional[AmbienteFiltros] = None) -> AmbienteListResponse:
+    async def listar_ambientes(self, filtros: Optional[AmbienteFiltros] = None, **paginacao) -> AmbienteListResponse:
         """Lista ambientes com filtros e paginação"""
         try:
             if not filtros:
-                filtros = AmbienteFiltros(page=1, per_page=20)
-            if filtros.page < 1:
+                filtros = AmbienteFiltros()
+            
+            # Paginação vem como parâmetros separados
+            page = paginacao.get('page', 1)
+            per_page = paginacao.get('per_page', 20)
+            order_by = paginacao.get('order_by', 'created_at')
+            order_direction = paginacao.get('order_direction', 'desc')
+            
+            if page < 1:
                 raise ValidationException("Página deve ser maior que 0")
-            if filtros.per_page < 1 or filtros.per_page > 100:
+            if per_page < 1 or per_page > 100:
                 raise ValidationException("Tamanho da página deve estar entre 1 e 100")
             filtros_dict = filtros.model_dump(exclude_unset=True) if hasattr(filtros, 'model_dump') else filtros.dict(exclude_unset=True)
+            
+            # Adicionar paginação aos filtros
+            filtros_dict.update({
+                'page': page,
+                'per_page': per_page,
+                'order_by': order_by,
+                'order_direction': order_direction
+            })
+            
             resultado = await self.repository.listar(**filtros_dict)
             items = [AmbienteResponse(**item) for item in resultado['items']]
             return AmbienteListResponse(

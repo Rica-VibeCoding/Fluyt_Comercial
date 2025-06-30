@@ -369,6 +369,59 @@ export class TiposColaboradorService {
 // COLABORADORES INDIVIDUAIS
 // ========================================
 
+/**
+ * Mapeia dados de colaborador do banco (snake_case) para aplicação (camelCase)
+ */
+function mapColaboradorFromDatabase(item: any): Colaborador {
+  return {
+    id: item.id,
+    nome: item.nome,
+    tipoColaboradorId: item.tipo_colaborador_id,
+    cpf: item.cpf,
+    telefone: item.telefone,
+    email: item.email,
+    endereco: item.endereco,
+    dataAdmissao: item.data_admissao,
+    ativo: Boolean(item.ativo),
+    observacoes: item.observacoes,
+    createdAt: item.created_at,
+    updatedAt: item.updated_at,
+    tipoColaborador: item.c_tipo_de_colaborador ? {
+      id: item.c_tipo_de_colaborador.id,
+      nome: item.c_tipo_de_colaborador.nome,
+      categoria: item.c_tipo_de_colaborador.categoria,
+      tipoPercentual: 'VENDA' as const,
+      percentualValor: 0,
+      minimoGarantido: 0,
+      salarioBase: 0,
+      valorPorServico: 0,
+      opcionalNoOrcamento: false,
+      ativo: true,
+      createdAt: item.c_tipo_de_colaborador.created_at || new Date().toISOString(),
+      updatedAt: item.c_tipo_de_colaborador.updated_at
+    } : undefined
+  };
+}
+
+/**
+ * Mapeia dados de colaborador da aplicação (camelCase) para banco (snake_case)
+ */
+function mapColaboradorToDatabase(dados: ColaboradorFormData | ColaboradorUpdate) {
+  const mapped: any = {};
+  
+  if ('nome' in dados && dados.nome !== undefined) mapped.nome = dados.nome;
+  if ('tipoColaboradorId' in dados && dados.tipoColaboradorId !== undefined) mapped.tipo_colaborador_id = dados.tipoColaboradorId;
+  if ('cpf' in dados && dados.cpf !== undefined) mapped.cpf = dados.cpf;
+  if ('telefone' in dados && dados.telefone !== undefined) mapped.telefone = dados.telefone;
+  if ('email' in dados && dados.email !== undefined) mapped.email = dados.email;
+  if ('endereco' in dados && dados.endereco !== undefined) mapped.endereco = dados.endereco;
+  if ('dataAdmissao' in dados && dados.dataAdmissao !== undefined) mapped.data_admissao = dados.dataAdmissao;
+  if ('ativo' in dados && dados.ativo !== undefined) mapped.ativo = dados.ativo;
+  if ('observacoes' in dados && dados.observacoes !== undefined) mapped.observacoes = dados.observacoes;
+  
+  return mapped;
+}
+
 export class ColaboradoresService {
   
   /**
@@ -426,25 +479,7 @@ export class ColaboradoresService {
       }
 
       // Mapear dados do banco para formato da aplicação
-      const items: Colaborador[] = (data || []).map(item => ({
-        id: item.id,
-        nome: item.nome,
-        tipoColaboradorId: item.tipo_colaborador_id,
-        cpf: item.cpf,
-        telefone: item.telefone,
-        email: item.email,
-        endereco: item.endereco,
-        dataAdmissao: item.data_admissao,
-        ativo: item.ativo || false,
-        observacoes: item.observacoes,
-        createdAt: item.created_at,
-        updatedAt: item.updated_at,
-        tipoColaborador: item.c_tipo_de_colaborador ? {
-          id: item.c_tipo_de_colaborador.id,
-          nome: item.c_tipo_de_colaborador.nome,
-          categoria: item.c_tipo_de_colaborador.categoria
-        } : undefined
-      }));
+      const items: Colaborador[] = (data || []).map(mapColaboradorFromDatabase);
 
       return {
         items,
@@ -462,8 +497,319 @@ export class ColaboradoresService {
     }
   }
 
-  // TODO: Implementar outros métodos CRUD para colaboradores individuais
-  // (criar, atualizar, excluir, buscarPorId, alternarStatus)
+  /**
+   * Busca um colaborador específico por ID
+   */
+  static async buscarPorId(id: string): Promise<Colaborador | null> {
+    try {
+      validateSupabaseConnection();
+
+      if (!id) {
+        throw new Error('ID é obrigatório');
+      }
+
+      const { data, error } = await supabase!
+        .from('c_colaboradores')
+        .select(`
+          id,
+          nome,
+          tipo_colaborador_id,
+          cpf,
+          telefone,
+          email,
+          endereco,
+          data_admissao,
+          ativo,
+          observacoes,
+          created_at,
+          updated_at,
+          c_tipo_de_colaborador (
+            id,
+            nome,
+            categoria
+          )
+        `)
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        console.error('Erro ao buscar colaborador:', error);
+        return null;
+      }
+
+      if (!data) {
+        return null;
+      }
+
+      return mapColaboradorFromDatabase(data);
+    } catch (error) {
+      console.error('Erro ao buscar colaborador:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Cria um novo colaborador
+   */
+  static async criar(dados: ColaboradorFormData): Promise<Colaborador> {
+    try {
+      validateSupabaseConnection();
+
+      // Validar dados obrigatórios
+      if (!dados.nome?.trim()) {
+        throw new Error('Nome é obrigatório');
+      }
+      if (!dados.tipoColaboradorId) {
+        throw new Error('Tipo de colaborador é obrigatório');
+      }
+
+      // Validar CPF se fornecido
+      if (dados.cpf && !(await this.verificarCpfDisponivel(dados.cpf))) {
+        throw new Error('CPF já está em uso por outro colaborador');
+      }
+
+      // Validar email se fornecido
+      if (dados.email && !(await this.verificarEmailDisponivel(dados.email))) {
+        throw new Error('Email já está em uso por outro colaborador');
+      }
+
+      const dataToInsert = {
+        ...mapColaboradorToDatabase(dados),
+        ativo: true, // Sempre criar como ativo
+      };
+
+      const { data, error } = await supabase!
+        .from('c_colaboradores')
+        .insert(dataToInsert)
+        .select(`
+          id,
+          nome,
+          tipo_colaborador_id,
+          cpf,
+          telefone,
+          email,
+          endereco,
+          data_admissao,
+          ativo,
+          observacoes,
+          created_at,
+          updated_at,
+          c_tipo_de_colaborador (
+            id,
+            nome,
+            categoria
+          )
+        `)
+        .single();
+
+      if (error) {
+        console.error('Erro ao criar colaborador:', error);
+        throw new Error(`Falha ao criar colaborador: ${error.message}`);
+      }
+
+      if (!data) {
+        throw new Error('Nenhum dado retornado após criação');
+      }
+
+      return mapColaboradorFromDatabase(data);
+    } catch (error) {
+      console.error('Erro ao criar colaborador:', error);
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Erro desconhecido ao criar colaborador');
+    }
+  }
+
+  /**
+   * Atualiza um colaborador existente
+   */
+  static async atualizar(id: string, dados: ColaboradorUpdate): Promise<Colaborador> {
+    try {
+      validateSupabaseConnection();
+
+      if (!id) {
+        throw new Error('ID é obrigatório');
+      }
+
+      // Validar CPF se fornecido
+      if (dados.cpf && !(await this.verificarCpfDisponivel(dados.cpf, id))) {
+        throw new Error('CPF já está em uso por outro colaborador');
+      }
+
+      // Validar email se fornecido
+      if (dados.email && !(await this.verificarEmailDisponivel(dados.email, id))) {
+        throw new Error('Email já está em uso por outro colaborador');
+      }
+
+      const updateData = mapColaboradorToDatabase(dados);
+
+      if (Object.keys(updateData).length === 0) {
+        throw new Error('Nenhum dado fornecido para atualização');
+      }
+
+      const { data, error } = await supabase!
+        .from('c_colaboradores')
+        .update(updateData)
+        .eq('id', id)
+        .select(`
+          id,
+          nome,
+          tipo_colaborador_id,
+          cpf,
+          telefone,
+          email,
+          endereco,
+          data_admissao,
+          ativo,
+          observacoes,
+          created_at,
+          updated_at,
+          c_tipo_de_colaborador (
+            id,
+            nome,
+            categoria
+          )
+        `)
+        .single();
+
+      if (error) {
+        console.error('Erro ao atualizar colaborador:', error);
+        throw new Error(`Falha ao atualizar colaborador: ${error.message}`);
+      }
+
+      if (!data) {
+        throw new Error('Colaborador não encontrado');
+      }
+
+      return mapColaboradorFromDatabase(data);
+    } catch (error) {
+      console.error('Erro ao atualizar colaborador:', error);
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Erro desconhecido ao atualizar colaborador');
+    }
+  }
+
+  /**
+   * Alterna o status ativo/inativo de um colaborador
+   */
+  static async alternarStatus(id: string): Promise<Colaborador> {
+    try {
+      // Primeiro buscar o status atual
+      const colaboradorAtual = await this.buscarPorId(id);
+      if (!colaboradorAtual) {
+        throw new Error('Colaborador não encontrado');
+      }
+
+      // Alternar status
+      return await this.atualizar(id, { ativo: !colaboradorAtual.ativo });
+    } catch (error) {
+      console.error('Erro ao alternar status do colaborador:', error);
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Erro desconhecido ao alternar status');
+    }
+  }
+
+  /**
+   * Exclui um colaborador
+   */
+  static async excluir(id: string): Promise<void> {
+    try {
+      validateSupabaseConnection();
+
+      if (!id) {
+        throw new Error('ID é obrigatório');
+      }
+
+      const { error } = await supabase!
+        .from('c_colaboradores')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Erro ao excluir colaborador:', error);
+        throw new Error(`Falha ao excluir colaborador: ${error.message}`);
+      }
+    } catch (error) {
+      console.error('Erro ao excluir colaborador:', error);
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Erro desconhecido ao excluir colaborador');
+    }
+  }
+
+  /**
+   * Verifica se CPF está disponível
+   */
+  static async verificarCpfDisponivel(cpf: string, excludeId?: string): Promise<boolean> {
+    try {
+      validateSupabaseConnection();
+
+      if (!cpf?.trim()) {
+        return true; // CPF vazio é considerado disponível
+      }
+
+      let query = supabase!
+        .from('c_colaboradores')
+        .select('id')
+        .eq('cpf', cpf);
+
+      if (excludeId) {
+        query = query.neq('id', excludeId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Erro ao verificar CPF:', error);
+        return false;
+      }
+
+      return !data || data.length === 0;
+    } catch (error) {
+      console.error('Erro ao verificar disponibilidade do CPF:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Verifica se email está disponível
+   */
+  static async verificarEmailDisponivel(email: string, excludeId?: string): Promise<boolean> {
+    try {
+      validateSupabaseConnection();
+
+      if (!email?.trim()) {
+        return true; // Email vazio é considerado disponível
+      }
+
+      let query = supabase!
+        .from('c_colaboradores')
+        .select('id')
+        .eq('email', email);
+
+      if (excludeId) {
+        query = query.neq('id', excludeId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Erro ao verificar email:', error);
+        return false;
+      }
+
+      return !data || data.length === 0;
+    } catch (error) {
+      console.error('Erro ao verificar disponibilidade do email:', error);
+      return false;
+    }
+  }
 }
 
 export default {
