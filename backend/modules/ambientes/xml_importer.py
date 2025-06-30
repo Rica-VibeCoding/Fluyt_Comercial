@@ -44,7 +44,12 @@ class XMLImporter:
             resultado = extrator.extract(conteudo_xml)
             
             if not resultado.success:
-                raise ValidationException(f"Erro ao processar XML: {resultado.error}")
+                # Se falhou por não detectar linhas específicas, tentar extração básica
+                if "linha (Unique/Sublime)" in resultado.error:
+                    logger.warning(f"XML sem linhas Unique/Sublime detectadas, fazendo importação básica")
+                    resultado = self._extrair_dados_basicos_xml(conteudo_xml, nome_arquivo)
+                else:
+                    raise ValidationException(f"Erro ao processar XML: {resultado.error}")
             
             # Extrair valores monetários com validação robusta
             valor_custo = converter_valor_monetario(
@@ -98,6 +103,54 @@ class XMLImporter:
             logger.error(f"Erro ao importar XML: {e}")
             raise DatabaseException(f"Erro ao processar XML: {str(e)}")
     
+    def _extrair_dados_basicos_xml(self, conteudo_xml: str, nome_arquivo: str):
+        """
+        Extração básica para XMLs que não têm estrutura Unique/Sublime
+        Extrai apenas nome do ambiente e tenta encontrar valores básicos
+        """
+        try:
+            from xml.etree import ElementTree as ET
+            from .schemas import AmbienteCreate
+            
+            # Parse básico do XML
+            root = ET.fromstring(conteudo_xml)
+            
+            # Tentar extrair nome do ambiente
+            nome_ambiente = None
+            
+            # Tentativas de encontrar nome do ambiente
+            ambiente_element = root.find('.//AMBIENT')
+            if ambiente_element is not None:
+                nome_ambiente = ambiente_element.get('DESCRIPTION', '').strip()
+                if nome_ambiente and nome_ambiente.startswith('Projeto - '):
+                    nome_ambiente = nome_ambiente[10:].strip()
+            
+            # Se não encontrou, usar nome do arquivo
+            if not nome_ambiente:
+                nome_ambiente = nome_arquivo.replace('.xml', '').replace('_', ' ')
+            
+            # Criar resultado básico simulando o ExtractionResult
+            class ResultadoBasico:
+                def __init__(self):
+                    self.success = True
+                    self.linha_detectada = "Importação Básica"
+                    self.nome_ambiente = nome_ambiente
+                    self.valor_total = None
+                    self.caixa = None
+                    self.paineis = None
+                    self.portas = None
+                    self.ferragens = None
+                    self.porta_perfil = None
+                    self.brilhart_color = None
+                    self.metadata = None
+            
+            logger.info(f"Extração básica concluída - Nome: {nome_ambiente}")
+            return ResultadoBasico()
+            
+        except Exception as e:
+            logger.error(f"Erro na extração básica: {str(e)}")
+            raise ValidationException(f"Não foi possível processar este arquivo XML: {str(e)}")
+
     def _preparar_materiais_json(self, resultado) -> Dict[str, Any]:
         """Prepara dados de materiais do resultado do extrator XML"""
         return {
