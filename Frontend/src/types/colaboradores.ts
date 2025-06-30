@@ -19,7 +19,7 @@ export interface TipoColaborador extends BaseEntity {
   nome: string;
   categoria: CategoriaColaborador;
   
-  // Tipo de remuneração (EXCLUDENTE)
+  // Tipo de remuneração
   tipoPercentual: TipoPercentual;
   percentualValor: number;
   
@@ -31,7 +31,6 @@ export interface TipoColaborador extends BaseEntity {
   // Configurações operacionais
   opcionalNoOrcamento: boolean;
   ativo: boolean;
-  ordemExibicao: number;
   descricao?: string;
 }
 
@@ -67,7 +66,6 @@ export interface TipoColaboradorFormData {
   salarioBase: number;
   valorPorServico: number;
   opcionalNoOrcamento: boolean;
-  ordemExibicao: number;
   descricao?: string;
 }
 
@@ -92,7 +90,6 @@ export interface TipoColaboradorUpdate {
   valorPorServico?: number;
   opcionalNoOrcamento?: boolean;
   ativo?: boolean;
-  ordemExibicao?: number;
   descricao?: string;
 }
 
@@ -125,13 +122,56 @@ export interface FiltrosColaborador {
   ativo?: boolean;
 }
 
+// ========================================
+// RESPONSE TYPES API
+// ========================================
+export interface TipoColaboradorListResponse {
+  items: TipoColaborador[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export interface ColaboradorListResponse {
   items: Colaborador[];
   total: number;
   page: number;
   limit: number;
-  pages: number;
+  totalPages: number;
 }
+
+// ========================================
+// ESTATÍSTICAS
+// ========================================
+export interface EstatisticasTipoColaborador {
+  total: number;
+  ativos: number;
+  inativos: number;
+  funcionarios: number;
+  parceiros: number;
+  opcionais: number;
+}
+
+export interface EstatisticasColaborador {
+  total: number;
+  ativos: number;
+  inativos: number;
+  porTipo: { [key: string]: number };
+}
+
+// ========================================
+// CONSTANTES
+// ========================================
+export const CATEGORIAS_COLABORADOR = [
+  { value: 'FUNCIONARIO', label: 'Funcionário' },
+  { value: 'PARCEIRO', label: 'Parceiro' }
+] as const;
+
+export const TIPOS_PERCENTUAL = [
+  { value: 'VENDA', label: 'Sobre Venda' },
+  { value: 'CUSTO', label: 'Sobre Custo' }
+] as const;
 
 // ========================================
 // CÁLCULOS DE REMUNERAÇÃO
@@ -164,14 +204,6 @@ export interface ApiResponse<T> {
   message?: string;
   errors?: string[];
 }
-
-// ========================================
-// CONSTANTES
-// ========================================
-export const CATEGORIAS_COLABORADOR = [
-  { value: 'FUNCIONARIO', label: 'Funcionário' },
-  { value: 'PARCEIRO', label: 'Parceiro' }
-] as const;
 
 export const TIPOS_COLABORADOR_PADRAO = {
   VENDEDOR: {

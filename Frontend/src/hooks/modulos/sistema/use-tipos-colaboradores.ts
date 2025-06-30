@@ -1,183 +1,293 @@
-import { useState, useCallback } from 'react';
-import { TipoColaborador, TipoColaboradorFormData } from '@/types/colaboradores';
+/**
+ * Hook para gerenciamento de Tipos de Colaboradores
+ * Integra com API real via service
+ */
 
-// Dados mock temporários
-const mockTipos: TipoColaborador[] = [
-  {
-    id: '1',
-    nome: 'Vendedor',
-    categoria: 'FUNCIONARIO',
-    tipoPercentual: 'VENDA',
-    percentualValor: 3.0,
-    minimoGarantido: 0,
-    salarioBase: 4000.0,
-    valorPorServico: 0,
-    opcionalNoOrcamento: false,
-    ativo: true,
-    ordemExibicao: 1,
-    createdAt: new Date().toISOString(),
-    descricao: 'Responsável pelas vendas diretas aos clientes'
-  },
-  {
-    id: '2',
-    nome: 'Gerente',
-    categoria: 'FUNCIONARIO',
-    tipoPercentual: 'VENDA',
-    percentualValor: 2.0,
-    minimoGarantido: 1500.0,
-    salarioBase: 8000.0,
-    valorPorServico: 0,
-    opcionalNoOrcamento: false,
-    ativo: true,
-    ordemExibicao: 2,
-    createdAt: new Date().toISOString(),
-    descricao: 'Supervisão da equipe e gestão de vendas'
-  },
-  {
-    id: '3',
-    nome: 'Montador',
-    categoria: 'PARCEIRO',
-    tipoPercentual: 'CUSTO',
-    percentualValor: 8.0,
-    minimoGarantido: 0,
-    salarioBase: 0,
-    valorPorServico: 150.0,
-    opcionalNoOrcamento: true,
-    ativo: true,
-    ordemExibicao: 3,
-    createdAt: new Date().toISOString(),
-    descricao: 'Montagem de móveis no local do cliente'
-  },
-  {
-    id: '4',
-    nome: 'Arquiteto',
-    categoria: 'PARCEIRO',
-    tipoPercentual: 'VENDA',
-    percentualValor: 10.0,
-    minimoGarantido: 1500.0,
-    salarioBase: 0,
-    valorPorServico: 0,
-    opcionalNoOrcamento: true,
-    ativo: true,
-    ordemExibicao: 4,
-    createdAt: new Date().toISOString(),
-    descricao: 'Projetos arquitetônicos personalizados'
-  }
-];
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { toast } from 'sonner';
+import { TiposColaboradorService } from '@/services/colaboradores-service';
+import {
+  TipoColaborador,
+  TipoColaboradorFormData,
+  FiltrosTipoColaborador,
+  TipoColaboradorListResponse
+} from '@/types/colaboradores';
 
-export function useTiposColaboradores() {
-  const [tipos, setTipos] = useState<TipoColaborador[]>(mockTipos);
-  const [isLoading, setIsLoading] = useState(false);
+interface UseTiposColaboradoresOptions {
+  carregarAoIniciar?: boolean;
+  filtrosIniciais?: FiltrosTipoColaborador;
+}
+
+interface UseTiposColaboradoresReturn {
+  // Estado
+  tipos: TipoColaborador[];
+  loading: boolean;
+  error: string | null;
+  
+  // Filtros
+  filtros: FiltrosTipoColaborador;
+  setFiltros: (filtros: FiltrosTipoColaborador) => void;
+  limparFiltros: () => void;
+  
+  // Operações CRUD
+  carregarTipos: () => Promise<void>;
+  criarTipo: (dados: TipoColaboradorFormData) => Promise<void>;
+  atualizarTipo: (id: string, dados: TipoColaboradorFormData) => Promise<void>;
+  alternarStatusTipo: (id: string) => Promise<void>;
+  excluirTipo: (id: string) => Promise<void>;
+  
+  // Busca específica
+  buscarTipoPorId: (id: string) => Promise<TipoColaborador | null>;
+  
+  // Dados computados
+  tiposAtivos: TipoColaborador[];
+  tiposFuncionarios: TipoColaborador[];
+  tiposParceiros: TipoColaborador[];
+  totalTipos: number;
+  
+  // Estados dos formulários
+  formLoading: boolean;
+}
+
+const FILTROS_INICIAIS: FiltrosTipoColaborador = {
+  busca: '',
+  categoria: 'ALL',
+  ativo: undefined,
+  opcionalNoOrcamento: undefined
+};
+
+export function useTiposColaboradores(options: UseTiposColaboradoresOptions = {}): UseTiposColaboradoresReturn {
+  const {
+    carregarAoIniciar = true,
+    filtrosIniciais = FILTROS_INICIAIS
+  } = options;
+
+  // Estados principais
+  const [tipos, setTipos] = useState<TipoColaborador[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [formLoading, setFormLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [filtros, setFiltros] = useState<FiltrosTipoColaborador>(filtrosIniciais);
+  const [initialized, setInitialized] = useState(false);
 
-  const createTipo = useCallback(async (data: TipoColaboradorFormData) => {
-    setIsLoading(true);
-    setError(null);
+  // Função para carregar tipos (memoizada para evitar re-renders desnecessários)
+  const carregarTipos = useCallback(async () => {
+    if (loading) return; // Evitar múltiplas chamadas simultâneas
     
     try {
-      // Simular delay da API
-      await new Promise(resolve => setTimeout(resolve, 500));
+      setLoading(true);
+      setError(null);
       
-      const newTipo: TipoColaborador = {
-        id: Date.now().toString(),
-        ...data,
-        ativo: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
+      console.log('🔄 Carregando tipos de colaboradores com filtros:', filtros);
       
-      setTipos(prev => [...prev, newTipo].sort((a, b) => a.ordemExibicao - b.ordemExibicao));
-      return newTipo;
+      const response: TipoColaboradorListResponse = await TiposColaboradorService.listar(filtros);
+      
+      console.log('✅ Tipos carregados:', response.items.length);
+      setTipos(response.items);
+      
     } catch (err) {
-      const errorMessage = 'Erro ao criar tipo de colaborador';
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar tipos de colaboradores';
+      console.error('❌ Erro ao carregar tipos:', err);
       setError(errorMessage);
-      throw new Error(errorMessage);
+      
+      // Só mostrar toast se não for o primeiro carregamento
+      if (initialized) {
+        toast.error(errorMessage);
+      }
     } finally {
-      setIsLoading(false);
+      setLoading(false);
+      if (!initialized) {
+        setInitialized(true);
+      }
+    }
+  }, [loading, initialized]); // REMOVIDO 'filtros' da dependência
+
+  // Criar novo tipo
+  const criarTipo = useCallback(async (dados: TipoColaboradorFormData) => {
+    try {
+      setFormLoading(true);
+      console.log('➕ Criando novo tipo:', dados.nome);
+      
+      const novoTipo = await TiposColaboradorService.criar(dados);
+      
+      // Atualizar lista local
+      setTipos(prev => {
+        const updated = [...prev, novoTipo].sort((a, b) => a.nome.localeCompare(b.nome));
+        console.log('✅ Tipo criado e adicionado à lista');
+        return updated;
+      });
+      
+      toast.success(`Tipo "${dados.nome}" criado com sucesso!`);
+      
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao criar tipo de colaborador';
+      console.error('❌ Erro ao criar tipo:', err);
+      toast.error(errorMessage);
+      throw err;
+    } finally {
+      setFormLoading(false);
     }
   }, []);
 
-  const updateTipo = useCallback(async (id: string, data: TipoColaboradorFormData) => {
-    setIsLoading(true);
-    setError(null);
-    
+  // Atualizar tipo existente
+  const atualizarTipo = useCallback(async (id: string, dados: TipoColaboradorFormData) => {
     try {
-      // Simular delay da API
-      await new Promise(resolve => setTimeout(resolve, 500));
+      setFormLoading(true);
+      console.log('✏️ Atualizando tipo:', id, dados.nome);
       
-      setTipos(prev => prev.map(tipo => 
-        tipo.id === id 
-          ? { ...tipo, ...data, updatedAt: new Date().toISOString() }
-          : tipo
-      ).sort((a, b) => a.ordemExibicao - b.ordemExibicao));
+      const tipoAtualizado = await TiposColaboradorService.atualizar(id, dados);
       
-      return tipos.find(t => t.id === id);
+      // Atualizar lista local
+      setTipos(prev => {
+        const updated = prev.map(tipo => tipo.id === id ? tipoAtualizado : tipo)
+                          .sort((a, b) => a.nome.localeCompare(b.nome));
+        console.log('✅ Tipo atualizado na lista');
+        return updated;
+      });
+      
+      toast.success(`Tipo "${dados.nome}" atualizado com sucesso!`);
+      
     } catch (err) {
-      const errorMessage = 'Erro ao atualizar tipo de colaborador';
-      setError(errorMessage);
-      throw new Error(errorMessage);
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao atualizar tipo de colaborador';
+      console.error('❌ Erro ao atualizar tipo:', err);
+      toast.error(errorMessage);
+      throw err;
     } finally {
-      setIsLoading(false);
-    }
-  }, [tipos]);
-
-  const deleteTipo = useCallback(async (id: string) => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      // Simular delay da API
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      setTipos(prev => prev.filter(tipo => tipo.id !== id));
-    } catch (err) {
-      const errorMessage = 'Erro ao excluir tipo de colaborador';
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setIsLoading(false);
+      setFormLoading(false);
     }
   }, []);
 
-  const toggleAtivo = useCallback(async (id: string) => {
-    setIsLoading(true);
-    setError(null);
-    
+  // Alternar status do tipo
+  const alternarStatusTipo = useCallback(async (id: string) => {
     try {
-      // Simular delay da API
-      await new Promise(resolve => setTimeout(resolve, 300));
+      console.log('🔄 Alternando status do tipo:', id);
       
-      setTipos(prev => prev.map(tipo => 
-        tipo.id === id 
-          ? { ...tipo, ativo: !tipo.ativo, updatedAt: new Date().toISOString() }
-          : tipo
-      ));
+      const tipoAtualizado = await TiposColaboradorService.alternarStatus(id);
+      
+      // Atualizar lista local
+      setTipos(prev => {
+        const updated = prev.map(tipo => tipo.id === id ? tipoAtualizado : tipo);
+        console.log('✅ Status alterado na lista');
+        return updated;
+      });
+      
+      const statusText = tipoAtualizado.ativo ? 'ativado' : 'desativado';
+      toast.success(`Tipo "${tipoAtualizado.nome}" ${statusText} com sucesso!`);
+      
     } catch (err) {
-      const errorMessage = 'Erro ao alterar status do tipo';
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setIsLoading(false);
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao alterar status do tipo';
+      console.error('❌ Erro ao alterar status:', err);
+      toast.error(errorMessage);
+      throw err;
     }
   }, []);
 
-  const getTipoById = useCallback((id: string) => {
-    return tipos.find(tipo => tipo.id === id);
+  // Excluir tipo
+  const excluirTipo = useCallback(async (id: string) => {
+    try {
+      const tipoParaExcluir = tipos.find(t => t.id === id);
+      console.log('🗑️ Excluindo tipo:', id, tipoParaExcluir?.nome);
+      
+      await TiposColaboradorService.excluir(id);
+      
+      // Remover da lista local
+      setTipos(prev => {
+        const updated = prev.filter(tipo => tipo.id !== id);
+        console.log('✅ Tipo removido da lista');
+        return updated;
+      });
+      
+      toast.success(`Tipo "${tipoParaExcluir?.nome || 'desconhecido'}" excluído com sucesso!`);
+      
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao excluir tipo de colaborador';
+      console.error('❌ Erro ao excluir tipo:', err);
+      toast.error(errorMessage);
+      throw err;
+    }
   }, [tipos]);
 
-  const getTiposByCategoria = useCallback((categoria: 'FUNCIONARIO' | 'PARCEIRO') => {
-    return tipos.filter(tipo => tipo.categoria === categoria && tipo.ativo);
-  }, [tipos]);
+  // Buscar tipo específico por ID
+  const buscarTipoPorId = useCallback(async (id: string): Promise<TipoColaborador | null> => {
+    try {
+      console.log('🔍 Buscando tipo por ID:', id);
+      return await TiposColaboradorService.buscarPorId(id);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao buscar tipo de colaborador';
+      console.error('❌ Erro ao buscar tipo:', err);
+      toast.error(errorMessage);
+      return null;
+    }
+  }, []);
+
+  // Limpar filtros
+  const limparFiltros = useCallback(() => {
+    console.log('🧹 Limpando filtros');
+    setFiltros(FILTROS_INICIAIS);
+  }, []);
+
+  // Dados computados usando useMemo para otimização
+  const tiposAtivos = useMemo(() => 
+    tipos.filter(tipo => tipo.ativo), 
+    [tipos]
+  );
+
+  const tiposFuncionarios = useMemo(() => 
+    tipos.filter(tipo => tipo.categoria === 'FUNCIONARIO'), 
+    [tipos]
+  );
+
+  const tiposParceiros = useMemo(() => 
+    tipos.filter(tipo => tipo.categoria === 'PARCEIRO'), 
+    [tipos]
+  );
+
+  const totalTipos = useMemo(() => tipos.length, [tipos]);
+
+  // Effect para carregar dados inicial
+  useEffect(() => {
+    if (carregarAoIniciar && !initialized) {
+      console.log('🚀 Carregamento inicial dos tipos');
+      carregarTipos();
+    }
+  }, [carregarAoIniciar, initialized, carregarTipos]);
+
+  // Effect para recarregar quando filtros mudarem (apenas após inicialização)
+  useEffect(() => {
+    if (initialized) {
+      console.log('🔄 Filtros alterados, recarregando tipos');
+      carregarTipos();
+    }
+  }, [filtros, initialized]); // REMOVIDO 'carregarTipos' da dependência
 
   return {
+    // Estado
     tipos,
-    isLoading,
+    loading,
     error,
-    createTipo,
-    updateTipo,
-    deleteTipo,
-    toggleAtivo,
-    getTipoById,
-    getTiposByCategoria
+    
+    // Filtros
+    filtros,
+    setFiltros,
+    limparFiltros,
+    
+    // Operações CRUD
+    carregarTipos,
+    criarTipo,
+    atualizarTipo,
+    alternarStatusTipo,
+    excluirTipo,
+    
+    // Busca específica
+    buscarTipoPorId,
+    
+    // Dados computados
+    tiposAtivos,
+    tiposFuncionarios,
+    tiposParceiros,
+    totalTipos,
+    
+    // Estados dos formulários
+    formLoading
   };
 } 

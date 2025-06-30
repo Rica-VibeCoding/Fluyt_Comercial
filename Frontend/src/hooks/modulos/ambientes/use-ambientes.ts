@@ -216,7 +216,7 @@ export const useAmbientes = (clienteId?: string) => {
   const verificarConectividade = async (): Promise<boolean> => {
     try {
       // Fazer uma chamada simples para verificar se o backend está acessível
-      const response = await ambientesService.listar({ limit: 1 });
+      const response = await ambientesService.listar();
       const conectado = response.success === true;
       setIsConnected(conectado);
       return conectado;

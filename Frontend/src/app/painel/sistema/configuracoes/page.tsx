@@ -63,10 +63,10 @@ export default function ConfiguracoesPage() {
     description: 'Gestão de colaboradores externos',
     items: [{
       id: 'tipos-colaboradores',
-      label: 'Tipos de Colaboradores'
+      label: 'Tipos'
     }, {
       id: 'colaboradores-individuais',
-      label: 'Colaboradores Individuais'
+      label: 'Colaboradores'
     }]
   }, {
     id: 'sistema',

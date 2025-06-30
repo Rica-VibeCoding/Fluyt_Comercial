@@ -128,7 +128,7 @@ ALLOWED_FILE_EXTENSIONS=.xml
 
 ## ✅ **VAMOS COMEÇAR!**
 
-Você pode estar sendo escalado para equipe em qualquer momento do projeto então depure para ver o que esta feito?
+Você pode estar sendo escalado para equipe em qualquer momento do projeto então depure para ver o que esta feito de forma resumida.
 
 depois pergunte qual será sua função
 

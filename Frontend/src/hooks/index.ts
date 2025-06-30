@@ -17,6 +17,7 @@ export { useClienteForm } from './modulos/clientes/use-cliente-form';
 
 // Hooks de módulos - Ambientes
 export { useAmbientes } from './modulos/ambientes/use-ambientes';
+export { useAmbientesSessao } from './modulos/ambientes/use-ambientes-sessao';
 
 // Hooks de módulos - Orçamento
 // export { useSimulador } from './modulos/orcamento/use-simulador';
@@ -33,6 +34,6 @@ export { useEmpresas } from './modulos/sistema/use-empresas';
 export { useEmpresasStore } from './modulos/sistema/use-empresas-store';
 export { useEquipe } from './modulos/sistema/use-equipe';
 export { useLojas } from './modulos/sistema/use-lojas';
-export { useMontadores } from './modulos/sistema/use-montadores';
 export { useSetores } from './modulos/sistema/use-setores';
-export { useTransportadoras } from './modulos/sistema/use-transportadoras';
+export { useTiposColaboradores } from './modulos/sistema/use-tipos-colaboradores';
+export { useColaboradores } from './modulos/sistema/use-colaboradores';

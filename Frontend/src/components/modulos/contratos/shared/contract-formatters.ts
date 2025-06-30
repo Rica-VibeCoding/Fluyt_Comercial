@@ -1,10 +1,10 @@
 // Utilitários para formatação de dados do contrato
 
+import { formatarMoedaBR } from '@/lib/formatters';
+
+// Usa função unificada de formatação monetária
 export const formatarMoeda = (valor: number): string => {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL'
-  }).format(valor);
+  return formatarMoedaBR(valor);
 };
 
 export const formatarTelefone = (telefone: string): string => {

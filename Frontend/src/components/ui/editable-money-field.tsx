@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Edit3, Check, X, Calculator } from 'lucide-react';
+import { formatarMoedaBR, parseMoedaBR } from '@/lib/formatters';
 
 interface EditableMoneyFieldProps {
   value: number;
@@ -30,20 +31,15 @@ export function EditableMoneyField({
   const [isHovered, setIsHovered] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Formatar valor para exibição
+  // Usar função unificada de formatação
   const formatMoney = (val: number): string => {
-    return val.toLocaleString('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 2
-    });
+    return formatarMoedaBR(val);
   };
 
   // Converter string para número
+  // Usar função unificada de parse
   const parseMoney = (str: string): number => {
-    const cleaned = str.replace(/[^\d,.-]/g, '').replace(',', '.');
-    const parsed = parseFloat(cleaned);
-    return isNaN(parsed) ? 0 : parsed;
+    return parseMoedaBR(str);
   };
 
   // Iniciar edição

@@ -71,8 +71,8 @@ const ContractSummary = () => {
         ambientes: ambientes.map(ambiente => ({
           nome: ambiente.nome,
           categoria: 'Ambiente',
-          descricao: `Ambiente com ${ambiente.acabamentos.length} acabamentos`,
-          valor: ambiente.valorTotal
+          descricao: `Ambiente ${ambiente.nome}`,
+          valor: ambiente.valorVenda || 0
         }))
       }));
     } else {

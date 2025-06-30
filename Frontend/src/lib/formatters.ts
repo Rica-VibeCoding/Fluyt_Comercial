@@ -116,6 +116,56 @@ export const parseValorMoeda = (valorFormatado: string): number => {
   return parseFloat(valorFormatado.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
 };
 
+/**
+ * Converte string monetária BR para número - VERSÃO ROBUSTA
+ * Aceita formatos: "R$ 1.234,56", "1234.56", "1.234,56", "1234,56"
+ * @param valor - String com valor monetário
+ * @returns Número decimal
+ */
+export const parseMoedaBR = (valor: string | number): number => {
+  // Se já é número, retorna
+  if (typeof valor === 'number') return valor;
+  
+  // Remove espaços e símbolo de moeda
+  const limpo = valor.trim().replace(/R\$\s*/g, '');
+  
+  // Se está vazio, retorna 0
+  if (!limpo) return 0;
+  
+  // Detecta formato: se tem vírgula após ponto = formato BR (1.234,56)
+  const temVirgulaAposPonto = limpo.lastIndexOf(',') > limpo.lastIndexOf('.');
+  
+  if (temVirgulaAposPonto) {
+    // Formato BR: remove pontos e substitui vírgula por ponto
+    return parseFloat(limpo.replace(/\./g, '').replace(',', '.')) || 0;
+  } else {
+    // Formato US ou sem separadores: remove vírgulas
+    return parseFloat(limpo.replace(/,/g, '')) || 0;
+  }
+};
+
+/**
+ * Formata número como moeda BR - VERSÃO UNIFICADA
+ * @param valor - Número ou string a ser formatado
+ * @param exibirSimbolo - Se deve exibir "R$" (padrão: true)
+ * @returns String formatada como moeda BR
+ */
+export const formatarMoedaBR = (valor: number | string, exibirSimbolo = true): string => {
+  const numero = typeof valor === 'string' ? parseMoedaBR(valor) : valor;
+  
+  if (exibirSimbolo) {
+    return numero.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    });
+  }
+  
+  return numero.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+};
+
 // Converter taxa formatada para número
 export const parseTaxa = (taxaFormatada: string): number => {
   return parseFloat(taxaFormatada.replace(',', '.')) || 0;

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useClienteSelecionado } from '../../../hooks/globais/use-cliente-selecionado';
 import { useSessao } from '../../../store/sessao-store';
 import { Button } from '../../ui/button';
+import { PrimaryButton } from '../../comum/primary-button';
 import { Card, CardContent } from '../../ui/card';
 import { Badge } from '../../ui/badge';
 import { Plus, Upload, ArrowLeft, ArrowRight, RefreshCw, AlertCircle } from 'lucide-react';
@@ -64,20 +65,8 @@ export function AmbientePage() {
     console.log('🔍 AmbientePage: clienteId mudou para:', clienteId);
   }, [clienteId]);
 
-  // Sincronizar ambientes com sessão simples
-  useEffect(() => {
-    if (clienteId && ambientes.length > 0) {
-      // Sessão SIMPLES (nova estrutura)
-      const ambientesSimples = ambientes.map(amb => ({
-        id: amb.id,
-        nome: amb.nome,
-        valor: amb.valorVenda || amb.valorCustoFabrica || 0
-      }));
-      definirAmbientesSimples(ambientesSimples);
-      
-      console.log('🔄 Ambientes sincronizados:', ambientesSimples);
-    }
-  }, [ambientes, clienteId, definirAmbientesSimples]);
+  // Removido: Sincronização manual não é mais necessária
+  // O hook useAmbientesSessao já fornece ambientesSimples automaticamente
 
   const handleAdicionarAmbiente = async (data: any) => {
     const sucesso = await adicionarAmbiente(data);
@@ -178,14 +167,14 @@ export function AmbientePage() {
             <div className="flex items-center justify-between w-full">
               {/* Navegação e Cliente - ESQUERDA */}
               <div className="flex items-center gap-4">
-                <Button 
-                  variant="default" 
-                  size="sm"
+                <PrimaryButton 
                   onClick={() => router.push('/painel/clientes')}
-                  className="gap-2 h-12 px-4 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 shadow-md hover:shadow-lg transition-all duration-200 rounded-lg font-semibold text-white"
+                  icon={ArrowLeft}
+                  variant="primary"
+                  size="sm"
                 >
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
+                  Voltar
+                </PrimaryButton>
                 
                 <div className="h-6 w-px bg-gray-300" />
                 
@@ -200,39 +189,38 @@ export function AmbientePage() {
 
               {/* Botões - DIREITA */}
               <div className="flex items-center gap-3">
-                <Button 
+                <PrimaryButton 
                   onClick={handleImportarXML} 
                   disabled={isLoading || !clienteId} 
-                  variant="default" 
+                  icon={Upload}
+                  isLoading={isLoading}
+                  variant="primary"
                   size="sm"
-                  className="gap-2 h-12 px-4 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 shadow-md hover:shadow-lg transition-all duration-200 rounded-lg font-semibold text-white"
                 >
-                  <Upload className="h-4 w-4" />
                   {isLoading ? 'Importando...' : 'Importar XML'}
-                </Button>
+                </PrimaryButton>
                 
-                <Button 
+                <PrimaryButton 
                   onClick={() => setModalAberto(true)} 
-                  size="sm" 
                   disabled={!clienteId}
-                  variant="default"
-                  className="gap-2 h-12 px-4 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 shadow-md hover:shadow-lg transition-all duration-200 rounded-lg font-semibold text-white"
+                  icon={Plus}
+                  variant="primary"
+                  size="sm"
                 >
-                  <Plus className="h-4 w-4" />
                   Novo Ambiente
-                </Button>
+                </PrimaryButton>
 
-                <Button 
+                <PrimaryButton 
                   onClick={handleAvancarParaOrcamento}
-                  size="sm" 
                   disabled={!podeGerarOrcamento}
-                  variant="default"
-                  className="gap-2 h-12 px-4 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 shadow-md hover:shadow-lg transition-all duration-200 rounded-lg font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  icon={ArrowRight}
+                  iconPosition="right"
+                  variant="primary"
+                  size="sm"
                   title={!podeGerarOrcamento ? "Adicione pelo menos um ambiente para continuar" : "Avançar para orçamento"}
                 >
                   Orçamento
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
+                </PrimaryButton>
               </div>
             </div>
           </CardContent>
