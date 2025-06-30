@@ -28,10 +28,22 @@ export const useAmbientes = (clienteId?: string) => {
     setError(null);
     
     try {
-      logConfig('🔄 Carregando ambientes...', { clienteId, filtros });
-      
       // Se tiver clienteId, filtrar por ele
-      const filtrosComCliente = clienteId ? { ...filtros, clienteId } : filtros;
+      // Incluir materiais por padrão para mostrar detalhes na interface
+      const filtrosComCliente = clienteId ? { 
+        ...filtros, 
+        clienteId,
+        incluir_materiais: filtros?.incluir_materiais ?? true 
+      } : {
+        ...filtros,
+        incluir_materiais: filtros?.incluir_materiais ?? true
+      };
+      
+      logConfig('🔄 Carregando ambientes...', { 
+        clienteId, 
+        filtros: filtrosComCliente,
+        incluindo_materiais: filtrosComCliente.incluir_materiais 
+      });
       
       const response = await ambientesService.listar(filtrosComCliente);
       
@@ -40,6 +52,7 @@ export const useAmbientes = (clienteId?: string) => {
         setIsConnected(true);
         logConfig('✅ Ambientes carregados com sucesso', { 
           total: response.data.items.length,
+          com_materiais: filtrosComCliente.incluir_materiais,
           source: response.source 
         });
       } else {
@@ -216,7 +229,8 @@ export const useAmbientes = (clienteId?: string) => {
   const verificarConectividade = async (): Promise<boolean> => {
     try {
       // Fazer uma chamada simples para verificar se o backend está acessível
-      const response = await ambientesService.listar();
+      // Não incluir materiais para teste mais rápido
+      const response = await ambientesService.listar({ incluir_materiais: false });
       const conectado = response.success === true;
       setIsConnected(conectado);
       return conectado;

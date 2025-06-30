@@ -150,7 +150,7 @@ class XMLImporter:
         except Exception as e:
             logger.error(f"Erro na extração básica: {str(e)}")
             raise ValidationException(f"Não foi possível processar este arquivo XML: {str(e)}")
-
+    
     def _preparar_materiais_json(self, resultado) -> Dict[str, Any]:
         """Prepara dados de materiais do resultado do extrator XML"""
         return {

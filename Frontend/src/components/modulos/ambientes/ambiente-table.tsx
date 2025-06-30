@@ -307,28 +307,70 @@ export function AmbienteTable({
                             Materiais e Extras
                           </h4>
                           
-                          <div className="flex items-center gap-2">
-                            <Package className="h-3 w-3 text-amber-500" />
-                            <span className="text-xs font-medium text-slate-600 min-w-[45px]">Materiais:</span>
-                            <span className="text-xs text-slate-900">
-                              {(() => {
-                                if (loadingMateriais.has(ambiente.id)) {
-                                  return 'Carregando...';
-                                }
-                                
-                                const ambienteCompleto = ambientesCompletos.get(ambiente.id);
-                                if (ambienteCompleto?.materiais) {
-                                  const materiais = ambienteCompleto.materiais;
-                                  if (typeof materiais === 'object' && materiais !== null) {
-                                    const linhas = Object.keys(materiais).length;
-                                    return `${linhas} seções detectadas`;
+                          <div className="flex items-start gap-2">
+                            <Package className="h-3 w-3 text-amber-500 mt-0.5" />
+                            <div className="flex-1">
+                              <span className="text-xs font-medium text-slate-600">Materiais:</span>
+                              <div className="mt-1">
+                                {(() => {
+                                  if (loadingMateriais.has(ambiente.id)) {
+                                    return <span className="text-xs text-slate-500 italic">Carregando...</span>;
                                   }
-                                  return 'Dados disponíveis';
-                                }
-                                
-                                return ambiente.materiais ? 'Disponível' : '--';
-                              })()}
-                            </span>
+                                  
+                                  const ambienteCompleto = ambientesCompletos.get(ambiente.id);
+                                  const materiais = ambienteCompleto?.materiais || ambiente.materiais;
+                                  
+                                  if (materiais && typeof materiais === 'object' && materiais !== null) {
+                                    const secoes = [];
+                                    
+                                    // Detectar seções de materiais disponíveis
+                                    if (materiais.linha_detectada) {
+                                      secoes.push(`Linha: ${materiais.linha_detectada}`);
+                                    }
+                                    if (materiais.caixa) secoes.push('Caixa');
+                                    if (materiais.paineis) secoes.push('Painéis');
+                                    if (materiais.portas) secoes.push('Portas');
+                                    if (materiais.ferragens) secoes.push('Ferragens');
+                                    if (materiais.porta_perfil) secoes.push('Perfis');
+                                    if (materiais.brilhart_color) secoes.push('Cores');
+                                    
+                                    if (secoes.length > 0) {
+                                      return (
+                                        <div className="space-y-1">
+                                          <div className="text-xs text-emerald-600 font-medium">
+                                            ✓ {secoes.length} seção{secoes.length > 1 ? 'ões' : ''} detectada{secoes.length > 1 ? 's' : ''}
+                                          </div>
+                                          <div className="flex flex-wrap gap-1">
+                                            {secoes.slice(0, 3).map((secao, i) => (
+                                              <Badge key={i} variant="outline" className="text-xs px-1.5 py-0 h-4 bg-emerald-50 border-emerald-200 text-emerald-700">
+                                                {secao}
+                                              </Badge>
+                                            ))}
+                                            {secoes.length > 3 && (
+                                              <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 bg-slate-50 border-slate-200 text-slate-500">
+                                                +{secoes.length - 3}
+                                              </Badge>
+                                            )}
+                                          </div>
+                                          {materiais.valor_total && (
+                                            <div className="text-xs text-slate-600 mt-1">
+                                              {materiais.valor_total.custo_fabrica && (
+                                                <div>Custo: {formatarMoeda(materiais.valor_total.custo_fabrica)}</div>
+                                              )}
+                                              {materiais.valor_total.valor_venda && (
+                                                <div>Venda: {formatarMoeda(materiais.valor_total.valor_venda)}</div>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    }
+                                  }
+                                  
+                                  return <span className="text-xs text-slate-500">Não disponível</span>;
+                                })()}
+                              </div>
+                            </div>
                           </div>
                           
                           <div className="flex items-center gap-2">

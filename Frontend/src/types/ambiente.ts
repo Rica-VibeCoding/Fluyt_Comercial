@@ -58,6 +58,7 @@ export interface FiltrosAmbiente {
   dataFim?: string; // ISO date
   valorMin?: number;
   valorMax?: number;
+  incluir_materiais?: boolean; // Incluir dados JSON de materiais na resposta
 }
 
 // Alias para compatibilidade

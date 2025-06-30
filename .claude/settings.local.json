@@ -63,7 +63,8 @@
       "WebFetch(domain:docs.anthropic.com)",
       "Bash(npm run eslint:*)",
       "Bash(npm run typecheck:*)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(source:*)"
     ],
     "deny": []
   }
