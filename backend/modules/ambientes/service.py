@@ -67,7 +67,7 @@ class AmbienteService:
                 items=items,
                 total=resultado['total'],
                 page=resultado['page'],
-                per_page=resultado['limit'],
+                limit=resultado['limit'],
                 pages=resultado['pages']
             )
         except ValidationException:
@@ -139,7 +139,8 @@ class AmbienteService:
             await self.buscar_ambiente_por_id(ambiente_id)
             if not dados.materiais_json:
                 raise ValidationException("Dados de materiais são obrigatórios")
-            return await self.repository.criar_material_ambiente(ambiente_id, dados)
+            dados_dict = dados.model_dump() if hasattr(dados, 'model_dump') else dados.dict()
+            return await self.repository.criar_material_ambiente(dados_dict)
         except (NotFoundException, ValidationException):
             raise
         except Exception as e:

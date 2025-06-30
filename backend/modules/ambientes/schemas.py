@@ -3,7 +3,7 @@ Schemas (estruturas de dados) para o módulo de ambientes
 Define como os dados de ambiente devem ser enviados e recebidos pela API
 """
 from typing import Optional, Dict, Any
-from datetime import datetime, date, time
+from datetime import datetime
 from pydantic import BaseModel, field_validator
 from decimal import Decimal
 
@@ -17,8 +17,8 @@ class AmbienteBase(BaseModel):
     nome: str  # Nome do ambiente (obrigatório)
     valor_custo_fabrica: Optional[Decimal] = None
     valor_venda: Optional[Decimal] = None
-    data_importacao: Optional[date] = None
-    hora_importacao: Optional[time] = None
+    data_importacao: Optional[str] = None  # Data em formato ISO string (YYYY-MM-DD)
+    hora_importacao: Optional[str] = None  # Hora em formato ISO string (HH:MM:SS)
     origem: str = "manual"  # 'xml' ou 'manual'
     
     @field_validator('origem')
@@ -55,8 +55,8 @@ class AmbienteUpdate(BaseModel):
     nome: Optional[str] = None
     valor_custo_fabrica: Optional[Decimal] = None
     valor_venda: Optional[Decimal] = None
-    data_importacao: Optional[date] = None
-    hora_importacao: Optional[time] = None
+    data_importacao: Optional[str] = None  # Data em formato ISO string (YYYY-MM-DD)
+    hora_importacao: Optional[str] = None  # Hora em formato ISO string (HH:MM:SS)
     origem: Optional[str] = None
     
     @field_validator('origem')

@@ -4,7 +4,10 @@
  */
 
 // Formatar valor em moeda brasileira
-export const formatarMoeda = (valor: number): string => {
+export const formatarMoeda = (valor: number | null | undefined): string => {
+  if (valor === null || valor === undefined || isNaN(valor)) {
+    return 'R$ 0,00';
+  }
   return valor.toLocaleString('pt-BR', {
     style: 'currency',
     currency: 'BRL'
@@ -22,7 +25,10 @@ export const formatarValorInput = (value: string): string => {
 };
 
 // Formatar percentual
-export const formatarPercentual = (valor: number, casasDecimais: number = 1): string => {
+export const formatarPercentual = (valor: number | null | undefined, casasDecimais: number = 1): string => {
+  if (valor === null || valor === undefined || isNaN(valor)) {
+    return '0%';
+  }
   return `${valor.toFixed(casasDecimais)}%`;
 };
 
@@ -150,8 +156,16 @@ export const parseMoedaBR = (valor: string | number): number => {
  * @param exibirSimbolo - Se deve exibir "R$" (padrão: true)
  * @returns String formatada como moeda BR
  */
-export const formatarMoedaBR = (valor: number | string, exibirSimbolo = true): string => {
+export const formatarMoedaBR = (valor: number | string | null | undefined, exibirSimbolo = true): string => {
+  if (valor === null || valor === undefined) {
+    return exibirSimbolo ? 'R$ 0,00' : '0,00';
+  }
+  
   const numero = typeof valor === 'string' ? parseMoedaBR(valor) : valor;
+  
+  if (isNaN(numero)) {
+    return exibirSimbolo ? 'R$ 0,00' : '0,00';
+  }
   
   if (exibirSimbolo) {
     return numero.toLocaleString('pt-BR', {

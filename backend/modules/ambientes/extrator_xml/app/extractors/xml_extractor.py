@@ -10,36 +10,66 @@ from lxml import etree
 import re
 import logging
 
-from app.models import (
-    CaixaModel,
-    PainelModel, 
-    PortaModel,
-    FerragemModel,
-    PortaPerfilModel,
-    BrilhartColorModel,
-    ValorTotalModel,
-    ExtractionResult,
-    MetadataModel,
-    LinhaEnum
-)
-
-from app.utils import (
-    detectar_linha,
-    detectar_linhas_disponiveis,
-    extrair_multiplos_valores,
-    extrair_multiplos_valores_se_existe,
-    processar_material_cor,
-    formatar_valor_monetario,
-    validar_espessura,
-    limpar_tipo_dobradica
-)
-
-from app.utils.helpers import (
-    extrair_espessura_vidro,
-    mapear_tipo_corredica,
-    detectar_espessura_brilhart,
-    extrair_espessura_paineis_sublime
-)
+try:
+    # Imports absolutos quando chamado via xml_importer
+    from modules.ambientes.extrator_xml.app.models import (
+        CaixaModel,
+        PainelModel, 
+        PortaModel,
+        FerragemModel,
+        PortaPerfilModel,
+        BrilhartColorModel,
+        ValorTotalModel,
+        ExtractionResult,
+        MetadataModel,
+        LinhaEnum
+    )
+    from modules.ambientes.extrator_xml.app.utils import (
+        detectar_linha,
+        detectar_linhas_disponiveis,
+        extrair_multiplos_valores,
+        extrair_multiplos_valores_se_existe,
+        processar_material_cor,
+        formatar_valor_monetario,
+        validar_espessura,
+        limpar_tipo_dobradica
+    )
+    from modules.ambientes.extrator_xml.app.utils.helpers import (
+        extrair_espessura_vidro,
+        mapear_tipo_corredica,
+        detectar_espessura_brilhart,
+        extrair_espessura_paineis_sublime
+    )
+except ImportError:
+    # Imports relativos quando chamado internamente
+    from ..models import (
+        CaixaModel,
+        PainelModel, 
+        PortaModel,
+        FerragemModel,
+        PortaPerfilModel,
+        BrilhartColorModel,
+        ValorTotalModel,
+        ExtractionResult,
+        MetadataModel,
+        LinhaEnum
+    )
+    from ..utils import (
+        detectar_linha,
+        detectar_linhas_disponiveis,
+        extrair_multiplos_valores,
+        extrair_multiplos_valores_se_existe,
+        processar_material_cor,
+        formatar_valor_monetario,
+        validar_espessura,
+        limpar_tipo_dobradica
+    )
+    from ..utils.helpers import (
+        extrair_espessura_vidro,
+        mapear_tipo_corredica,
+        detectar_espessura_brilhart,
+        extrair_espessura_paineis_sublime
+    )
 
 # Configurar logger
 logger = logging.getLogger(__name__)

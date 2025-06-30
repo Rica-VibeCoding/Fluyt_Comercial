@@ -103,12 +103,12 @@ class XMLImporter:
         return {
             'linha_detectada': resultado.linha_detectada,
             'nome_ambiente': resultado.nome_ambiente,
-            'caixa': resultado.caixa.dict() if resultado.caixa else None,
-            'paineis': resultado.paineis.dict() if resultado.paineis else None,
-            'portas': resultado.portas.dict() if resultado.portas else None,
-            'ferragens': resultado.ferragens.dict() if resultado.ferragens else None,
-            'porta_perfil': resultado.porta_perfil.dict() if resultado.porta_perfil else None,
-            'brilhart_color': resultado.brilhart_color.dict() if resultado.brilhart_color else None,
-            'valor_total': resultado.valor_total.dict() if resultado.valor_total else None,
-            'metadata': resultado.metadata.dict() if resultado.metadata else None
+            'caixa': resultado.caixa.model_dump() if resultado.caixa else None,
+            'paineis': resultado.paineis.model_dump() if resultado.paineis else None,
+            'portas': resultado.portas.model_dump() if resultado.portas else None,
+            'ferragens': resultado.ferragens.model_dump() if resultado.ferragens else None,
+            'porta_perfil': resultado.porta_perfil.model_dump() if resultado.porta_perfil else None,
+            'brilhart_color': resultado.brilhart_color.model_dump() if resultado.brilhart_color else None,
+            'valor_total': resultado.valor_total.model_dump() if resultado.valor_total else None,
+            'metadata': resultado.metadata.model_dump() if resultado.metadata else None
         }

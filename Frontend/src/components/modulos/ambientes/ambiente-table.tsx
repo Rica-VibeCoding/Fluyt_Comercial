@@ -158,7 +158,7 @@ export function AmbienteTable({
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-3 w-3 text-green-500" />
                     <span className="text-sm font-medium text-slate-900 tabular-nums">
-                      {formatarMoeda(ambiente.valorVenda || ambiente.valorCustoFabrica)}
+                      {formatarMoeda(ambiente.valorVenda || ambiente.valorCustoFabrica || 0)}
                     </span>
                   </div>
                 </TableCell>
@@ -241,7 +241,7 @@ export function AmbienteTable({
                             <DollarSign className="h-3 w-3 text-green-500" />
                             <span className="text-xs font-medium text-slate-600 min-w-[45px]">Venda:</span>
                             <span className="text-xs text-slate-900 tabular-nums">
-                              {formatarMoeda(ambiente.valorVenda)}
+                              {formatarMoeda(ambiente.valorVenda || 0)}
                             </span>
                           </div>
                           
@@ -249,7 +249,7 @@ export function AmbienteTable({
                             <DollarSign className="h-3 w-3 text-orange-500" />
                             <span className="text-xs font-medium text-slate-600 min-w-[45px]">Custo:</span>
                             <span className="text-xs text-slate-900 tabular-nums">
-                              {formatarMoeda(ambiente.valorCustoFabrica)}
+                              {formatarMoeda(ambiente.valorCustoFabrica || 0)}
                             </span>
                           </div>
                           

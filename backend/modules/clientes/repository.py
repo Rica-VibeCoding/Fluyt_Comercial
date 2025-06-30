@@ -51,7 +51,7 @@ class ClienteRepository:
             query = self.db.table(self.table).select(
                 """
                 *,
-                vendedor:c_equipe!vendedor_id(id, nome),
+                vendedor:cad_equipe!vendedor_id(id, nome),
                 procedencia:c_procedencias!procedencia_id(id, nome)
                 """
             ).eq('ativo', True)  # Filtrar apenas clientes ativos (soft delete)
@@ -153,7 +153,7 @@ class ClienteRepository:
             query = self.db.table(self.table).select(
                 """
                 *,
-                vendedor:c_equipe!vendedor_id(id, nome),
+                vendedor:cad_equipe!vendedor_id(id, nome),
                 procedencia:c_procedencias!procedencia_id(id, nome)
                 """
             ).eq('id', cliente_id).eq('ativo', True)  # Filtrar apenas clientes ativos
