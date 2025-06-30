@@ -108,7 +108,7 @@ async def listar_ambientes(
 @handle_exceptions
 async def buscar_ambiente(
     ambiente_id: str,
-    incluir_materiais: bool = Query(False, description="Incluir materiais do ambiente"),
+    incluir_materiais: bool = Query(True, description="Incluir materiais do ambiente"),
     current_user = Depends(get_current_user),
     service: AmbienteService = Depends(get_ambiente_service)
 ):

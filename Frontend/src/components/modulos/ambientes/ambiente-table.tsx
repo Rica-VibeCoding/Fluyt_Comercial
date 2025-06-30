@@ -49,13 +49,42 @@ export function AmbienteTable({
   loading = false 
 }: AmbienteTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [ambientesCompletos, setAmbientesCompletos] = useState<Map<string, Ambiente>>(new Map());
+  const [loadingMateriais, setLoadingMateriais] = useState<Set<string>>(new Set());
 
-  const toggleRowExpansion = (id: string) => {
+  const toggleRowExpansion = async (id: string) => {
     const newExpandedRows = new Set(expandedRows);
     if (newExpandedRows.has(id)) {
       newExpandedRows.delete(id);
     } else {
       newExpandedRows.add(id);
+      
+      // Se não temos dados completos deste ambiente, buscar
+      if (!ambientesCompletos.has(id)) {
+        setLoadingMateriais(prev => new Set(prev).add(id));
+        
+        try {
+          const response = await fetch(`http://localhost:8000/api/v1/ambientes/${id}?incluir_materiais=true`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('fluyt_auth_token')}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            const ambienteCompleto = await response.json();
+            setAmbientesCompletos(prev => new Map(prev).set(id, ambienteCompleto));
+          }
+        } catch (error) {
+          console.error('Erro ao buscar dados completos:', error);
+        }
+        
+        setLoadingMateriais(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(id);
+          return newSet;
+        });
+      }
     }
     setExpandedRows(newExpandedRows);
   };
@@ -282,7 +311,23 @@ export function AmbienteTable({
                             <Package className="h-3 w-3 text-amber-500" />
                             <span className="text-xs font-medium text-slate-600 min-w-[45px]">Materiais:</span>
                             <span className="text-xs text-slate-900">
-                              {ambiente.materiais ? 'Disponível' : '--'}
+                              {(() => {
+                                if (loadingMateriais.has(ambiente.id)) {
+                                  return 'Carregando...';
+                                }
+                                
+                                const ambienteCompleto = ambientesCompletos.get(ambiente.id);
+                                if (ambienteCompleto?.materiais) {
+                                  const materiais = ambienteCompleto.materiais;
+                                  if (typeof materiais === 'object' && materiais !== null) {
+                                    const linhas = Object.keys(materiais).length;
+                                    return `${linhas} seções detectadas`;
+                                  }
+                                  return 'Dados disponíveis';
+                                }
+                                
+                                return ambiente.materiais ? 'Disponível' : '--';
+                              })()}
                             </span>
                           </div>
                           
