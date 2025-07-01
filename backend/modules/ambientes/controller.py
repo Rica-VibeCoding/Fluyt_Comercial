@@ -49,6 +49,9 @@ async def listar_ambientes(
     data_inicio: Optional[str] = Query(None, description="Data início (YYYY-MM-DD)"),
     data_fim: Optional[str] = Query(None, description="Data fim (YYYY-MM-DD)"),
     
+    # Incluir materiais
+    incluir_materiais: bool = Query(False, description="Incluir dados de materiais na resposta"),
+    
     # Paginação
     page: int = Query(1, ge=1, description="Número da página"),
     per_page: int = Query(20, ge=1, le=100, description="Itens por página"),
@@ -94,7 +97,8 @@ async def listar_ambientes(
         'page': page,
         'per_page': per_page,
         'order_by': order_by,
-        'order_direction': order_direction
+        'order_direction': order_direction,
+        'incluir_materiais': incluir_materiais  # Adicionar parâmetro
     }
     
     # Busca no service
@@ -349,13 +353,20 @@ async def importar_xml(
         )
     
     # Chamar o service para processar o XML
-    ambiente_criado = await service.importar_xml_ambiente(
-        cliente_id=cliente_id,
-        conteudo_xml=conteudo_str,
-        nome_arquivo=arquivo.filename
-    )
-    
-    logger.info(f"Ambiente {ambiente_criado.id} criado via XML com sucesso")
-    
-    return ambiente_criado
+    try:
+        ambiente_criado = await service.importar_xml_ambiente(
+            cliente_id=cliente_id,
+            conteudo_xml=conteudo_str,
+            nome_arquivo=arquivo.filename
+        )
+        
+        logger.info(f"Ambiente {ambiente_criado.id} criado via XML com sucesso")
+        
+        return ambiente_criado
+    except ValidationException as e:
+        logger.error(f"Erro de validação ao importar XML: {str(e)}")
+        raise
+    except Exception as e:
+        logger.error(f"Erro inesperado ao importar XML: {type(e).__name__}: {str(e)}")
+        raise
  

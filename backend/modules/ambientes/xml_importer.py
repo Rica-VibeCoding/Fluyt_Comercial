@@ -70,18 +70,19 @@ class XMLImporter:
                 hora_importacao=datetime.now().time().isoformat()
             )
             
-            # Criar ambiente
+            # Gerar hash do XML ANTES de criar o ambiente
+            xml_hash = self._gerar_hash_xml(conteudo_xml)
+            
+            # Verificar se XML já foi importado ANTES de criar
+            if await self.service.repository.verificar_xml_hash_existe(xml_hash):
+                logger.warning(f"Tentativa de reimportar XML: {nome_arquivo} (hash: {xml_hash[:8]})")
+                raise ValidationException(f"XML '{nome_arquivo}' já foi importado anteriormente")
+            
+            # Criar ambiente apenas se XML não foi importado
             ambiente = await self.service.criar_ambiente(dados_ambiente)
             
             # Preparar dados para material
             materiais_json = self._preparar_materiais_json(resultado)
-            
-            # Gerar hash do XML
-            xml_hash = self._gerar_hash_xml(conteudo_xml)
-            
-            # Verificar se XML já foi importado
-            if await self.service.repository.verificar_xml_hash_existe(xml_hash):
-                raise ValidationException(f"Este arquivo XML já foi importado anteriormente")
             
             # Criar registro de material
             material_data = AmbienteMaterialCreate(

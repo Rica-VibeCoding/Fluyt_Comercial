@@ -64,7 +64,10 @@
       "Bash(npm run eslint:*)",
       "Bash(npm run typecheck:*)",
       "Bash(timeout:*)",
-      "Bash(source:*)"
+      "Bash(source:*)",
+      "mcp__filesystem__move_file",
+      "Bash(./test_api_materiais.sh:*)",
+      "WebFetch(domain:stackoverflow.com)"
     ],
     "deny": []
   }

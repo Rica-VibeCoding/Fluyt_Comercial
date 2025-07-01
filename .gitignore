@@ -1,20 +1,2 @@
-# 🔥 Evita lixos e peso morto
-node_modules/
-__pycache__/
-*.pyc
-*.log
-logs/
-.next/
-dist/
-out/
-venv/
-backend/venv/
-
-# 🔐 Evita subir credenciais
-.env
-.env.*
-
-# 💻 Evita arquivos de editor
-.vscode/
-.idea/
-.DS_Store
+# Arquivos temporários de diagnóstico - removidos após refatoração
+# temp_*.py

@@ -5,3 +5,4 @@
 export { AmbienteModal } from './ambiente-modal';
 export { AmbientePage } from './ambiente-page';
 export { AmbienteTable } from './ambiente-table';
+export { AmbienteMaterialDetail } from './ambiente-materiais-detail';

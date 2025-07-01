@@ -116,6 +116,9 @@ class AmbienteRepository:
         Returns:
             Dicionário com items e informações de paginação
         """
+        # Debug: verificar parâmetros
+        logger.info(f"🔍 Repository.listar recebeu: include_materiais={include_materiais}, kwargs={kwargs}")
+        
         # Compatibilidade com diferentes nomes de parâmetro
         if limit is not None:
             per_page = limit
@@ -128,19 +131,12 @@ class AmbienteRepository:
                 if key in ['origem', 'cliente_id', 'nome', 'valor_min', 'valor_max', 'data_inicio', 'data_fim']:
                     filtros[key] = value
         try:
-            # Query base com JOIN para cliente
-            select_fields = """
-                *,
-                cliente:c_clientes!cliente_id(id, nome)
-            """
+            # Query base com JOIN para cliente (syntax comprovada)
+            select_fields = "*, cliente:c_clientes!cliente_id(nome)"
             
             # Se incluir materiais, adiciona LEFT JOIN
             if include_materiais:
-                select_fields = """
-                    *,
-                    cliente:c_clientes!cliente_id(id, nome),
-                    materiais:c_ambientes_material!ambiente_id(materiais_json, xml_hash)
-                """
+                select_fields = "*, cliente:c_clientes!cliente_id(nome), materiais:c_ambientes_material!ambiente_id(materiais_json)"
             
             # Query principal com filtros aplicados
             query = self.db.table(self.table_ambientes).select(select_fields)
@@ -174,12 +170,14 @@ class AmbienteRepository:
                 
                 # Processa materiais se incluídos
                 if include_materiais and item.get('materiais'):
-                    # Pega o primeiro material (deveria ser único por ambiente)
+                    # Materiais agora vem como objeto (não array)
                     materiais_data = item['materiais']
-                    if materiais_data and len(materiais_data) > 0:
-                        item['materiais'] = materiais_data[0].get('materiais_json')
+                    if materiais_data and isinstance(materiais_data, dict):
+                        item['materiais'] = materiais_data.get('materiais_json')
+                        logger.info(f"Materiais processados para ambiente {item.get('id')}: {bool(item['materiais'])}")
                     else:
                         item['materiais'] = None
+                        logger.warning(f"Ambiente {item.get('id')} tem materiais inválidos: {type(materiais_data)}")
                 elif not include_materiais:
                     # Remove campo materiais se não foi solicitado
                     item.pop('materiais', None)
@@ -213,19 +211,12 @@ class AmbienteRepository:
             NotFoundException: Se o ambiente não for encontrado
         """
         try:
-            # Query base com JOIN para cliente
-            select_fields = """
-                *,
-                cliente:c_clientes!cliente_id(id, nome)
-            """
+            # Query base com JOIN para cliente (syntax comprovada)
+            select_fields = "*, cliente:c_clientes!cliente_id(nome)"
             
             # Se incluir materiais, adiciona LEFT JOIN
             if include_materiais:
-                select_fields = """
-                    *,
-                    cliente:c_clientes!cliente_id(id, nome),
-                    materiais:c_ambientes_material!ambiente_id(materiais_json, xml_hash)
-                """
+                select_fields = "*, cliente:c_clientes!cliente_id(nome), materiais:c_ambientes_material!ambiente_id(materiais_json)"
             
             query = self.db.table(self.table_ambientes).select(select_fields).eq('id', ambiente_id)
             result = query.execute()
@@ -243,8 +234,8 @@ class AmbienteRepository:
             # Processa materiais se incluídos
             if include_materiais and ambiente.get('materiais'):
                 materiais_data = ambiente['materiais']
-                if materiais_data and len(materiais_data) > 0:
-                    ambiente['materiais'] = materiais_data[0].get('materiais_json')
+                if materiais_data and isinstance(materiais_data, dict):
+                    ambiente['materiais'] = materiais_data.get('materiais_json')
                 else:
                     ambiente['materiais'] = None
             elif not include_materiais:

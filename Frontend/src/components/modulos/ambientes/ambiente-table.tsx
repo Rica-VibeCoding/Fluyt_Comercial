@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import type { Ambiente } from '@/types/ambiente';
 import { formatarMoeda, formatarDataHora } from '@/lib/formatters';
+import { AmbienteMaterialDetail } from './ambiente-materiais-detail';
 
 interface AmbienteTableProps {
   ambientes: Ambiente[];
@@ -49,19 +50,32 @@ export function AmbienteTable({
   loading = false 
 }: AmbienteTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const [ambientesCompletos, setAmbientesCompletos] = useState<Map<string, Ambiente>>(new Map());
+  const [materiaisCache, setMateriaisCache] = useState<Map<string, any>>(new Map());
   const [loadingMateriais, setLoadingMateriais] = useState<Set<string>>(new Set());
+  const [errorMateriais, setErrorMateriais] = useState<Set<string>>(new Set());
 
   const toggleRowExpansion = async (id: string) => {
     const newExpandedRows = new Set(expandedRows);
+    
     if (newExpandedRows.has(id)) {
       newExpandedRows.delete(id);
     } else {
       newExpandedRows.add(id);
       
-      // Se não temos dados completos deste ambiente, buscar
-      if (!ambientesCompletos.has(id)) {
+      // Verificar se ambiente já tem materiais ou se precisa buscar
+      const ambiente = ambientes.find(a => a.id === id);
+      const temMateriais = ambiente?.materiais;
+      const jaNoCache = materiaisCache.has(id);
+      const jaTemErro = errorMateriais.has(id);
+      
+      // Só buscar se não tem materiais locais, não está no cache e não teve erro
+      if (!temMateriais && !jaNoCache && !jaTemErro) {
         setLoadingMateriais(prev => new Set(prev).add(id));
+        setErrorMateriais(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(id);
+          return newSet;
+        });
         
         try {
           const response = await fetch(`http://localhost:8000/api/v1/ambientes/${id}?incluir_materiais=true`, {
@@ -73,19 +87,25 @@ export function AmbienteTable({
           
           if (response.ok) {
             const ambienteCompleto = await response.json();
-            setAmbientesCompletos(prev => new Map(prev).set(id, ambienteCompleto));
+            if (ambienteCompleto.materiais) {
+              setMateriaisCache(prev => new Map(prev).set(id, ambienteCompleto.materiais));
+            }
+          } else {
+            setErrorMateriais(prev => new Set(prev).add(id));
           }
         } catch (error) {
-          console.error('Erro ao buscar dados completos:', error);
+          console.error('Erro ao buscar materiais:', error);
+          setErrorMateriais(prev => new Set(prev).add(id));
+        } finally {
+          setLoadingMateriais(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(id);
+            return newSet;
+          });
         }
-        
-        setLoadingMateriais(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(id);
-          return newSet;
-        });
       }
     }
+    
     setExpandedRows(newExpandedRows);
   };
 
@@ -189,6 +209,28 @@ export function AmbienteTable({
                     <span className="text-sm font-medium text-slate-900 tabular-nums">
                       {formatarMoeda(ambiente.valorVenda || ambiente.valorCustoFabrica || 0)}
                     </span>
+                    {/* Indicador de materiais */}
+                    {(() => {
+                      const temMateriais = ambiente.materiais || materiaisCache.get(ambiente.id);
+                      if (temMateriais && typeof temMateriais === 'object') {
+                        const secoes = Object.keys(temMateriais).filter(k => 
+                          temMateriais[k] && k !== 'metadata' && k !== 'nome_ambiente'
+                        ).length;
+                        if (secoes > 0) {
+                          return (
+                            <div className="ml-1 px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded-full font-medium">
+                              {secoes}
+                            </div>
+                          );
+                        }
+                      }
+                      if (ambiente.origem === 'xml') {
+                        return (
+                          <div className="ml-1 w-2 h-2 bg-slate-300 rounded-full" title="XML sem materiais processados" />
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                 </TableCell>
                 
@@ -313,61 +355,65 @@ export function AmbienteTable({
                               <span className="text-xs font-medium text-slate-600">Materiais:</span>
                               <div className="mt-1">
                                 {(() => {
+                                  // Estados de loading e erro
                                   if (loadingMateriais.has(ambiente.id)) {
-                                    return <span className="text-xs text-slate-500 italic">Carregando...</span>;
+                                    return (
+                                      <div className="flex items-center gap-2 text-xs text-blue-600">
+                                        <div className="animate-spin rounded-full h-3 w-3 border border-blue-600 border-t-transparent" />
+                                        <span>Carregando detalhes...</span>
+                                      </div>
+                                    );
                                   }
                                   
-                                  const ambienteCompleto = ambientesCompletos.get(ambiente.id);
-                                  const materiais = ambienteCompleto?.materiais || ambiente.materiais;
+                                  if (errorMateriais.has(ambiente.id)) {
+                                    return (
+                                      <div className="text-xs text-amber-600">
+                                        ⚠️ Erro ao carregar materiais
+                                        <button 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            // Limpar erro e retentar busca
+                                            setErrorMateriais(prev => {
+                                              const newSet = new Set(prev);
+                                              newSet.delete(ambiente.id);
+                                              return newSet;
+                                            });
+                                            // Forçar nova busca
+                                            const novoExpandedRows = new Set(expandedRows);
+                                            novoExpandedRows.delete(ambiente.id);
+                                            setExpandedRows(novoExpandedRows);
+                                            // Reabrir após limpeza
+                                            setTimeout(() => toggleRowExpansion(ambiente.id), 100);
+                                          }}
+                                          className="ml-2 text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                                        >
+                                          tentar novamente
+                                        </button>
+                                      </div>
+                                    );
+                                  }
+                                  
+                                  // Buscar materiais (prioridade: local > cache)
+                                  const materiais = ambiente.materiais || materiaisCache.get(ambiente.id);
                                   
                                   if (materiais && typeof materiais === 'object' && materiais !== null) {
-                                    const secoes = [];
-                                    
-                                    // Detectar seções de materiais disponíveis
-                                    if (materiais.linha_detectada) {
-                                      secoes.push(`Linha: ${materiais.linha_detectada}`);
-                                    }
-                                    if (materiais.caixa) secoes.push('Caixa');
-                                    if (materiais.paineis) secoes.push('Painéis');
-                                    if (materiais.portas) secoes.push('Portas');
-                                    if (materiais.ferragens) secoes.push('Ferragens');
-                                    if (materiais.porta_perfil) secoes.push('Perfis');
-                                    if (materiais.brilhart_color) secoes.push('Cores');
-                                    
-                                    if (secoes.length > 0) {
-                                      return (
-                                        <div className="space-y-1">
-                                          <div className="text-xs text-emerald-600 font-medium">
-                                            ✓ {secoes.length} seção{secoes.length > 1 ? 'ões' : ''} detectada{secoes.length > 1 ? 's' : ''}
-                                          </div>
-                                          <div className="flex flex-wrap gap-1">
-                                            {secoes.slice(0, 3).map((secao, i) => (
-                                              <Badge key={i} variant="outline" className="text-xs px-1.5 py-0 h-4 bg-emerald-50 border-emerald-200 text-emerald-700">
-                                                {secao}
-                                              </Badge>
-                                            ))}
-                                            {secoes.length > 3 && (
-                                              <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 bg-slate-50 border-slate-200 text-slate-500">
-                                                +{secoes.length - 3}
-                                              </Badge>
-                                            )}
-                                          </div>
-                                          {materiais.valor_total && (
-                                            <div className="text-xs text-slate-600 mt-1">
-                                              {materiais.valor_total.custo_fabrica && (
-                                                <div>Custo: {formatarMoeda(materiais.valor_total.custo_fabrica)}</div>
-                                              )}
-                                              {materiais.valor_total.valor_venda && (
-                                                <div>Venda: {formatarMoeda(materiais.valor_total.valor_venda)}</div>
-                                              )}
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    }
+                                    return <AmbienteMaterialDetail materiais={materiais} />;
                                   }
                                   
-                                  return <span className="text-xs text-slate-500">Não disponível</span>;
+                                  // Fallbacks informativos
+                                  if (ambiente.origem === 'xml') {
+                                    return (
+                                      <span className="text-xs text-slate-500">
+                                        Materiais não processados no XML
+                                      </span>
+                                    );
+                                  }
+                                  
+                                  return (
+                                    <span className="text-xs text-slate-500">
+                                      Ambiente criado manualmente
+                                    </span>
+                                  );
                                 })()}
                               </div>
                             </div>

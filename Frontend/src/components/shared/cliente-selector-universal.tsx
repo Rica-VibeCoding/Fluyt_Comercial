@@ -64,15 +64,7 @@ export function ClienteSelectorUniversal({
     : clienteSelecionado
   const isCarregando = clienteLoading || clientesLoading
 
-  // Debug: qual cliente está sendo exibido
-  console.log('👁️ ClienteSelectorUniversal renderizando:', {
-    integraSessao,
-    clienteSessao: clienteSessao?.nome || 'null',
-    clienteSelecionado: clienteSelecionado?.nome || 'null',
-    clienteExibir: clienteExibir?.nome || 'null',
-    isCarregando,
-    clienteExibirId: clienteExibir?.id || 'null'
-  });
+  // Debug removido para evitar re-renders excessivos
 
   // Mostrar loading se ainda carregando ou não hidratou
   if (isCarregando) {

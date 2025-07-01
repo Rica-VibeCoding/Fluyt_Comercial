@@ -87,6 +87,16 @@ class AmbienteResponse(AmbienteBase):
     
     class Config:
         from_attributes = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+            Decimal: lambda v: float(v) if v is not None else None
+        }
+        
+    # TEMPORARIAMENTE REMOVIDO - TESTE SEM CONVERSÃO
+    # def model_dump(self, **kwargs):
+    #     from .field_converter import AmbienteFieldConverter
+    #     data = super().model_dump(**kwargs)
+    #     return AmbienteFieldConverter.to_frontend(data)
 
 
 class AmbienteMaterialCreate(BaseModel):
@@ -111,6 +121,16 @@ class AmbienteMaterialResponse(BaseModel):
     
     class Config:
         from_attributes = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+            Decimal: lambda v: float(v) if v is not None else None
+        }
+        
+    # TEMPORARIAMENTE REMOVIDO - TESTE SEM CONVERSÃO
+    # def model_dump(self, **kwargs):
+    #     from .field_converter import AmbienteFieldConverter
+    #     data = super().model_dump(**kwargs)
+    #     return AmbienteFieldConverter.to_frontend(data)
 
 
 class AmbienteListResponse(BaseModel):

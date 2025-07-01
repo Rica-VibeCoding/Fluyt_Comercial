@@ -46,6 +46,7 @@ class AmbienteService:
             per_page = paginacao.get('per_page', 20)
             order_by = paginacao.get('order_by', 'created_at')
             order_direction = paginacao.get('order_direction', 'desc')
+            incluir_materiais = paginacao.get('incluir_materiais', False)
             
             if page < 1:
                 raise ValidationException("Página deve ser maior que 0")
@@ -53,12 +54,16 @@ class AmbienteService:
                 raise ValidationException("Tamanho da página deve estar entre 1 e 100")
             filtros_dict = filtros.model_dump(exclude_unset=True) if hasattr(filtros, 'model_dump') else filtros.dict(exclude_unset=True)
             
+            # Debug log
+            logger.info(f"🔍 Service.listar_ambientes: incluir_materiais={incluir_materiais}")
+            
             # Adicionar paginação aos filtros
             filtros_dict.update({
                 'page': page,
                 'per_page': per_page,
                 'order_by': order_by,
-                'order_direction': order_direction
+                'order_direction': order_direction,
+                'include_materiais': incluir_materiais
             })
             
             resultado = await self.repository.listar(**filtros_dict)
