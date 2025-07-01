@@ -155,11 +155,10 @@ export function AmbienteTable({
         <TableHeader>
           <TableRow className="bg-slate-50 border-b border-slate-200">
             <TableHead className="w-12"></TableHead>
-            <TableHead>Código</TableHead>
-            <TableHead>Nome</TableHead>
-            <TableHead>Cliente</TableHead>
-            <TableHead>Valor Total</TableHead>
+            <TableHead>Ambiente</TableHead>
             <TableHead>Origem</TableHead>
+            <TableHead>Data/Hora</TableHead>
+            <TableHead>Valor</TableHead>
             <TableHead className="text-right">Ações</TableHead>
           </TableRow>
         </TableHeader>
@@ -180,13 +179,8 @@ export function AmbienteTable({
                 </TableCell>
                 
                 <TableCell>
-                  <span className="font-mono text-sm text-slate-600">
-                    #{getAmbienteNumero(index)}
-                  </span>
-                </TableCell>
-                
-                <TableCell>
                   <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs text-slate-500">#{getAmbienteNumero(index)}</span>
                     <Home className="h-3 w-3 text-blue-500" />
                     <span className="text-sm font-medium text-slate-900">
                       {ambiente.nome}
@@ -195,10 +189,14 @@ export function AmbienteTable({
                 </TableCell>
                 
                 <TableCell>
+                  {getOrigemBadge(ambiente.origem)}
+                </TableCell>
+                
+                <TableCell>
                   <div className="flex items-center gap-2">
-                    <User className="h-3 w-3 text-slate-500" />
-                    <span className="text-sm text-slate-700">
-                      {ambiente.clienteNome || '--'}
+                    <Calendar className="h-3 w-3 text-slate-500" />
+                    <span className="text-xs text-slate-600">
+                      {ambiente.dataImportacao ? formatarDataHora(ambiente.dataImportacao, ambiente.horaImportacao) : '--'}
                     </span>
                   </div>
                 </TableCell>
@@ -207,7 +205,7 @@ export function AmbienteTable({
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-3 w-3 text-green-500" />
                     <span className="text-sm font-medium text-slate-900 tabular-nums">
-                      {formatarMoeda(ambiente.valorVenda || ambiente.valorCustoFabrica || 0)}
+                      {formatarMoeda(ambiente.valorVenda || 0)}
                     </span>
                     {/* Indicador de materiais */}
                     {(() => {
@@ -232,10 +230,6 @@ export function AmbienteTable({
                       return null;
                     })()}
                   </div>
-                </TableCell>
-                
-                <TableCell>
-                  {getOrigemBadge(ambiente.origem)}
                 </TableCell>
                 
                 <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
@@ -267,176 +261,100 @@ export function AmbienteTable({
               {/* Linha Expandida */}
               {expandedRows.has(ambiente.id) && (
                 <TableRow className="bg-blue-50/20 hover:bg-blue-50/30">
-                  <TableCell colSpan={7} className="py-4">
+                  <TableCell colSpan={6} className="py-4">
                     <div className="pl-4">
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                        
-                        {/* Coluna 1: Informações Básicas */}
-                        <div className="space-y-2">
-                          <h4 className="text-xs font-semibold text-slate-700 mb-2 uppercase tracking-wide">
-                            Informações Básicas
-                          </h4>
-                          
+                      {/* Header com informações consolidadas */}
+                      <div className="mb-4 pb-3 border-b border-slate-200">
+                        <div className="flex items-center gap-4 text-sm">
                           <div className="flex items-center gap-2">
-                            <Hash className="h-3 w-3 text-slate-500" />
-                            <span className="text-xs font-medium text-slate-600 min-w-[45px]">ID:</span>
-                            <span className="text-xs text-slate-900 font-mono">
-                              {ambiente.id.slice(0, 8)}...
+                            <User className="h-4 w-4 text-blue-500" />
+                            <span className="font-medium">Cliente:</span>
+                            <span className="text-slate-700">{ambiente.clienteNome || '--'}</span>
+                          </div>
+                          <div className="text-slate-400">-</div>
+                          <div className="flex items-center gap-2">
+                            <Package className="h-4 w-4 text-purple-500" />
+                            <span className="font-medium">Linha:</span>
+                            <span className="text-slate-700">
+                              {(() => {
+                                const materiais = ambiente.materiais || materiaisCache.get(ambiente.id);
+                                return materiais?.linha_detectada || 'Não detectada';
+                              })()}
                             </span>
                           </div>
-                          
+                          <div className="text-slate-400">-</div>
                           <div className="flex items-center gap-2">
-                            <User className="h-3 w-3 text-blue-500" />
-                            <span className="text-xs font-medium text-slate-600 min-w-[45px]">Cliente:</span>
-                            <span className="text-xs text-slate-900">
-                              {ambiente.clienteNome || '--'}
+                            <Building2 className="h-4 w-4 text-green-500" />
+                            <span className="font-medium">Seções disponíveis:</span>
+                            <span className="text-slate-700">
+                              {(() => {
+                                const materiais = ambiente.materiais || materiaisCache.get(ambiente.id);
+                                if (materiais && typeof materiais === 'object') {
+                                  return Object.keys(materiais).filter(k => 
+                                    materiais[k] && k !== 'metadata' && k !== 'nome_ambiente'
+                                  ).length;
+                                }
+                                return 0;
+                              })()}
                             </span>
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            <FileText className="h-3 w-3 text-purple-500" />
-                            <span className="text-xs font-medium text-slate-600 min-w-[45px]">Origem:</span>
-                            <span className="text-xs text-slate-900">
-                              {ambiente.origem === 'xml' ? 'Importado via XML' : 'Criado manualmente'}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Coluna 2: Valores e Datas */}
-                        <div className="space-y-2">
-                          <h4 className="text-xs font-semibold text-slate-700 mb-2 uppercase tracking-wide">
-                            Valores e Datas
-                          </h4>
-                          
-                          <div className="flex items-center gap-2">
-                            <DollarSign className="h-3 w-3 text-green-500" />
-                            <span className="text-xs font-medium text-slate-600 min-w-[45px]">Venda:</span>
-                            <span className="text-xs text-slate-900 tabular-nums">
-                              {formatarMoeda(ambiente.valorVenda || 0)}
-                            </span>
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            <DollarSign className="h-3 w-3 text-orange-500" />
-                            <span className="text-xs font-medium text-slate-600 min-w-[45px]">Custo:</span>
-                            <span className="text-xs text-slate-900 tabular-nums">
-                              {formatarMoeda(ambiente.valorCustoFabrica || 0)}
-                            </span>
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-3 w-3 text-blue-500" />
-                            <span className="text-xs font-medium text-slate-600 min-w-[45px]">Criado:</span>
-                            <span className="text-xs text-slate-900">
-                              {formatarDataHora(ambiente.createdAt)}
-                            </span>
-                          </div>
-                          
-                          {ambiente.dataImportacao && (
-                            <div className="flex items-center gap-2">
-                              <Clock className="h-3 w-3 text-purple-500" />
-                              <span className="text-xs font-medium text-slate-600 min-w-[45px]">Import:</span>
-                              <span className="text-xs text-slate-900">
-                                {ambiente.dataImportacao} {ambiente.horaImportacao || ''}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Coluna 3: Materiais e Extras */}
-                        <div className="space-y-2">
-                          <h4 className="text-xs font-semibold text-slate-700 mb-2 uppercase tracking-wide">
-                            Materiais e Extras
-                          </h4>
-                          
-                          <div className="flex items-start gap-2">
-                            <Package className="h-3 w-3 text-amber-500 mt-0.5" />
-                            <div className="flex-1">
-                              <span className="text-xs font-medium text-slate-600">Materiais:</span>
-                              <div className="mt-1">
-                                {(() => {
-                                  // Estados de loading e erro
-                                  if (loadingMateriais.has(ambiente.id)) {
-                                    return (
-                                      <div className="flex items-center gap-2 text-xs text-blue-600">
-                                        <div className="animate-spin rounded-full h-3 w-3 border border-blue-600 border-t-transparent" />
-                                        <span>Carregando detalhes...</span>
-                                      </div>
-                                    );
-                                  }
-                                  
-                                  if (errorMateriais.has(ambiente.id)) {
-                                    return (
-                                      <div className="text-xs text-amber-600">
-                                        ⚠️ Erro ao carregar materiais
-                                        <button 
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            // Limpar erro e retentar busca
-                                            setErrorMateriais(prev => {
-                                              const newSet = new Set(prev);
-                                              newSet.delete(ambiente.id);
-                                              return newSet;
-                                            });
-                                            // Forçar nova busca
-                                            const novoExpandedRows = new Set(expandedRows);
-                                            novoExpandedRows.delete(ambiente.id);
-                                            setExpandedRows(novoExpandedRows);
-                                            // Reabrir após limpeza
-                                            setTimeout(() => toggleRowExpansion(ambiente.id), 100);
-                                          }}
-                                          className="ml-2 text-blue-600 hover:text-blue-800 underline cursor-pointer"
-                                        >
-                                          tentar novamente
-                                        </button>
-                                      </div>
-                                    );
-                                  }
-                                  
-                                  // Buscar materiais (prioridade: local > cache)
-                                  const materiais = ambiente.materiais || materiaisCache.get(ambiente.id);
-                                  
-                                  if (materiais && typeof materiais === 'object' && materiais !== null) {
-                                    return <AmbienteMaterialDetail materiais={materiais} />;
-                                  }
-                                  
-                                  // Fallbacks informativos
-                                  if (ambiente.origem === 'xml') {
-                                    return (
-                                      <span className="text-xs text-slate-500">
-                                        Materiais não processados no XML
-                                      </span>
-                                    );
-                                  }
-                                  
-                                  return (
-                                    <span className="text-xs text-slate-500">
-                                      Ambiente criado manualmente
-                                    </span>
-                                  );
-                                })()}
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-3 w-3 text-slate-500" />
-                            <span className="text-xs font-medium text-slate-600 min-w-[45px]">Atualizado:</span>
-                            <span className="text-xs text-slate-900">
-                              {formatarDataHora(ambiente.updatedAt)}
-                            </span>
-                          </div>
-                          
-                          {/* Espaço para futuras extensões */}
-                          <div className="flex items-center gap-2">
-                            <Building2 className="h-3 w-3 text-slate-400" />
-                            <span className="text-xs font-medium text-slate-600 min-w-[45px]">Status:</span>
-                            <Badge variant="outline" className="text-xs px-1.5 py-0 h-4">
-                              Ativo
-                            </Badge>
                           </div>
                         </div>
                       </div>
+                      
+                      {/* Renderização de Materiais */}
+                      {(() => {
+                        if (loadingMateriais.has(ambiente.id)) {
+                          return (
+                            <div className="flex items-center justify-center py-8">
+                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
+                              <span className="text-sm text-slate-600">Carregando detalhes de materiais...</span>
+                            </div>
+                          );
+                        }
+                        
+                        if (errorMateriais.has(ambiente.id)) {
+                          return (
+                            <div className="text-center py-8">
+                              <div className="text-amber-600 mb-2">
+                                ⚠️ Erro ao carregar materiais
+                              </div>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setErrorMateriais(prev => {
+                                    const newSet = new Set(prev);
+                                    newSet.delete(ambiente.id);
+                                    return newSet;
+                                  });
+                                  const novoExpandedRows = new Set(expandedRows);
+                                  novoExpandedRows.delete(ambiente.id);
+                                  setExpandedRows(novoExpandedRows);
+                                  setTimeout(() => toggleRowExpansion(ambiente.id), 100);
+                                }}
+                                className="text-sm text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                              >
+                                tentar novamente
+                              </button>
+                            </div>
+                          );
+                        }
+                        
+                        const materiais = ambiente.materiais || materiaisCache.get(ambiente.id);
+                        
+                        if (!materiais || typeof materiais !== 'object') {
+                          return (
+                            <div className="text-center py-8">
+                              <Package className="h-8 w-8 mx-auto mb-2 text-slate-400" />
+                              <p className="text-sm text-slate-500">
+                                {ambiente.origem === 'xml' ? 'Materiais não processados no XML' : 'Sem dados de materiais'}
+                              </p>
+                            </div>
+                          );
+                        }
+                        
+                        // Renderizar AmbienteMaterialDetail
+                        return <AmbienteMaterialDetail materiais={materiais} />;
+                      })()}
                     </div>
                   </TableCell>
                 </TableRow>

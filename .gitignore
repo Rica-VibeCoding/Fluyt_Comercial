@@ -1,2 +1,26 @@
-# Arquivos temporários de diagnóstico - removidos após refatoração
-# temp_*.py
+# Ambiente Node e Next.js
+node_modules/
+.next/
+Frontend/.env.local
+
+# Ambiente Python
+__pycache__/
+*.pyc
+backend/.env
+backend/logs/
+backend/backend.log
+
+# SQL e debug
+sql/
+debug_*.py
+test_*.py
+teste_*.py
+verificar_*.py
+
+# Arquivos temporários
+*.log
+
+
+
+# Pastas temporárias
+Frontend/src/app/teste_importar_xml/
