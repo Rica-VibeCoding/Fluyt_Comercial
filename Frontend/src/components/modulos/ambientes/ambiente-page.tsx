@@ -11,12 +11,14 @@ import { Badge } from '../../ui/badge';
 import { Plus, Upload, ArrowLeft, ArrowRight, RefreshCw, AlertCircle } from 'lucide-react';
 import { useAmbientes } from '../../../hooks/modulos/ambientes/use-ambientes';
 import { AmbienteModal } from './ambiente-modal';
+import { AmbienteEditModal } from './ambiente-edit-modal';
 import { AmbienteTable } from './ambiente-table';
 import { ClienteSelectorUniversal } from '../../shared/cliente-selector-universal';
 import { Alert, AlertDescription } from '../../ui/alert';
 import { ambientesService } from '@/services/ambientes-service';
 import { useToast } from '../../ui/use-toast';
 import { formatarMoeda } from '@/lib/formatters';
+import type { Ambiente } from '@/types/ambiente';
 
 export function AmbientePage() {
   const router = useRouter();
@@ -57,6 +59,8 @@ export function AmbientePage() {
   } = useAmbientes(clienteId || undefined);
 
   const [modalAberto, setModalAberto] = useState(false);
+  const [modalEditAberto, setModalEditAberto] = useState(false);
+  const [ambienteEditando, setAmbienteEditando] = useState<Ambiente | null>(null);
 
   // Atualiza ambientes quando clienteId muda
   useEffect(() => {
@@ -77,6 +81,24 @@ export function AmbientePage() {
     const sucesso = await removerAmbiente(id);
     if (sucesso) {
       removerAmbienteSessao(id);
+    }
+  };
+
+  const handleEditarAmbiente = (ambiente: Ambiente) => {
+    setAmbienteEditando(ambiente);
+    setModalEditAberto(true);
+  };
+
+  const handleAtualizarAmbiente = async (id: string, data: Partial<Ambiente>) => {
+    const sucesso = await atualizarAmbiente(id, data);
+    if (sucesso) {
+      setModalEditAberto(false);
+      setAmbienteEditando(null);
+      toast({
+        title: 'Ambiente atualizado',
+        description: 'As alterações foram salvas com sucesso.',
+        variant: 'default'
+      });
     }
   };
 
@@ -335,18 +357,27 @@ export function AmbientePage() {
             
             <AmbienteTable 
               ambientes={ambientes}
+              onEdit={handleEditarAmbiente}
               onDelete={handleRemoverAmbiente}
               loading={isLoading}
             />
           </div>
         )}
 
-        {/* Modal */}
+        {/* Modal de Criação */}
         <AmbienteModal 
           open={modalAberto} 
           onOpenChange={setModalAberto} 
           onSubmit={handleAdicionarAmbiente}
           clienteId={clienteId || undefined}
+        />
+
+        {/* Modal de Edição */}
+        <AmbienteEditModal
+          open={modalEditAberto}
+          onOpenChange={setModalEditAberto}
+          onSubmit={handleAtualizarAmbiente}
+          ambiente={ambienteEditando}
         />
       </div>
     </div>

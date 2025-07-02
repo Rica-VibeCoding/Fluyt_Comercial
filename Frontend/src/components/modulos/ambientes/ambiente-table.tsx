@@ -202,13 +202,10 @@ export function AmbienteTable({
                 </TableCell>
                 
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-3 w-3 text-green-500" />
-                    <span className="text-sm font-medium text-slate-900 tabular-nums">
-                      {ambiente.valor_venda ? formatarMoeda(ambiente.valor_venda) : 
-                        <span className="text-slate-400 italic">Valor não definido</span>}
-                    </span>
-                  </div>
+                  <span className="text-sm font-medium text-slate-900 tabular-nums">
+                    {ambiente.valor_venda ? formatarMoeda(ambiente.valor_venda) : 
+                      <span className="text-slate-400 italic">Valor não definido</span>}
+                  </span>
                 </TableCell>
                 
                 <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
