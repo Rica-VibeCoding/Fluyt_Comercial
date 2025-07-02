@@ -180,7 +180,6 @@ export function AmbienteTable({
                 
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs text-slate-500">#{getAmbienteNumero(index)}</span>
                     <Home className="h-3 w-3 text-blue-500" />
                     <span className="text-sm font-medium text-slate-900">
                       {ambiente.nome}
@@ -196,7 +195,8 @@ export function AmbienteTable({
                   <div className="flex items-center gap-2">
                     <Calendar className="h-3 w-3 text-slate-500" />
                     <span className="text-xs text-slate-600">
-                      {ambiente.dataImportacao ? formatarDataHora(ambiente.dataImportacao, ambiente.horaImportacao) : '--'}
+                      {ambiente.data_importacao ? formatarDataHora(ambiente.data_importacao, ambiente.hora_importacao) : 
+                        <span className="text-slate-400 italic">Não informado</span>}
                     </span>
                   </div>
                 </TableCell>
@@ -205,30 +205,9 @@ export function AmbienteTable({
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-3 w-3 text-green-500" />
                     <span className="text-sm font-medium text-slate-900 tabular-nums">
-                      {formatarMoeda(ambiente.valorVenda || 0)}
+                      {ambiente.valor_venda ? formatarMoeda(ambiente.valor_venda) : 
+                        <span className="text-slate-400 italic">Valor não definido</span>}
                     </span>
-                    {/* Indicador de materiais */}
-                    {(() => {
-                      const temMateriais = ambiente.materiais || materiaisCache.get(ambiente.id);
-                      if (temMateriais && typeof temMateriais === 'object') {
-                        const secoes = Object.keys(temMateriais).filter(k => 
-                          temMateriais[k] && k !== 'metadata' && k !== 'nome_ambiente'
-                        ).length;
-                        if (secoes > 0) {
-                          return (
-                            <div className="ml-1 px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded-full font-medium">
-                              {secoes}
-                            </div>
-                          );
-                        }
-                      }
-                      if (ambiente.origem === 'xml') {
-                        return (
-                          <div className="ml-1 w-2 h-2 bg-slate-300 rounded-full" title="XML sem materiais processados" />
-                        );
-                      }
-                      return null;
-                    })()}
                   </div>
                 </TableCell>
                 
@@ -240,8 +219,9 @@ export function AmbienteTable({
                         size="sm"
                         onClick={() => onEdit(ambiente)}
                         className="h-6 w-6 p-0 hover:bg-blue-100"
+                        title="Editar ambiente"
                       >
-                        <Edit className="h-3 w-3 text-slate-500" />
+                        <Edit className="h-3 w-3 text-blue-600" />
                       </Button>
                     )}
                     {onDelete && (
@@ -269,7 +249,7 @@ export function AmbienteTable({
                           <div className="flex items-center gap-2">
                             <User className="h-4 w-4 text-blue-500" />
                             <span className="font-medium">Cliente:</span>
-                            <span className="text-slate-700">{ambiente.clienteNome || '--'}</span>
+                            <span className="text-slate-700">{ambiente.cliente_nome || 'Cliente não informado'}</span>
                           </div>
                           <div className="text-slate-400">-</div>
                           <div className="flex items-center gap-2">
@@ -279,22 +259,6 @@ export function AmbienteTable({
                               {(() => {
                                 const materiais = ambiente.materiais || materiaisCache.get(ambiente.id);
                                 return materiais?.linha_detectada || 'Não detectada';
-                              })()}
-                            </span>
-                          </div>
-                          <div className="text-slate-400">-</div>
-                          <div className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4 text-green-500" />
-                            <span className="font-medium">Seções disponíveis:</span>
-                            <span className="text-slate-700">
-                              {(() => {
-                                const materiais = ambiente.materiais || materiaisCache.get(ambiente.id);
-                                if (materiais && typeof materiais === 'object') {
-                                  return Object.keys(materiais).filter(k => 
-                                    materiais[k] && k !== 'metadata' && k !== 'nome_ambiente'
-                                  ).length;
-                                }
-                                return 0;
                               })()}
                             </span>
                           </div>

@@ -36,7 +36,7 @@ export function useAmbientesSessao() {
     return ambientes.map(amb => ({
       id: amb.id,
       nome: amb.nome,
-      valor: amb.valorVenda || amb.valorCustoFabrica || 0
+      valor: amb.valor_venda || amb.valor_custo_fabrica || 0
     }));
   }, [ambientes]);
 

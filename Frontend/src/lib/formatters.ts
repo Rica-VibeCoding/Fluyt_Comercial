@@ -5,7 +5,7 @@
 
 // Formatar valor em moeda brasileira
 export const formatarMoeda = (valor: number | null | undefined): string => {
-  if (valor === null || valor === undefined || isNaN(valor)) {
+  if (valor === null || valor === undefined || isNaN(valor) || valor === 0) {
     return 'R$ 0,00';
   }
   return valor.toLocaleString('pt-BR', {
@@ -53,7 +53,29 @@ export const formatarData = (data: string | Date): string => {
 };
 
 // Formatar data e hora para padrão brasileiro
-export const formatarDataHora = (dataIso?: string | null): string => {
+export const formatarDataHora = (dataIso?: string | null, horaIso?: string | null): string => {
+  // Versão com dois parâmetros (campos separados)
+  if (dataIso && horaIso) {
+    try {
+      // Combina data e hora: "2025-01-07" + "T" + "14:30:00" = "2025-01-07T14:30:00"
+      const dataHoraCombinada = `${dataIso}T${horaIso}`;
+      const data = new Date(dataHoraCombinada);
+      if (isNaN(data.getTime())) return '--';
+      
+      return data.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }) + ' - ' + data.toLocaleTimeString('pt-BR', {
+        hour: '2-digit', 
+        minute: '2-digit'
+      });
+    } catch {
+      return '--';
+    }
+  }
+  
+  // Versão com um parâmetro (ISO datetime)
   if (!dataIso) return '--';
   
   const data = new Date(dataIso);

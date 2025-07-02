@@ -131,12 +131,13 @@ class AmbienteRepository:
                 if key in ['origem', 'cliente_id', 'nome', 'valor_min', 'valor_max', 'data_inicio', 'data_fim']:
                     filtros[key] = value
         try:
-            # Query base com JOIN para cliente (syntax comprovada)
-            select_fields = "*, cliente:c_clientes!cliente_id(nome)"
+            # Query base com campos explícitos + JOIN para cliente
+            base_fields = "id, nome, cliente_id, valor_venda, data_importacao, hora_importacao, origem, created_at, updated_at"
+            select_fields = f"{base_fields}, cliente:c_clientes!cliente_id(nome)"
             
             # Se incluir materiais, adiciona LEFT JOIN
             if include_materiais:
-                select_fields = "*, cliente:c_clientes!cliente_id(nome), materiais:c_ambientes_material!ambiente_id(materiais_json)"
+                select_fields = f"{base_fields}, cliente:c_clientes!cliente_id(nome), materiais:c_ambientes_material!ambiente_id(materiais_json)"
             
             # Query principal com filtros aplicados
             query = self.db.table(self.table_ambientes).select(select_fields)
@@ -182,6 +183,9 @@ class AmbienteRepository:
                     # Remove campo materiais se não foi solicitado
                     item.pop('materiais', None)
                 
+                # Converte valores monetários Decimal para float
+                item = self._converter_decimal_para_float(item)
+                
                 items.append(item)
             
             return {
@@ -211,12 +215,13 @@ class AmbienteRepository:
             NotFoundException: Se o ambiente não for encontrado
         """
         try:
-            # Query base com JOIN para cliente (syntax comprovada)
-            select_fields = "*, cliente:c_clientes!cliente_id(nome)"
+            # Query base com campos explícitos + JOIN para cliente
+            base_fields = "id, nome, cliente_id, valor_venda, data_importacao, hora_importacao, origem, created_at, updated_at"
+            select_fields = f"{base_fields}, cliente:c_clientes!cliente_id(nome)"
             
             # Se incluir materiais, adiciona LEFT JOIN
             if include_materiais:
-                select_fields = "*, cliente:c_clientes!cliente_id(nome), materiais:c_ambientes_material!ambiente_id(materiais_json)"
+                select_fields = f"{base_fields}, cliente:c_clientes!cliente_id(nome), materiais:c_ambientes_material!ambiente_id(materiais_json)"
             
             query = self.db.table(self.table_ambientes).select(select_fields).eq('id', ambiente_id)
             result = query.execute()
@@ -240,6 +245,9 @@ class AmbienteRepository:
                     ambiente['materiais'] = None
             elif not include_materiais:
                 ambiente.pop('materiais', None)
+            
+            # Converte valores monetários Decimal para float
+            ambiente = self._converter_decimal_para_float(ambiente)
             
             return ambiente
         

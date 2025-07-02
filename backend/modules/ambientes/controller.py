@@ -21,7 +21,6 @@ from .schemas import (
     AmbienteFiltros, AmbienteListResponse,
     AmbienteMaterialCreate, AmbienteMaterialResponse
 )
-from .field_converter import ambiente_field_converter
 
 logger = logging.getLogger(__name__)
 

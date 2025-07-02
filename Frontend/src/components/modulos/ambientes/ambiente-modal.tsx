@@ -45,25 +45,25 @@ export function AmbienteModal({ open, onOpenChange, onSubmit, clienteId }: Ambie
 
     const formData: AmbienteFormData = {
       nome: nome.trim(),
-      clienteId,
+      cliente_id: clienteId,
       origem,
     };
 
     // Adicionar valores se informados
     if (valorVenda && valorVenda > 0) {
-      formData.valorVenda = valorVenda;
+      formData.valor_venda = valorVenda;
     }
     if (valorCustoFabrica && valorCustoFabrica > 0) {
-      formData.valorCustoFabrica = valorCustoFabrica;
+      formData.valor_custo_fabrica = valorCustoFabrica;
     }
 
     // Adicionar data/hora se origem for XML
     if (origem === 'xml') {
       if (dataImportacao) {
-        formData.dataImportacao = dataImportacao;
+        formData.data_importacao = dataImportacao;
       }
       if (horaImportacao) {
-        formData.horaImportacao = horaImportacao;
+        formData.hora_importacao = horaImportacao;
       }
     }
 

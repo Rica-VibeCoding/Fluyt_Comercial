@@ -3,48 +3,48 @@
 export interface Ambiente {
   // Campos obrigatórios
   id: string;
-  clienteId: string; // OBRIGATÓRIO - relacionamento com cliente
+  cliente_id: string; // OBRIGATÓRIO - relacionamento com cliente
   nome: string;
   
   // Campos monetários separados (como no backend)
-  valorCustoFabrica?: number;
-  valorVenda?: number;
+  valor_custo_fabrica?: number;
+  valor_venda?: number;
   
   // Campos de controle de importação
-  dataImportacao?: string; // ISO date string
-  horaImportacao?: string; // Time string HH:MM:SS
+  data_importacao?: string; // ISO date string
+  hora_importacao?: string; // Time string HH:MM:SS
   origem: 'manual' | 'xml';
   
   // Campos relacionados (vem de JOINs)
-  clienteNome?: string;
+  cliente_nome?: string;
   
   // Materiais opcionais (JSONB do backend)
   materiais?: any; // Flexível para comportar qualquer estrutura
   
   // Controle do sistema
-  createdAt: string; // ISO datetime
-  updatedAt: string; // ISO datetime
+  created_at: string; // ISO datetime
+  updated_at: string; // ISO datetime
 }
 
 // ============= TIPOS PARA FORMULÁRIOS =============
 
 export interface AmbienteFormData {
   nome: string;
-  clienteId: string; // OBRIGATÓRIO
-  valorCustoFabrica?: number;
-  valorVenda?: number;
-  dataImportacao?: string;
-  horaImportacao?: string;
+  cliente_id: string; // OBRIGATÓRIO
+  valor_custo_fabrica?: number;
+  valor_venda?: number;
+  data_importacao?: string;
+  hora_importacao?: string;
   origem: 'manual' | 'xml';
 }
 
 export interface AmbienteUpdateData {
   nome?: string;
-  clienteId?: string;
-  valorCustoFabrica?: number;
-  valorVenda?: number;
-  dataImportacao?: string;
-  horaImportacao?: string;
+  cliente_id?: string;
+  valor_custo_fabrica?: number;
+  valor_venda?: number;
+  data_importacao?: string;
+  hora_importacao?: string;
   origem?: 'manual' | 'xml';
 }
 
@@ -52,12 +52,12 @@ export interface AmbienteUpdateData {
 
 export interface FiltrosAmbiente {
   busca?: string; // Busca por nome
-  clienteId?: string; // Filtrar por cliente específico
+  cliente_id?: string; // Filtrar por cliente específico
   origem?: 'manual' | 'xml'; // Filtrar por origem
-  dataInicio?: string; // ISO date
-  dataFim?: string; // ISO date
-  valorMin?: number;
-  valorMax?: number;
+  data_inicio?: string; // ISO date
+  data_fim?: string; // ISO date
+  valor_min?: number;
+  valor_max?: number;
   incluir_materiais?: boolean; // Incluir dados JSON de materiais na resposta
 }
 
@@ -68,17 +68,17 @@ export type AmbienteFiltros = FiltrosAmbiente;
 
 export interface AmbienteMaterial {
   id: string;
-  ambienteId: string;
-  materiaisJson: any; // JSONB flexível
-  xmlHash?: string;
-  createdAt: string;
-  updatedAt: string;
+  ambiente_id: string;
+  materiais_json: any; // JSONB flexível
+  xml_hash?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AmbienteMaterialFormData {
-  ambienteId: string;
-  materiaisJson: any;
-  xmlHash?: string;
+  ambiente_id: string;
+  materiais_json: any;
+  xml_hash?: string;
 }
 
 // ============= TIPOS PARA RESPOSTAS DA API =============
@@ -91,20 +91,4 @@ export interface AmbienteListResponse {
   pages: number;
 }
 
-// ============= TIPOS PARA CONVERSÃO BACKEND ↔ FRONTEND =============
-
-export interface AmbienteBackend {
-  id: string;
-  cliente_id: string;
-  nome: string;
-  valor_custo_fabrica?: number;
-  valor_venda?: number;
-  data_importacao?: string;
-  hora_importacao?: string;
-  origem: 'manual' | 'xml';
-  cliente_nome?: string;
-  materiais?: any;
-  created_at: string;
-  updated_at: string;
-}
 

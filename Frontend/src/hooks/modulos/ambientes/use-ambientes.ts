@@ -31,7 +31,7 @@ export const useAmbientes = (clienteId?: string) => {
       // Sempre incluir materiais por padrão para melhor UX
       const filtrosComCliente = clienteId ? { 
         ...filtros, 
-        clienteId,
+        cliente_id: clienteId,
         incluir_materiais: true // Forçar sempre true
       } : {
         ...filtros,
@@ -39,7 +39,7 @@ export const useAmbientes = (clienteId?: string) => {
       };
       
       logConfig('🔄 Carregando ambientes...', { 
-        clienteId, 
+        cliente_id: clienteId, 
         filtros: filtrosComCliente,
         incluindo_materiais: filtrosComCliente.incluir_materiais 
       });
@@ -258,7 +258,7 @@ export const useAmbientes = (clienteId?: string) => {
 
   // ============= CÁLCULOS =============
   const valorTotalGeral = ambientes.reduce((total, ambiente) => {
-    return total + (ambiente.valorVenda || ambiente.valorCustoFabrica || 0);
+    return total + (ambiente.valor_venda || ambiente.valor_custo_fabrica || 0);
   }, 0);
 
   const totalAmbientes = ambientes.length;

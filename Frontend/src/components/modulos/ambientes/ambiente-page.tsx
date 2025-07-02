@@ -93,8 +93,8 @@ export function AmbientePage() {
   const handleImportarXML = async () => {
     if (!clienteId) {
       toast({
-        title: 'Atenção',
-        description: 'Selecione um cliente antes de importar XML',
+        title: 'Cliente necessário',
+        description: 'É necessário selecionar um cliente para associar o ambiente importado',
         variant: 'destructive'
       });
       return;
@@ -252,7 +252,7 @@ export function AmbientePage() {
             <AlertCircle className="h-4 w-4 text-orange-600" />
             <AlertDescription className="text-orange-800">
               <div className="flex items-center justify-between">
-                <span>Não foi possível conectar ao servidor. Verifique se o backend está rodando.</span>
+                <span>Backend indisponível. Verifique se o servidor está em execução e tente novamente.</span>
                 <Button 
                   onClick={verificarConectividade}
                   variant="outline"
