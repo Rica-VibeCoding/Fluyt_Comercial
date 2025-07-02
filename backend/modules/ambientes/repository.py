@@ -380,44 +380,14 @@ class AmbienteRepository:
             logger.error(f"Erro ao criar material ambiente: {str(e)}")
             raise DatabaseException(f"Erro ao salvar materiais: {str(e)}")
     
-    async def verificar_xml_hash_existe(self, xml_hash: str) -> bool:
-        """
-        Verifica se um XML com este hash já foi importado
-        
-        Args:
-            xml_hash: Hash SHA256 do XML
-            
-        Returns:
-            True se já existe, False caso contrário
-        """
-        try:
-            result = self.db.table(self.table_materiais).select('id').eq('xml_hash', xml_hash).execute()
-            return len(result.data) > 0
-        except Exception as e:
-            logger.error(f"Erro ao verificar hash XML: {str(e)}")
-            return False
-    
-    async def obter_materiais_ambiente(self, ambiente_id: str) -> Optional[Dict[str, Any]]:
-        """
-        Obtém materiais de um ambiente específico
-        
-        Args:
-            ambiente_id: ID do ambiente
-            
-        Returns:
-            Dados dos materiais ou None se não encontrado
-        """
-        try:
-            query = self.db.table(self.table_materiais).select('*').eq('ambiente_id', ambiente_id)
-            result = query.execute()
-            
-            if result.data:
-                return result.data[0]
-            
-            return None
-        
-        except Exception as e:
-            logger.error(f"Erro ao obter materiais do ambiente {ambiente_id}: {str(e)}")
-            raise DatabaseException(f"Erro ao obter materiais: {str(e)}")
+    async def obter_materiais_ambiente(self, ambiente_id: str):
+        """Busca todos os materiais associados a um ambiente"""
+        query = "SELECT * FROM c_ambientes_material WHERE ambiente_id = :ambiente_id"
+        return await self.db.fetch_all(query, {"ambiente_id": ambiente_id})
+
+    async def excluir_materiais_por_ambiente_id(self, ambiente_id: str):
+        """Exclui todos os materiais de um ambiente"""
+        query = "DELETE FROM c_ambientes_material WHERE ambiente_id = :ambiente_id"
+        await self.db.execute(query, {"ambiente_id": ambiente_id})
     
  

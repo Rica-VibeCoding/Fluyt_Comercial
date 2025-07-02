@@ -56,7 +56,6 @@ const apiClient = {
     // Para FormData, usar abordagem especial
     // Não definir Content-Type, o browser adiciona automaticamente com boundary
     if (data instanceof FormData) {
-      // Fazer a requisição diretamente com fetch para ter controle total
       try {
         const token = localStorage.getItem('fluyt_auth_token');
         const headers: any = {
@@ -70,23 +69,37 @@ const apiClient = {
         const response = await fetch(`http://localhost:8000/api/v1${fullEndpoint}`, {
           method: 'POST',
           headers,
-          body: data // FormData direto, sem stringify
+          body: data
         });
         
-        const result = await response.json();
+        let result;
+        try {
+          result = await response.json();
+        } catch {
+          result = { detail: 'Erro ao processar resposta do servidor' };
+        }
         
-        return {
-          success: response.ok,
-          data: result,
-          error: response.ok ? undefined : (result.detail || result.message || 'Erro no upload'),
-          source: 'direct' as const
-        };
+        if (response.ok) {
+          return {
+            success: true,
+            data: result,
+            source: 'direct' as const
+          } as ApiResponse<any>;
+        } else {
+          // Extrair mensagem de erro seguindo padrão FastAPI
+          const errorMessage = result.detail || result.message || 'Erro no upload';
+          return {
+            success: false,
+            error: errorMessage,
+            source: 'direct' as const
+          } as ApiResponse<any>;
+        }
       } catch (error) {
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Erro ao fazer upload',
+          error: error instanceof Error ? error.message : 'Erro de conexão',
           source: 'direct' as const
-        };
+        } as ApiResponse<any>;
       }
     }
     
