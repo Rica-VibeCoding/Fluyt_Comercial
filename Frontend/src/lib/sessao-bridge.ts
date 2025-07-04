@@ -64,9 +64,11 @@ export class SessaoBridge {
         const ambientesZustand: Ambiente[] = sessaoAtual.ambientes.map(amb => ({
           id: amb.id,
           nome: amb.nome,
-          acabamentos: [],
-          valorTotal: amb.valor,
-          clienteId: sessaoAtual.cliente?.id
+          cliente_id: sessaoAtual.cliente?.id || '',
+          valor_venda: amb.valor,
+          origem: 'manual' as const,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         }));
 
         zustandStore.definirAmbientes(ambientesZustand);
@@ -105,7 +107,7 @@ export class SessaoBridge {
         const ambientesSimples: AmbienteSimples[] = zustandState.ambientes.map(amb => ({
           id: amb.id,
           nome: amb.nome,
-          valor: amb.valorTotal
+          valor: amb.valor_venda || 0
         }));
 
         // Usar o método com contexto para preservar dados

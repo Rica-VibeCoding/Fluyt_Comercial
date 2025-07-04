@@ -98,6 +98,7 @@ export interface FuncionarioFormData {
   salario: number;
   comissao: number;
   dataAdmissao: string;
+  ativo?: boolean;
   nivelAcesso: NivelAcesso;
   tipoFuncionario: TipoFuncionario;
   configuracoes?: Funcionario['configuracoes'];

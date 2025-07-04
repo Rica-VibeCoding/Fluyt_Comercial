@@ -72,7 +72,7 @@ const ContractSummary = () => {
           nome: ambiente.nome,
           categoria: 'Ambiente',
           descricao: `Ambiente ${ambiente.nome}`,
-          valor: ambiente.valorVenda || 0
+          valor: ambiente.valor_venda || 0
         }))
       }));
     } else {

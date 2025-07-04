@@ -8,6 +8,7 @@ export { apiClient } from './api-client';
 export { clienteService } from './cliente-service';
 export { empresaService } from './empresa-service';
 export { setoresService } from './setores-service';
+export { orcamentoService } from './orcamento-service';
 
 // Tipos
 export type {
@@ -29,6 +30,15 @@ export type {
   EmpresaListResponse,
   EmpresaFiltros,
 } from './empresa-service';
+
+export type {
+  OrcamentoBackend,
+  FormaPagamentoBackend,
+  StatusOrcamento,
+  OrcamentoCreatePayload,
+  FormaPagamentoCreatePayload,
+  FiltrosOrcamento,
+} from './orcamento-service';
 
 // Helpers de conversão
 export {

@@ -91,7 +91,7 @@ class GerenciadorSessao {
   
   private calcularValorTotal(ambientes: Ambiente[]): number {
     return ambientes.reduce((total, amb) => 
-      total + (amb.valorVenda || amb.valorCustoFabrica || 0), 0
+      total + (amb.valor_venda || amb.valor_custo_fabrica || 0), 0
     );
   }
   

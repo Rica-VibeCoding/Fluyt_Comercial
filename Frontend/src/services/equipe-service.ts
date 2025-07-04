@@ -58,7 +58,7 @@ export interface FuncionarioCreatePayload {
 // Interface removida - conversão agora é feita no api-client
 
 export interface FuncionarioListResponse {
-  items: FuncionarioBackend[];
+  items: Funcionario[];
   total: number;
   page: number;
   limit: number;

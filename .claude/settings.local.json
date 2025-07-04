@@ -68,7 +68,8 @@
       "mcp__filesystem__move_file",
       "Bash(./test_api_materiais.sh:*)",
       "WebFetch(domain:stackoverflow.com)",
-      "Bash(npm run lint:*)"
+      "Bash(npm run lint:*)",
+      "Bash(npm run:*)"
     ],
     "deny": []
   }

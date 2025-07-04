@@ -27,6 +27,9 @@ export const API_CONFIG = {
     EMPRESAS: '/api/v1/empresas',
     LOJAS: '/api/v1/lojas',
     FUNCIONARIOS: '/api/v1/equipe',
+    ORCAMENTOS: '/api/v1/orcamentos',
+    STATUS_ORCAMENTO: '/api/v1/status-orcamento',
+    FORMAS_PAGAMENTO: '/api/v1/formas-pagamento',
     DOCS: '/api/v1/docs',
   }
 } as const;

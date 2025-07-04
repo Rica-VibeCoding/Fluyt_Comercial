@@ -3,7 +3,7 @@
  */
 
 // Tipos de ambiente
-export type { Ambiente, Acabamento, AmbienteFormData } from './ambiente';
+export type { Ambiente, AmbienteFormData } from './ambiente';
 
 // Tipos de cliente
 export type { Cliente, ClienteFormData } from './cliente';

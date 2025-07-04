@@ -85,7 +85,7 @@ export const useAmbientes = (clienteId?: string) => {
       // Garantir que clienteId está no payload
       const dadosCompletos: AmbienteFormData = {
         ...dados,
-        clienteId,
+        cliente_id: clienteId,
         origem: dados.origem || 'manual'
       };
       

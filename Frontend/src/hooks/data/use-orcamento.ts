@@ -20,7 +20,10 @@ export const useOrcamento = () => {
       formasPagamento: [],
       valorTotal: 0,
       podeGerarOrcamento: () => false,
-      podeGerarContrato: () => false
+      podeGerarContrato: () => false,
+      setLoading: () => {},
+      setErro: () => {},
+      limparTudo: () => {}
     };
   }
   
@@ -46,6 +49,13 @@ export const useOrcamento = () => {
     definirCliente: store.definirCliente,
     definirAmbientes: store.definirAmbientes,
     definirDesconto: store.definirDesconto,
+    
+    // Ações de UI
+    setLoading: store.setLoading,
+    setErro: store.setErro,
+    
+    // Ações de limpeza
+    limparTudo: store.limparTudo,
     
     // Validações
     podeGerarOrcamento: store.podeGerarOrcamento,

@@ -143,7 +143,7 @@ export const useSessaoStore = create<SessaoState>()(
           return; // Não fazer nada se os ambientes são iguais
         }
         
-        const valorTotal = ambientes.reduce((total, ambiente) => total + ambiente.valorTotal, 0);
+        const valorTotal = ambientes.reduce((total, ambiente) => total + (ambiente.valor_venda || 0), 0);
         
         console.log('📋 SessaoStore.definirAmbientes:', {
           quantidade: ambientes.length,
@@ -162,7 +162,7 @@ export const useSessaoStore = create<SessaoState>()(
         
         set((state) => {
           const novosAmbientes = [...state.ambientes, ambiente];
-          const valorTotal = novosAmbientes.reduce((total, amb) => total + amb.valorTotal, 0);
+          const valorTotal = novosAmbientes.reduce((total, amb) => total + (amb.valor_venda || 0), 0);
           
           return {
             ambientes: novosAmbientes,
@@ -182,7 +182,7 @@ export const useSessaoStore = create<SessaoState>()(
         
         set((state) => {
           const novosAmbientes = state.ambientes.filter(amb => amb.id !== ambienteId);
-          const valorTotal = novosAmbientes.reduce((total, amb) => total + amb.valorTotal, 0);
+          const valorTotal = novosAmbientes.reduce((total, amb) => total + (amb.valor_venda || 0), 0);
           
           return {
             ambientes: novosAmbientes,

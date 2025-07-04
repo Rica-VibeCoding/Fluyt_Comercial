@@ -11,7 +11,7 @@ export const toastHelpers = {
    */
   xmlDuplicado: () => {
     toast({
-      variant: "warning",
+      variant: "destructive",
       title: "Este ambiente já foi importado",
       description: "Use um arquivo XML diferente ou verifique os ambientes existentes",
     });

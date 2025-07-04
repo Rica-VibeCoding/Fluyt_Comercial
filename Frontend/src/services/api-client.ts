@@ -132,7 +132,7 @@ class ApiClient {
   }
 
   // Método base para requests
-  private async request<T>(
+  async request<T>(
     endpoint: string,
     options: RequestInit = {},
     isRetry = false

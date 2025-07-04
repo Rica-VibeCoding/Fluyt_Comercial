@@ -118,29 +118,34 @@ const apiClient = {
 export const ambientesService = {
   // Listar ambientes com filtros
   listar(filtros?: AmbienteFiltros): Promise<ApiResponse<AmbienteListResponse>> {
-    return apiClient.get('/ambientes', { params: filtros });
+    const params = new URLSearchParams();
+    if (filtros?.cliente_id) params.append('cliente_id', filtros.cliente_id);
+    if (filtros?.busca) params.append('busca', filtros.busca);
+    if (filtros?.origem) params.append('origem', filtros.origem);
+    
+    return apiClient.get('/ambientes', { params: filtros }) as Promise<ApiResponse<AmbienteListResponse>>;
   },
 
   // Obter ambiente por ID
   obterPorId(id: string, incluirMateriais = false): Promise<ApiResponse<Ambiente>> {
     return apiClient.get(`/ambientes/${id}`, {
       params: { incluir_materiais: incluirMateriais }
-    });
+    }) as Promise<ApiResponse<Ambiente>>;
   },
 
   // Criar ambiente
   criar(dados: AmbienteFormData): Promise<ApiResponse<Ambiente>> {
-    return apiClient.post('/ambientes', dados);
+    return apiClient.post('/ambientes', dados) as Promise<ApiResponse<Ambiente>>;
   },
 
   // Atualizar ambiente
   atualizar(id: string, dados: Partial<AmbienteFormData>): Promise<ApiResponse<Ambiente>> {
-    return apiClient.put(`/ambientes/${id}`, dados);
+    return apiClient.put(`/ambientes/${id}`, dados) as Promise<ApiResponse<Ambiente>>;
   },
 
   // Deletar ambiente
   deletar(id: string): Promise<ApiResponse<void>> {
-    return apiClient.delete(`/ambientes/${id}`);
+    return apiClient.delete(`/ambientes/${id}`) as Promise<ApiResponse<void>>;
   },
 
   // Importar XML
@@ -157,12 +162,12 @@ export const ambientesService = {
 
   // Materiais
   obterMateriais(ambienteId: string): Promise<ApiResponse<AmbienteMaterial>> {
-    return apiClient.get(`/ambientes/${ambienteId}/materiais`);
+    return apiClient.get(`/ambientes/${ambienteId}/materiais`) as Promise<ApiResponse<AmbienteMaterial>>;
   },
 
   salvarMateriais(ambienteId: string, materiais: any): Promise<ApiResponse<AmbienteMaterial>> {
     return apiClient.post(`/ambientes/${ambienteId}/materiais`, { 
       materiais_json: materiais 
-    });
+    }) as Promise<ApiResponse<AmbienteMaterial>>;
   }
 };
