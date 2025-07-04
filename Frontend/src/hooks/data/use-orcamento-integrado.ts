@@ -17,21 +17,52 @@ export const useOrcamentoIntegrado = () => {
 
   // ========== MÉTODOS DE SALVAMENTO ==========
 
-  const salvarOrcamento = useCallback(async () => {
-    if (!store.cliente || !store.ambientes.length) {
+  const salvarOrcamento = useCallback(async (clienteExterno?: any, ambientesExternos?: any[]) => {
+    // Usar dados externos se fornecidos, senão usar do store
+    const clienteParaUsar = clienteExterno || store.cliente;
+    const ambientesParaUsar = ambientesExternos || store.ambientes;
+    
+    // Debug: verificar estado dos dados
+    console.log('🔍 Estado dos dados no salvarOrcamento:', {
+      cliente: clienteParaUsar?.nome || 'null',
+      ambientes: ambientesParaUsar?.length || 0,
+      valorTotal: store.valorTotal,
+      loading: store.loading,
+      fonte: clienteExterno ? 'externo' : 'store'
+    });
+
+    if (!clienteParaUsar || !ambientesParaUsar?.length) {
+      console.error('❌ Validação falhou:', {
+        temCliente: !!clienteParaUsar,
+        clienteNome: clienteParaUsar?.nome,
+        quantidadeAmbientes: ambientesParaUsar?.length || 0
+      });
       throw new Error('Cliente e ambientes são obrigatórios');
     }
 
-    // Converter dados do store para formato do backend
-    const payload = orcamentoService.converterFrontendParaBackend({
-      clienteId: store.cliente.id,
-      lojaId: 'loja_default_id', // TODO: pegar da sessão
-      vendedorId: 'vendedor_default_id', // TODO: pegar da sessão
-      valorAmbientes: store.valorTotal,
-      descontoPercentual: store.descontoPercentual,
-      valorFinal: store.valorNegociado,
-      observacoes: 'Orçamento criado via frontend',
+    // Converter dados para formato do backend
+    const valorTotal = ambientesParaUsar.reduce((total: number, ambiente: any) => total + (ambiente.valor || 0), 0);
+    
+    console.log('📦 Preparando payload para backend:', {
+      clienteId: clienteParaUsar.id,
+      valorTotal,
+      quantidadeAmbientes: ambientesParaUsar.length
     });
+    
+    // Gerar UUIDs temporários válidos para campos obrigatórios
+    const generateUUID = () => '00000000-0000-4000-8000-000000000000';
+    
+    const payload = orcamentoService.converterFrontendParaBackend({
+      clienteId: clienteParaUsar.id,
+      lojaId: generateUUID(), // UUID temporário válido
+      vendedorId: generateUUID(), // UUID temporário válido  
+      valorAmbientes: valorTotal,
+      descontoPercentual: store.descontoPercentual || 0,
+      valorFinal: valorTotal,
+      observacoes: 'Orçamento criado via frontend - loja e vendedor temporários',
+    });
+    
+    console.log('📤 Payload final:', payload);
 
     // Criar orçamento no backend
     const orcamento = await api.criarOrcamento(payload);
@@ -43,8 +74,9 @@ export const useOrcamentoIntegrado = () => {
     return orcamento;
   }, [store, api]);
 
-  const salvarFormasPagamento = useCallback(async (orcamentoId: string) => {
-    const formasParaSalvar = store.formasPagamento.filter(forma => !forma.id.startsWith('temp-'));
+  const salvarFormasPagamento = useCallback(async (orcamentoId: string, formasPagamento: any[] = []) => {
+    // Usar formas passadas como parâmetro ou do store como fallback
+    const formasParaSalvar = formasPagamento.length > 0 ? formasPagamento : store.formasPagamento.filter(forma => !forma.id.startsWith('temp-'));
 
     const resultados = [];
 
@@ -68,16 +100,17 @@ export const useOrcamentoIntegrado = () => {
     return resultados;
   }, [store.formasPagamento, api]);
 
-  const salvarOrcamentoCompleto = useCallback(async () => {
+  const salvarOrcamentoCompleto = useCallback(async (formasPagamentoExternas?: any[], clienteExterno?: any, ambientesExternos?: any[]) => {
     try {
       store.setLoading(true);
 
-      // 1. Criar orçamento principal
-      const orcamento = await salvarOrcamento();
+      // 1. Criar orçamento principal (passando dados externos)
+      const orcamento = await salvarOrcamento(clienteExterno, ambientesExternos);
       
-      // 2. Salvar formas de pagamento
-      if (store.formasPagamento.length > 0) {
-        await salvarFormasPagamento(orcamento.id);
+      // 2. Salvar formas de pagamento (usar externas se fornecidas)
+      const formasParaSalvar = formasPagamentoExternas || store.formasPagamento;
+      if (formasParaSalvar.length > 0) {
+        await salvarFormasPagamento(orcamento.id, formasParaSalvar);
       }
 
       // 3. Limpar store após salvamento

@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/popover"
 import { useClientesApi } from "@/hooks/modulos/clientes/use-clientes-api"
 import { useClienteSelecionado } from "@/hooks/globais/use-cliente-selecionado"
-import { useSessaoSimples } from "@/hooks/globais/use-sessao-simples"
+import { useSessao } from "@/store/sessao-store"
 
 interface ClienteSelectorUniversalProps {
   targetRoute: string; // Rota de destino (ex: '/painel/ambientes', '/painel/contratos')
@@ -39,7 +39,7 @@ export function ClienteSelectorUniversal({
   const { clientes, isLoading: clientesLoading } = useClientesApi()
   const { clienteSelecionado } = useClienteSelecionado()
   const clienteLoading = false // Simplificado - useClienteSelecionado não tem isLoading
-  const { cliente: clienteSessao, definirCliente } = useSessaoSimples()
+  const { cliente: clienteSessao, definirCliente } = useSessao()
 
   const handleSelectCliente = (clienteId: string, clienteNome: string) => {
     setOpen(false)
@@ -48,8 +48,7 @@ export function ClienteSelectorUniversal({
     if (integraSessao) {
       const clienteCompleto = clientes.find(c => c.id === clienteId)
       if (clienteCompleto) {
-        // Converter para formato simples compatível
-        definirCliente({ id: clienteCompleto.id, nome: clienteCompleto.nome })
+        definirCliente(clienteCompleto)
       }
     }
     
@@ -106,7 +105,7 @@ export function ClienteSelectorUniversal({
             <button
               onClick={() => {
                 // Limpar cliente da sessão
-                definirCliente({ id: '', nome: '' });
+                definirCliente(null);
                 // Navegar para a página sem parâmetros de cliente
                 router.push(targetRoute);
               }}

@@ -2,11 +2,11 @@ import { Alert, AlertDescription } from "../../../ui/alert";
 import { Button } from "../../../ui/button";
 import { AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useSessaoSimples } from "../../../../hooks/globais/use-sessao-simples";
+import { useSessao } from "../../../../store/sessao-store";
 
 export function ValidationAlerts() {
   const router = useRouter();
-  const { cliente, ambientes, podeGerarContrato } = useSessaoSimples();
+  const { cliente, ambientes, podeGerarContrato } = useSessao();
 
   return (
     <div className="space-y-4 mb-4">
@@ -38,7 +38,7 @@ export function ValidationAlerts() {
       )}
 
       {/* Alerta: Cliente e ambientes configurados mas orçamento incompleto */}
-      {cliente && ambientes.length > 0 && !podeGerarContrato && (
+      {cliente && ambientes.length > 0 && !podeGerarContrato() && (
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
@@ -55,7 +55,7 @@ export function ValidationAlerts() {
       )}
 
       {/* Alerta de sucesso: Tudo pronto para gerar contrato */}
-      {cliente && ambientes.length > 0 && podeGerarContrato && (
+      {cliente && ambientes.length > 0 && podeGerarContrato() && (
         <Alert className="border-green-200 bg-green-50">
           <AlertCircle className="h-4 w-4 text-green-600" />
           <AlertDescription className="text-green-800">

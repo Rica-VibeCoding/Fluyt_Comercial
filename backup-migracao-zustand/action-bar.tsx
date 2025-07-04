@@ -2,7 +2,7 @@ import { Button } from "../../../ui/button";
 import { ArrowRight, FileText } from "lucide-react";
 import { ContratoData } from "../../../../types/contrato";
 import { formatarMoeda } from "../shared/contract-formatters";
-import { useSessaoSimples } from "../../../../hooks/globais/use-sessao-simples";
+import { useSessao } from "../../../../store/sessao-store";
 
 interface ActionBarProps {
   contratoData: ContratoData;
@@ -10,7 +10,7 @@ interface ActionBarProps {
 }
 
 export function ActionBar({ contratoData, onAvancar }: ActionBarProps) {
-  const { podeGerarContrato } = useSessaoSimples();
+  const { podeGerarContrato } = useSessao();
 
   return (
     <div className="sticky bottom-4 bg-white rounded-lg shadow-lg border p-4">
@@ -32,10 +32,10 @@ export function ActionBar({ contratoData, onAvancar }: ActionBarProps) {
         <Button 
           size="lg" 
           onClick={onAvancar} 
-          disabled={!podeGerarContrato}
+          disabled={!podeGerarContrato()}
           className="gap-3 h-12 px-6 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 shadow-md hover:shadow-lg transition-all duration-200 rounded-xl font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed"
           title={
-            !podeGerarContrato 
+            !podeGerarContrato() 
               ? "Complete o orçamento com formas de pagamento para finalizar" 
               : "Avançar para contrato final"
           }

@@ -41,7 +41,7 @@ import {
   Users,
   ArrowRight
 } from 'lucide-react';
-import { useSessaoSimples } from '../../hooks/globais/use-sessao-simples';
+import { useSessao } from '../../store/sessao-store';
 import { usePersistenciaBasica } from '../../hooks/globais/use-persistencia-sessao';
 import { persistenciaInteligente } from '../../lib/persistencia-inteligente';
 
@@ -65,9 +65,8 @@ export function BotaoNovoFluxo({
   const [confirmacaoAberta, setConfirmacaoAberta] = useState(false);
   const [sessoesPendentes, setSessoesPendentes] = useState<any[]>([]);
   
-  const { cliente, ambientes, podeGerarContrato } = useSessaoSimples();
+  const { cliente, ambientes, orcamentoConfigurado } = useSessao();
   const { salvarAgora, listarSessoes } = usePersistenciaBasica();
-  const orcamentoConfigurado = podeGerarContrato; // Simulação baseada no estado
 
   const temProgresso = cliente && (ambientes.length > 0 || orcamentoConfigurado);
 

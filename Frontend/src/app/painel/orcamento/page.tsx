@@ -5,11 +5,11 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useOrcamento } from '@/hooks/data/use-orcamento';
 import { useFormasPagamento } from '@/hooks/data/use-formas-pagamento';
 import { useSessaoSimples } from '@/hooks/globais/use-sessao-simples';
-// import { useSessao } from '@/store/sessao-store'; // REMOVIDO - conflito com sessaoSimples
+import { useOrcamentoIntegrado } from '@/hooks/data/use-orcamento-integrado';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Plus, FileText, CheckCircle, Calculator, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Plus, FileText, CheckCircle, Calculator, RefreshCw, Save, Database } from 'lucide-react';
 import Link from 'next/link';
 import { ModalFormasPagamento } from '@/components/modulos/orcamento/modal-formas-pagamento';
 import { ListaFormasPagamento } from '@/components/modulos/orcamento/lista-formas-pagamento';
@@ -31,6 +31,9 @@ function OrcamentoPageContent() {
   // ✅ SISTEMA SIMPLIFICADO: Usar apenas useSessaoSimples (funcionava)
   const { cliente, ambientes, carregarClienteDaURL } = useSessaoSimples();
   
+  // 🆕 INTEGRAÇÃO COM API: Hook para salvamento no banco
+  const orcamentoApi = useOrcamentoIntegrado();
+  
   // ✅ FORMAS DE PAGAMENTO: Sistema local (UI state)
   const {
     formasPagamento, modalFormasAberto, modalAVistaAberto, modalBoletoAberto,
@@ -42,6 +45,10 @@ function OrcamentoPageContent() {
   const [desconto, setDesconto] = useState('');
   const [valorNegociadoManualReal, setValorNegociadoManualReal] = useState<number | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  
+  // 🆕 ESTADOS PARA SALVAMENTO
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedOrcamentoId, setSavedOrcamentoId] = useState<string | null>(null);
   
   // 🆕 ESTADOS PARA EDIÇÃO BIDIRECIONAL
   const [isCalculating, setIsCalculating] = useState(false);
@@ -195,6 +202,47 @@ function OrcamentoPageContent() {
     
     carregarDados();
   }, [searchParams, carregarClienteDaURL]);
+
+  // 🆕 FUNÇÃO SALVAR ORÇAMENTO NO BANCO
+  const handleSalvarOrcamento = async () => {
+    if (!cliente || ambientes.length === 0 || formasPagamento.length === 0) {
+      alert('É necessário ter cliente, ambientes e formas de pagamento para salvar o orçamento.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      console.log('💾 Salvando orçamento no banco...', {
+        cliente: cliente.nome,
+        ambientes: ambientes.length,
+        formas: formasPagamento.length,
+        valorTotal,
+        valorNegociado
+      });
+
+      // Passar dados diretamente para evitar problemas de sincronização do store
+      console.log('🔄 Passando dados diretamente para a API...');
+
+      // Salvar orçamento completo na API (passar todos os dados diretamente)
+      const orcamentoSalvo = await orcamentoApi.salvarOrcamentoCompleto(formasPagamento, cliente, ambientes);
+      
+      if (orcamentoSalvo) {
+        setSavedOrcamentoId(orcamentoSalvo.id);
+        alert(`✅ Orçamento #${orcamentoSalvo.numero} salvo com sucesso no banco de dados!`);
+        
+        console.log('✅ Orçamento salvo:', {
+          id: orcamentoSalvo.id,
+          numero: orcamentoSalvo.numero,
+          clienteId: orcamentoSalvo.cliente_id
+        });
+      }
+    } catch (error) {
+      console.error('❌ Erro ao salvar orçamento:', error);
+      alert('Erro ao salvar orçamento. Verifique a conexão com o servidor.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
   
   // ✅ NAVEGAÇÃO OTIMIZADA (com verificação de estado)
   const navegarParaContratos = async () => {
@@ -624,30 +672,56 @@ function OrcamentoPageContent() {
               <p className="text-lg font-semibold">{cliente ? cliente.nome : 'Sem cliente'}</p>
             </div>
             
-            {/* Botão Gerar Contrato */}
-            <Button
-              onClick={navegarParaContratos}
-              disabled={!(cliente && ambientes.length > 0 && formasPagamento.length > 0)}
-              className="gap-2 bg-green-600 hover:bg-green-700 text-white touch-manipulation
-                         focus:outline-none focus:ring-2 focus:ring-green-300 focus:ring-offset-2"
-              aria-label={
-                (cliente && ambientes.length > 0 && formasPagamento.length > 0) 
-                  ? "Gerar contrato com as informações configuradas"
-                  : "Configure cliente, ambientes e formas de pagamento primeiro"
-              }
-              aria-describedby="gerar-contrato-status"
-            >
-              {(cliente && ambientes.length > 0 && formasPagamento.length > 0) ? 
-                <CheckCircle className="h-4 w-4" aria-hidden="true" /> : 
-                <FileText className="h-4 w-4" aria-hidden="true" />
-              }
-              <span className="hidden sm:inline">
-                {(cliente && ambientes.length > 0 && formasPagamento.length > 0) ? 'Gerar Contrato' : 'Configure Pagamento'}
-              </span>
-              <span className="sm:hidden">
-                {(cliente && ambientes.length > 0 && formasPagamento.length > 0) ? 'Gerar' : 'Config'}
-              </span>
-            </Button>
+            {/* Botões de Ação */}
+            <div className="flex items-center gap-3">
+              {/* Botão Salvar Orçamento */}
+              <Button
+                onClick={handleSalvarOrcamento}
+                disabled={!(cliente && ambientes.length > 0 && formasPagamento.length > 0) || isSaving}
+                className="gap-2 bg-blue-600 hover:bg-blue-700 text-white touch-manipulation
+                           focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2"
+                aria-label="Salvar orçamento no banco de dados"
+              >
+                {isSaving ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
+                ) : savedOrcamentoId ? (
+                  <Database className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <Save className="h-4 w-4" aria-hidden="true" />
+                )}
+                <span className="hidden sm:inline">
+                  {isSaving ? 'Salvando...' : savedOrcamentoId ? 'Salvo' : 'Salvar'}
+                </span>
+                <span className="sm:hidden">
+                  {isSaving ? '...' : savedOrcamentoId ? 'OK' : 'Save'}
+                </span>
+              </Button>
+
+              {/* Botão Gerar Contrato */}
+              <Button
+                onClick={navegarParaContratos}
+                disabled={!(cliente && ambientes.length > 0 && formasPagamento.length > 0)}
+                className="gap-2 bg-green-600 hover:bg-green-700 text-white touch-manipulation
+                           focus:outline-none focus:ring-2 focus:ring-green-300 focus:ring-offset-2"
+                aria-label={
+                  (cliente && ambientes.length > 0 && formasPagamento.length > 0) 
+                    ? "Gerar contrato com as informações configuradas"
+                    : "Configure cliente, ambientes e formas de pagamento primeiro"
+                }
+                aria-describedby="gerar-contrato-status"
+              >
+                {(cliente && ambientes.length > 0 && formasPagamento.length > 0) ? 
+                  <CheckCircle className="h-4 w-4" aria-hidden="true" /> : 
+                  <FileText className="h-4 w-4" aria-hidden="true" />
+                }
+                <span className="hidden sm:inline">
+                  {(cliente && ambientes.length > 0 && formasPagamento.length > 0) ? 'Gerar Contrato' : 'Configure Pagamento'}
+                </span>
+                <span className="sm:hidden">
+                  {(cliente && ambientes.length > 0 && formasPagamento.length > 0) ? 'Gerar' : 'Config'}
+                </span>
+              </Button>
+            </div>
             
             {/* Status para screen readers */}
             <div id="gerar-contrato-status" className="sr-only">

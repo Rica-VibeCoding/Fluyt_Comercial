@@ -18,6 +18,7 @@ import { Alert, AlertDescription } from '../../ui/alert';
 import { ambientesService } from '@/services/ambientes-service';
 import { useToast } from '../../ui/use-toast';
 import { formatarMoeda } from '@/lib/formatters';
+import { useSessaoSimples } from '@/hooks/globais/use-sessao-simples';
 import type { Ambiente } from '@/types/ambiente';
 
 export function AmbientePage() {
@@ -25,11 +26,13 @@ export function AmbientePage() {
   const { toast } = useToast();
   const { clienteId, clienteNome } = useClienteSelecionado();
   const clienteCarregado = clienteId && clienteNome ? { nome: clienteNome } : null;
+  const { carregarClienteDaURL } = useSessaoSimples();
   
   const {
     cliente,
     adicionarAmbiente: adicionarAmbienteSessao,
     removerAmbiente: removerAmbienteSessao,
+    definirAmbientes: definirAmbientesSessao,
     podeGerarOrcamento,
     ambientesSimples
   } = useAmbientesSessao();
@@ -62,13 +65,34 @@ export function AmbientePage() {
   const [modalEditAberto, setModalEditAberto] = useState(false);
   const [ambienteEditando, setAmbienteEditando] = useState<Ambiente | null>(null);
 
-  // Atualiza ambientes quando clienteId muda
+  // Carregar cliente da URL na sessão quando page carrega
   useEffect(() => {
-    // Removi console.log de debug
-  }, [clienteId]);
+    if (clienteId && clienteNome) {
+      console.log('🔄 [CLIENTE URL] Carregando cliente da URL na sessão:', { clienteId, clienteNome });
+      carregarClienteDaURL(clienteId, clienteNome);
+    }
+  }, [clienteId, clienteNome, carregarClienteDaURL]);
 
-  // Removido: Sincronização manual não é mais necessária
-  // O hook useAmbientesSessao já fornece ambientesSimples automaticamente
+  // ETAPA 6: Sincronização crítica entre backend e sessão
+  useEffect(() => {
+    if (ambientes && ambientes.length > 0) {
+      // Converter dados do backend para formato da sessão
+      const ambientesSessao = ambientes.map(amb => ({
+        id: amb.id,
+        nome: amb.nome,
+        valor: amb.valor_venda || amb.valor_custo_fabrica || 0
+      }));
+      
+      console.log('🔄 [SYNC] Sincronizando ambientes backend → sessão:', {
+        backend: ambientes.length,
+        valorTotal: valorTotalGeral,
+        sessao: ambientesSessao.length
+      });
+      
+      // Atualizar sessão com dados reais do backend
+      definirAmbientesSessao(ambientesSessao);
+    }
+  }, [ambientes, valorTotalGeral, definirAmbientesSessao]);
 
   const handleAdicionarAmbiente = async (data: any) => {
     const sucesso = await adicionarAmbiente(data);

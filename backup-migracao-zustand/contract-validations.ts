@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
-import { useSessaoSimples } from '../../../../hooks/globais/use-sessao-simples';
+import { useSessao } from '../../../../store/sessao-store';
 import { ContratoData } from '../../../../types/contrato';
 
 // Hook para validações específicas do contrato
 export function useContractValidation() {
-  const { cliente, ambientes, podeGerarOrcamento, podeGerarContrato } = useSessaoSimples();
+  const { cliente, ambientes, podeGerarOrcamento, podeGerarContrato } = useSessao();
 
   const validacoes = useMemo(() => {
     const erros: Array<{ tipo: 'cliente' | 'ambiente' | 'orcamento'; mensagem: string }> = [];

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-// import { useHidratarSessao } from '@/store/sessao-store';
 
 interface HydrationProviderProps {
   children: React.ReactNode;

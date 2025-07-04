@@ -74,6 +74,18 @@ export function useSessaoSimples() {
     const novaSessao = sessaoSimples.definirAmbientes(ambientes);
     setSessao(novaSessao);
   }, []);
+
+  // Adicionar ambiente individual
+  const adicionarAmbiente = useCallback((ambiente: AmbienteSimples) => {
+    const novaSessao = sessaoSimples.adicionarAmbiente(ambiente);
+    setSessao(novaSessao);
+  }, []);
+
+  // Remover ambiente individual
+  const removerAmbiente = useCallback((ambienteId: string) => {
+    const novaSessao = sessaoSimples.removerAmbiente(ambienteId);
+    setSessao(novaSessao);
+  }, []);
   
   // Limpar tudo
   const limparSessao = useCallback(() => {
@@ -116,18 +128,27 @@ export function useSessaoSimples() {
     ambientes: sessao.ambientes,
     valorTotal: sessao.valorTotal,
     
+    // Compatibilidade com Zustand
+    valorTotalAmbientes: sessao.valorTotal,
+    
     // Validações
     temCliente: !!sessao.cliente,
     temAmbientes: sessao.ambientes.length > 0,
     podeGerarOrcamento: sessaoSimples.podeGerarOrcamento(),
+    podeGerarContrato: sessaoSimples.podeGerarContrato(),
     
     // Ações
     definirCliente,
     definirClienteComContexto,
     definirAmbientes,
+    adicionarAmbiente,
+    removerAmbiente,
     limparSessao,
     carregarClienteDaURL,
     atualizarSessao,
+    
+    // Utilitários
+    obterResumo: sessaoSimples.obterResumo.bind(sessaoSimples),
     debug
   };
 }

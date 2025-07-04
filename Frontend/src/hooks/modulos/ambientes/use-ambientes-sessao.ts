@@ -1,64 +1,42 @@
 /**
  * Hook unificado para gerenciar sessão de ambientes
- * Elimina duplicação entre useSessao e useSessaoSimples
+ * MIGRADO PARA useSessaoSimples - ETAPA 5 
  * Específico para módulo de móveis planejados
  */
 
-import { useMemo } from 'react';
-import { useSessao } from '@/store/sessao-store';
-
-// Tipo simplificado para orçamento
-interface AmbienteSimples {
-  id: string;
-  nome: string;
-  valor: number;
-}
+import { useSessaoSimples } from '@/hooks/globais/use-sessao-simples';
+import type { AmbienteSimples } from '@/lib/sessao-simples';
 
 /**
  * Hook que unifica o acesso à sessão de ambientes
- * Fornece interface única para dados completos e simplificados
+ * Interface compatível com versão Zustand anterior
  */
 export function useAmbientesSessao() {
   const {
     cliente,
     ambientes,
-    valorTotalAmbientes,
+    valorTotal,
+    valorTotalAmbientes, // Alias de compatibilidade
     adicionarAmbiente,
     removerAmbiente,
     definirAmbientes,
     podeGerarOrcamento
-  } = useSessao();
+  } = useSessaoSimples();
 
-  // Converte ambientes completos para formato simplificado quando necessário
-  const ambientesSimples = useMemo<AmbienteSimples[]>(() => {
-    if (!ambientes || ambientes.length === 0) return [];
-    
-    return ambientes.map(amb => ({
-      id: amb.id,
-      nome: amb.nome,
-      valor: amb.valor_venda || amb.valor_custo_fabrica || 0
-    }));
-  }, [ambientes]);
-
-  // Calcula valor total simplificado
-  const valorTotalSimples = useMemo(() => {
-    return ambientesSimples.reduce((total, amb) => total + amb.valor, 0);
-  }, [ambientesSimples]);
-
-  // Interface unificada que expõe ambas as visões
+  // Interface unificada mantendo compatibilidade 100%
   return {
-    // Cliente (sempre o mesmo)
+    // Cliente (idêntico)
     cliente,
     
-    // Ambientes completos (para gestão detalhada)
+    // Ambientes (agora nativamente AmbienteSimples)
     ambientes,
-    valorTotalAmbientes,
+    valorTotalAmbientes: valorTotal, // Compatibilidade com nome anterior
     
-    // Ambientes simplificados (para orçamento)
-    ambientesSimples,
-    valorTotalSimples,
+    // Ambientes simplificados (já são nativamente simples)
+    ambientesSimples: ambientes,
+    valorTotalSimples: valorTotal,
     
-    // Ações (sempre do sistema complexo)
+    // Ações (interface idêntica)
     adicionarAmbiente,
     removerAmbiente,
     definirAmbientes,

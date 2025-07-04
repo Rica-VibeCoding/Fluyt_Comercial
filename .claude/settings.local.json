@@ -69,7 +69,8 @@
       "Bash(./test_api_materiais.sh:*)",
       "WebFetch(domain:stackoverflow.com)",
       "Bash(npm run lint:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": []
   }

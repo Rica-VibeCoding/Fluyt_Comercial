@@ -27,7 +27,7 @@ import {
   Pause
 } from 'lucide-react';
 import { usePersistenciaDebug } from '../../hooks/globais/use-persistencia-sessao';
-import { useSessaoSimples } from '../../hooks/globais/use-sessao-simples';
+import { useSessao } from '../../store/sessao-store';
 
 interface DebugPersistenciaProps {
   mostrarSempre?: boolean;
@@ -51,8 +51,7 @@ export function DebugPersistencia({
     iniciarFluxoLimpo
   } = usePersistenciaDebug();
   
-  const { cliente, ambientes, podeGerarContrato } = useSessaoSimples();
-  const orcamentoConfigurado = podeGerarContrato; // Simulação baseada no estado
+  const { cliente, ambientes, orcamentoConfigurado } = useSessao();
 
   // Função memoizada para atualizar estatísticas
   const atualizarStats = useCallback(() => {

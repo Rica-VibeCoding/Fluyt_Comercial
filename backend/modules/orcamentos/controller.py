@@ -105,7 +105,7 @@ async def criar_orcamento(
         
         return await service.criar(dados)
         
-    except BusinessException as e:
+    except BusinessRuleException as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
@@ -137,7 +137,7 @@ async def atualizar_orcamento(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Orçamento não encontrado"
         )
-    except BusinessException as e:
+    except BusinessRuleException as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
@@ -176,7 +176,7 @@ async def excluir_orcamento(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Orçamento não encontrado"
         )
-    except BusinessException as e:
+    except BusinessRuleException as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
@@ -261,7 +261,7 @@ async def criar_forma_pagamento(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Orçamento não encontrado"
         )
-    except BusinessException as e:
+    except BusinessRuleException as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
@@ -293,7 +293,7 @@ async def atualizar_forma_pagamento(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Forma de pagamento não encontrada"
         )
-    except BusinessException as e:
+    except BusinessRuleException as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
@@ -332,7 +332,7 @@ async def excluir_forma_pagamento(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Forma de pagamento não encontrada"
         )
-    except BusinessException as e:
+    except BusinessRuleException as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)

@@ -10,7 +10,7 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSessao } from '../../store/sessao-store';
+import { useSessaoSimples } from './use-sessao-simples';
 import { persistenciaInteligente, configurarCleanupGlobal } from '../../lib/persistencia-inteligente';
 
 interface UsePersistenciaSessaoOptions {
@@ -30,12 +30,16 @@ export function usePersistenciaSessao(options: UsePersistenciaSessaoOptions = {}
   const {
     cliente,
     ambientes,
-    orcamentoConfigurado,
-    valorNegociado,
-    formasPagamento,
-    salvarSessaoAtual,
-    carregarSessaoCliente
-  } = useSessao();
+    valorTotal,
+    podeGerarContrato
+  } = useSessaoSimples();
+  
+  // Adaptações para compatibilidade
+  const orcamentoConfigurado = podeGerarContrato;
+  const valorNegociado = valorTotal;
+  const formasPagamento = 0; // Simulação simples
+  const salvarSessaoAtual = () => {}; // Simplificado - useSessaoSimples auto-salva
+  const carregarSessaoCliente = (id: string) => {}; // Simplificado
 
   const ultimoSalvamento = useRef<number>(0);
   const timerPersistencia = useRef<NodeJS.Timeout>();

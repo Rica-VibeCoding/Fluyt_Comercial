@@ -47,10 +47,11 @@ export const useOrcamentoStore = create<OrcamentoState>()(
       
       // Ações para cliente
       definirCliente: (cliente) => {
+        console.log('🔄 Store: definirCliente chamado com:', cliente?.nome || 'null');
         set((state) => {
           const clienteMudou = cliente?.id !== state.cliente?.id;
           
-          return {
+          const novoEstado = {
             cliente,
             // Se cliente mudou, limpar dados relacionados
             ambientes: clienteMudou ? [] : state.ambientes,
@@ -62,6 +63,9 @@ export const useOrcamentoStore = create<OrcamentoState>()(
             descontoPercentual: clienteMudou ? 0 : state.descontoPercentual,
             valorNegociado: clienteMudou ? 0 : state.valorNegociado
           };
+          
+          console.log('✅ Store: cliente definido no estado:', novoEstado.cliente?.nome || 'null');
+          return novoEstado;
         });
       },
       
@@ -81,17 +85,21 @@ export const useOrcamentoStore = create<OrcamentoState>()(
       
       // Ações para ambientes
       definirAmbientes: (ambientes) => {
+        console.log('🔄 Store: definirAmbientes chamado com:', ambientes?.length || 0, 'ambientes');
         const valorTotal = ambientes.reduce((total, amb) => total + amb.valor, 0);
         const state = get();
         const valorTotalFormas = state.valorTotalFormas;
         const valorNegociado = valorTotal - (valorTotal * state.descontoPercentual / 100);
         
-        set({
+        const novoEstado = {
           ambientes,
           valorTotal,
           valorRestante: valorNegociado - valorTotalFormas,
           valorNegociado
-        });
+        };
+        
+        console.log('✅ Store: ambientes definidos no estado:', novoEstado.ambientes?.length || 0, 'ambientes, valorTotal:', novoEstado.valorTotal);
+        set(novoEstado);
       },
       
       adicionarAmbiente: (ambiente) => {

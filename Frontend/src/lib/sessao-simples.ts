@@ -141,6 +141,29 @@ class SessaoSimplesManager {
     return novaSessao;
   }
 
+  // Adicionar ambiente individual
+  public adicionarAmbiente(ambiente: AmbienteSimples): SessaoSimples {
+    const sessaoAtual = this.carregar();
+    const novosAmbientes = [...sessaoAtual.ambientes, ambiente];
+    return this.definirAmbientes(novosAmbientes);
+  }
+
+  // Remover ambiente individual
+  public removerAmbiente(ambienteId: string): SessaoSimples {
+    const sessaoAtual = this.carregar();
+    const novosAmbientes = sessaoAtual.ambientes.filter(amb => amb.id !== ambienteId);
+    return this.definirAmbientes(novosAmbientes);
+  }
+
+  // Atualizar ambiente específico
+  public atualizarAmbiente(id: string, dadosAtualizados: Partial<AmbienteSimples>): SessaoSimples {
+    const sessaoAtual = this.carregar();
+    const novosAmbientes = sessaoAtual.ambientes.map(ambiente => 
+      ambiente.id === id ? { ...ambiente, ...dadosAtualizados } : ambiente
+    );
+    return this.definirAmbientes(novosAmbientes);
+  }
+
   // === MÉTODOS PARA FORMAS DE PAGAMENTO ===
 
   // Adicionar forma de pagamento
@@ -226,6 +249,38 @@ class SessaoSimplesManager {
   public podeGerarOrcamento(): boolean {
     const sessao = this.carregar();
     return !!(sessao.cliente && sessao.ambientes.length > 0 && sessao.valorTotal > 0);
+  }
+
+  // Verificar se pode gerar contrato
+  public podeGerarContrato(): boolean {
+    const sessao = this.carregar();
+    const podeOrcamento = this.podeGerarOrcamento();
+    const temFormasPagamento = sessao.formasPagamento.length > 0;
+    const valorAlocado = this.obterValorTotalFormas();
+    const valorCompleto = valorAlocado >= sessao.valorTotal;
+    
+    return podeOrcamento && temFormasPagamento && valorCompleto;
+  }
+
+  // Obter resumo da sessão (compatibilidade com Zustand)
+  public obterResumo() {
+    const sessao = this.carregar();
+    return {
+      temCliente: !!sessao.cliente,
+      quantidadeAmbientes: sessao.ambientes.length,
+      valorTotal: sessao.valorTotal,
+      orcamentoConfigurado: sessao.formasPagamento.length > 0,
+      formasPagamento: sessao.formasPagamento.length,
+      podeAvancar: this.podeGerarOrcamento(),
+      podeFinalizarContrato: this.podeGerarContrato()
+    };
+  }
+
+  // === MÉTODOS DE COMPATIBILIDADE COM ZUSTAND ===
+
+  // Alias para compatibilidade com use-ambientes-sessao.ts
+  public get valorTotalAmbientes(): number {
+    return this.carregar().valorTotal;
   }
   
   // Estado vazio

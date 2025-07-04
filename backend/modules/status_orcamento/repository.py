@@ -122,7 +122,7 @@ class StatusOrcamentoRepository:
             # Verifica se há orçamentos usando este status
             orcamentos = self.db.table('c_orcamentos').select('id', count='exact').eq('status_id', status_id).execute()
             if orcamentos.count > 0:
-                raise BusinessException(f"Existem {orcamentos.count} orçamentos usando este status")
+                raise BusinessRuleException(f"Existem {orcamentos.count} orçamentos usando este status")
             
             # Marca como inativo
             result = self.db.table(self.table).update({'ativo': False}).eq('id', status_id).execute()
