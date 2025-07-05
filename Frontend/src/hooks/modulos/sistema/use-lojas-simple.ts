@@ -17,9 +17,16 @@ export function useLojas() {
   const [lojas, setLojas] = useState<Loja[]>([]);
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false); // 🔧 Flag para evitar múltiplas inicializações
 
   // Carregar lojas da API
   const carregarLojas = useCallback(async (filtros?: FiltrosLoja) => {
+    // 🔧 CORREÇÃO: Evitar múltiplas chamadas simultâneas
+    if (loading) {
+      console.log('🔄 Carregamento já em andamento, ignorando nova chamada');
+      return;
+    }
+
     setLoading(true);
     setErro(null);
 
@@ -28,6 +35,7 @@ export function useLojas() {
       
       if (response.success && response.data) {
         setLojas(response.data.items || []);
+        setIsInitialized(true);
       } else {
         throw new Error(response.error || 'Erro ao carregar lojas');
       }
@@ -39,12 +47,14 @@ export function useLojas() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loading]);
 
-  // Carregar lojas ao montar o componente
+  // Carregar lojas ao montar o componente (apenas uma vez)
   useEffect(() => {
-    carregarLojas();
-  }, [carregarLojas]);
+    if (!isInitialized && !loading) {
+      carregarLojas();
+    }
+  }, [carregarLojas, isInitialized, loading]); // 🔧 CORREÇÃO: Usar flag de inicialização
 
   // Validar dados da loja - apenas nome obrigatório
   const validarLoja = useCallback((dados: LojaFormData): string[] => {

@@ -25,7 +25,7 @@ export const API_CONFIG = {
     AUTH: '/api/v1/auth',
     CLIENTES: '/api/v1/clientes',
     EMPRESAS: '/api/v1/empresas',
-    LOJAS: '/api/v1/lojas',
+    LOJAS: '/api/v1/lojas/',
     FUNCIONARIOS: '/api/v1/equipe',
     ORCAMENTOS: '/api/v1/orcamentos',
     STATUS_ORCAMENTO: '/api/v1/status-orcamento',

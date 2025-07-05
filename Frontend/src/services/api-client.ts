@@ -148,28 +148,29 @@ class ApiClient {
       signal: AbortSignal.timeout(this.timeout),
     };
 
-    // 🔧 DEBUG LOGS DETALHADOS
-    console.group(`🌐 API Request: ${options.method || 'GET'} ${endpoint}`);
-    console.log('📍 URL completa:', url);
-    console.log('🔑 Headers:', requestOptions.headers);
-    console.log('📦 Body:', options.body);
-    console.log('🔄 É retry?', isRetry);
-    console.groupEnd();
+    // 🔧 CORREÇÃO: Não enviar body em requisições GET
+    if (options.method === 'GET' || !options.method) {
+      delete requestOptions.body;
+    }
+
+    // 🔧 DEBUG LOGS SIMPLIFICADOS (apenas em desenvolvimento)
+    if (FRONTEND_CONFIG.FEATURES.DEBUG_API) {
+      console.log(`🌐 ${options.method || 'GET'} ${endpoint}`);
+    }
 
     try {
       const response = await fetch(url, requestOptions);
       
-      // 🔧 DEBUG RESPONSE DETALHADO
-      console.group(`📥 API Response: ${response.status} ${response.statusText}`);
-      console.log('📍 URL:', url);
-      console.log('📊 Status:', response.status);
-      console.log('📝 Status Text:', response.statusText);
-      console.log('🏷️ Headers:', Object.fromEntries(response.headers.entries()));
+      // 🔧 DEBUG RESPONSE SIMPLIFICADO
+      if (FRONTEND_CONFIG.FEATURES.DEBUG_API && !response.ok) {
+        console.log(`❌ ${response.status} ${response.statusText} - ${endpoint}`);
+      }
       
       // Se for 401 e não for retry, tentar renovar token
       if (response.status === 401 && !isRetry && this.authToken) {
-        console.log('🔄 Token expirado, tentando renovar...');
-        console.groupEnd();
+        if (FRONTEND_CONFIG.FEATURES.DEBUG_API) {
+          console.log('🔄 Token expirado, tentando renovar...');
+        }
         
         const refreshed = await this.refreshToken();
         
@@ -195,14 +196,10 @@ class ApiClient {
           // Se falhar ao parsear JSON, usar mensagem padrão
         }
         
-        // 🔧 LOG DETALHADO DE ERRO
-        console.error('❌ Resposta não OK:', {
-          status: response.status,
-          statusText: response.statusText,
-          url: url,
-          endpoint: endpoint,
-          errorBody: errorBody
-        });
+        // 🔧 LOG SIMPLIFICADO DE ERRO
+        if (FRONTEND_CONFIG.FEATURES.DEBUG_API) {
+          console.error(`❌ ${response.status} ${response.statusText} - ${endpoint}`);
+        }
         
         // Se for 401 após retry ou sem token, limpar autenticação
         if (response.status === 401) {
@@ -218,14 +215,14 @@ class ApiClient {
           }
         }
         
-        console.groupEnd();
         throw new Error(errorMessage);
       }
 
       const data = await response.json();
       
-      console.log('✅ Dados recebidos:', data);
-      console.groupEnd();
+      if (FRONTEND_CONFIG.FEATURES.DEBUG_API) {
+        console.log(`✅ ${endpoint} - ${data.items?.length || 'dados'} recebidos`);
+      }
       
       return {
         success: true,
@@ -233,28 +230,10 @@ class ApiClient {
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
-      console.group('❌ Erro na requisição');
-      console.error('🔥 Erro capturado:', error);
-      console.error('📍 URL que falhou:', url);
-      console.error('🔧 Tipo do erro:', error.constructor.name);
-      
-      // Melhor detecção de tipos de erro
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        // Verificar se é realmente erro de rede ou apenas erro HTTP
-        if (error.message.includes('NetworkError') || 
-            error.message.includes('ERR_NETWORK') ||
-            error.message.includes('ERR_INTERNET_DISCONNECTED')) {
-          console.error('🌐 Erro de rede real - backend pode estar offline');
-        } else {
-          console.error('⚠️ Erro HTTP capturado como TypeError - verificar resposta');
-        }
-      } else if (error.name === 'AbortError') {
-        console.error('⏱️ Timeout - requisição demorou mais que', this.timeout, 'ms');
-      } else if (error.message?.includes('403') || error.message?.includes('401')) {
-        console.error('🚫 Erro de autenticação - token inválido ou expirado');
+      // 🔧 LOG SIMPLIFICADO DE ERRO
+      if (FRONTEND_CONFIG.FEATURES.DEBUG_API) {
+        console.error(`❌ Erro em ${endpoint}:`, error.message);
       }
-      
-      console.groupEnd();
       
       return {
         success: false,
