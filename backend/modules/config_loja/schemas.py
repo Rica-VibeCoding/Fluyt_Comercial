@@ -43,6 +43,18 @@ class ConfigLojaBase(BaseModel):
         le=100,
         description="Percentual de frete sobre valor de venda (%)"
     )
+    assembly_percentage: float = Field(
+        ..., 
+        ge=0, 
+        le=100,
+        description="Percentual de montagem (%)"
+    )
+    executive_project_percentage: float = Field(
+        ..., 
+        ge=0, 
+        le=100,
+        description="Percentual de projeto executivo (%)"
+    )
     
     # Configurações de numeração
     initial_number: int = Field(
@@ -77,6 +89,8 @@ class ConfigLojaUpdate(BaseModel):
     discount_limit_admin_master: Optional[float] = Field(None, ge=0, le=100)
     default_measurement_value: Optional[float] = Field(None, gt=0)
     freight_percentage: Optional[float] = Field(None, ge=0, le=100)
+    assembly_percentage: Optional[float] = Field(None, ge=0, le=100)
+    executive_project_percentage: Optional[float] = Field(None, ge=0, le=100)
     initial_number: Optional[int] = Field(None, gt=0)
     number_format: Optional[str] = Field(None, max_length=50)
     number_prefix: Optional[str] = Field(None, max_length=10)

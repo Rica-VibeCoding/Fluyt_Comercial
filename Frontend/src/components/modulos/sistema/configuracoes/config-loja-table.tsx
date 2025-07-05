@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Switch } from '@/components/ui/switch';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -77,8 +76,8 @@ export function ConfigLojaTable({
             <TableHead className="font-semibold text-slate-700 h-10 w-12"></TableHead>
             <TableHead className="font-semibold text-slate-700 h-10">Código</TableHead>
             <TableHead className="font-semibold text-slate-700 h-10">Loja</TableHead>
-            <TableHead className="font-semibold text-slate-700 h-10">Deflator</TableHead>
             <TableHead className="font-semibold text-slate-700 h-10">Descontos</TableHead>
+            <TableHead className="font-semibold text-slate-700 h-10">Configurações</TableHead>
             <TableHead className="text-right font-semibold text-slate-700 h-10">Ações</TableHead>
           </TableRow>
         </TableHeader>
@@ -108,18 +107,19 @@ export function ConfigLojaTable({
                   <div className="text-sm font-medium text-slate-900">{config.storeName}</div>
                 </TableCell>
 
-                {/* Deflator */}
-                <TableCell className="py-2">
-                  <div className="flex items-center gap-1 text-sm font-medium text-blue-600">
-                    <Percent className="h-3 w-3" />
-                    {formatPercentage(config.deflatorCost)}
-                  </div>
-                </TableCell>
+
 
                 {/* Descontos - RESUMIDO */}
                 <TableCell className="py-2">
                   <div className="text-xs text-slate-700">
                     V:{config.discountLimitVendor}% | G:{config.discountLimitManager}% | A:{config.discountLimitAdminMaster}%
+                  </div>
+                </TableCell>
+                
+                {/* Configurações Gerais */}
+                <TableCell className="py-2">
+                  <div className="text-xs text-slate-700">
+                    Frete:{config.freightPercentage}% | Montagem:{config.assemblyPercentage}% | Projeto:{config.executiveProjectPercentage}%
                   </div>
                 </TableCell>
 
@@ -179,11 +179,25 @@ export function ConfigLojaTable({
                         <div className="space-y-2">
                           <h4 className="text-xs font-semibold text-slate-700 mb-2 uppercase tracking-wide">Configurações Financeiras</h4>
                           
-                          {/* Deflator */}
+                          {/* Frete */}
                           <div className="flex items-center gap-2">
-                            <Percent className="h-3 w-3 text-blue-500" />
-                            <span className="text-xs font-medium text-slate-600 min-w-[60px]">Deflator:</span>
-                            <span className="text-xs font-medium text-blue-600">{formatPercentage(config.deflatorCost)}</span>
+                            <Truck className="h-3 w-3 text-orange-500" />
+                            <span className="text-xs font-medium text-slate-600 min-w-[60px]">Frete:</span>
+                            <span className="text-xs text-slate-900">{formatPercentage(config.freightPercentage)}</span>
+                          </div>
+
+                          {/* Montagem */}
+                          <div className="flex items-center gap-2">
+                            <Settings className="h-3 w-3 text-blue-500" />
+                            <span className="text-xs font-medium text-slate-600 min-w-[60px]">Montagem:</span>
+                            <span className="text-xs text-slate-900">{formatPercentage(config.assemblyPercentage)}</span>
+                          </div>
+
+                          {/* Projeto Executivo */}
+                          <div className="flex items-center gap-2">
+                            <Settings className="h-3 w-3 text-purple-500" />
+                            <span className="text-xs font-medium text-slate-600 min-w-[60px]">Projeto:</span>
+                            <span className="text-xs text-slate-900">{formatPercentage(config.executiveProjectPercentage)}</span>
                           </div>
 
                           {/* Valor Medição */}
@@ -191,13 +205,6 @@ export function ConfigLojaTable({
                             <DollarSign className="h-3 w-3 text-green-500" />
                             <span className="text-xs font-medium text-slate-600 min-w-[60px]">Medição:</span>
                             <span className="text-xs text-slate-900">{formatCurrency(config.defaultMeasurementValue)}</span>
-                          </div>
-
-                          {/* Frete */}
-                          <div className="flex items-center gap-2">
-                            <Truck className="h-3 w-3 text-orange-500" />
-                            <span className="text-xs font-medium text-slate-600 min-w-[60px]">Frete:</span>
-                            <span className="text-xs text-slate-900">{formatPercentage(config.freightPercentage)}</span>
                           </div>
                         </div>
 
@@ -280,4 +287,154 @@ export function ConfigLojaTable({
       )}
     </div>
   );
-} 
+}
+
+// Memoizar componente da linha para evitar re-renderizações desnecessárias
+const ConfigLojaTableRow = memo(({ 
+  config, 
+  isExpanded, 
+  onToggleExpand, 
+  onEdit, 
+  onDelete 
+}: {
+  config: any;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  onEdit: (config: any) => void;
+  onDelete: (storeId: string) => void;
+}) => {
+  return (
+    <>
+      <TableRow className="hover:bg-slate-50/50 cursor-pointer">
+        <TableCell onClick={onToggleExpand}>
+          <div className="flex items-center gap-2">
+            <ChevronRight 
+              className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
+                isExpanded ? 'rotate-90' : ''
+              }`}
+            />
+            <span className="font-medium text-gray-900">{config.storeName}</span>
+          </div>
+        </TableCell>
+        
+        <TableCell onClick={onToggleExpand}>
+          <span className="font-mono text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+            {config.numberPrefix}
+          </span>
+        </TableCell>
+        
+        <TableCell onClick={onToggleExpand}>
+          <span className="text-sm text-gray-600">{config.discountLimitVendor}%</span>
+        </TableCell>
+        
+        <TableCell onClick={onToggleExpand}>
+          <span className="text-sm text-gray-600">{config.freightPercentage}%</span>
+        </TableCell>
+        
+        <TableCell onClick={onToggleExpand}>
+          <span className="text-xs text-gray-500">{config.updatedAt}</span>
+        </TableCell>
+        
+        <TableCell>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onEdit(config)}
+              className="h-7 w-7 p-0 hover:bg-blue-100"
+            >
+              <Edit className="h-3.5 w-3.5" />
+            </Button>
+            
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 hover:bg-red-100"
+                >
+                  <Trash2 className="h-3.5 w-3.5 text-red-600" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tem certeza que deseja excluir as configurações da loja <strong>{config.storeName}</strong>?
+                    Esta ação não pode ser desfeita e a loja voltará às configurações padrão.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={() => onDelete(config.storeId)}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    Excluir
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </TableCell>
+      </TableRow>
+
+      {/* Linha expandida */}
+      {isExpanded && (
+        <TableRow className="bg-blue-50/20 hover:bg-blue-50/30">
+          <TableCell colSpan={6} className="py-4">
+            <div className="pl-4 grid grid-cols-1 lg:grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <h4 className="font-medium text-gray-900 text-sm">Configurações Financeiras</h4>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Desconto Gerente:</span>
+                    <span className="font-medium">{config.discountLimitManager}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Desconto Admin:</span>
+                    <span className="font-medium">{config.discountLimitAdminMaster}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Valor Medição:</span>
+                    <span className="font-medium">R$ {config.defaultMeasurementValue}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <h4 className="font-medium text-gray-900 text-sm">Percentuais</h4>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Montagem:</span>
+                    <span className="font-medium">{config.assemblyPercentage}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Projeto Executivo:</span>
+                    <span className="font-medium">{config.executiveProjectPercentage}%</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <h4 className="font-medium text-gray-900 text-sm">Numeração</h4>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Formato:</span>
+                    <span className="font-mono font-medium">{config.numberFormat}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Número Inicial:</span>
+                    <span className="font-medium">{config.initialNumber}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </TableCell>
+        </TableRow>
+      )}
+    </>
+  );
+});
+
+ConfigLojaTableRow.displayName = 'ConfigLojaTableRow'; 

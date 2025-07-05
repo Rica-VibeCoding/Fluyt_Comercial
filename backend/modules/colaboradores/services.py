@@ -164,7 +164,7 @@ class TipoColaboradorService:
                 raise ValidationException("Apenas uma base de pagamento pode ser definida por tipo")
             
             # Converte dados para dicionário
-            dados_tipo = dados.model_dump(exclude_unset=True)
+            dados_tipo = dados.model_dump(mode='json', exclude_unset=True)
             
             # Cria o tipo
             tipo_criado = await repository.criar(dados_tipo)
@@ -207,7 +207,7 @@ class TipoColaboradorService:
             repository = TipoColaboradorRepository(db)
             
             # Converte dados para dicionário (apenas campos não None)
-            dados_atualizacao = dados.model_dump(exclude_unset=True, exclude_none=True)
+            dados_atualizacao = dados.model_dump(mode='json', exclude_unset=True, exclude_none=True)
             
             if not dados_atualizacao:
                 raise ValidationException("Nenhum dado fornecido para atualização")
@@ -456,7 +456,7 @@ class ColaboradorService:
             repository = ColaboradorRepository(db)
             
             # Converte dados para dicionário
-            dados_colaborador = dados.model_dump(exclude_unset=True)
+            dados_colaborador = dados.model_dump(mode='json', exclude_unset=True)
             
             # Cria o colaborador
             colaborador_criado = await repository.criar(dados_colaborador)
@@ -499,7 +499,7 @@ class ColaboradorService:
             repository = ColaboradorRepository(db)
             
             # Converte dados para dicionário (apenas campos não None)
-            dados_atualizacao = dados.model_dump(exclude_unset=True, exclude_none=True)
+            dados_atualizacao = dados.model_dump(mode='json', exclude_unset=True, exclude_none=True)
             
             if not dados_atualizacao:
                 raise ValidationException("Nenhum dado fornecido para atualização")

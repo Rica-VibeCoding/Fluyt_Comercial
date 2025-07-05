@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Integração Config Loja</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 3px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button {
+            padding: 8px 15px;
+            margin: 5px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+        }
+        button:hover { background-color: #0056b3; }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Teste de Integração: Config Loja Frontend ↔ Backend</h1>
+    
+    <div class="test-section">
+        <h2>1. Teste de Conectividade</h2>
+        <button onclick="testHealth()">Testar Health Backend</button>
+        <div id="health-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Teste Listar Configurações</h2>
+        <button onclick="testListConfigs()">Listar Configurações</button>
+        <div id="list-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Teste Criar Configuração</h2>
+        <button onclick="testCreateConfig()">Criar Configuração Teste</button>
+        <div id="create-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Teste Obter por Loja</h2>
+        <input type="text" id="store-id" placeholder="ID da Loja" value="1">
+        <button onclick="testGetByStore()">Obter por Loja</button>
+        <div id="get-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>5. Console de Logs</h2>
+        <div id="console-logs" style="height: 200px; overflow-y: auto; background: #f8f9fa; padding: 10px;"></div>
+        <button onclick="clearLogs()">Limpar Logs</button>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api/v1';
+        
+        function log(message, type = 'info') {
+            const consoleEl = document.getElementById('console-logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? 'red' : type === 'success' ? 'green' : 'black';
+            consoleEl.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function clearLogs() {
+            document.getElementById('console-logs').innerHTML = '';
+        }
+
+        function showResult(elementId, content, isSuccess = true) {
+            const element = document.getElementById(elementId);
+            element.className = `test-result ${isSuccess ? 'success' : 'error'}`;
+            element.innerHTML = content;
+        }
+
+        async function makeRequest(endpoint, options = {}) {
+            log(`Fazendo requisição para: ${endpoint}`);
+            
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+
+                const responseText = await response.text();
+                log(`Resposta recebida (${response.status}): ${responseText.substring(0, 200)}...`);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${responseText}`);
+                }
+
+                return JSON.parse(responseText);
+            } catch (error) {
+                log(`Erro na requisição: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        async function testHealth() {
+            try {
+                log('Testando conectividade com backend...');
+                const result = await makeRequest('/health', { method: 'GET' });
+                showResult('health-result', `✅ Backend conectado!<br><pre>${JSON.stringify(result, null, 2)}</pre>`);
+                log('Teste de saúde bem-sucedido', 'success');
+            } catch (error) {
+                showResult('health-result', `❌ Erro de conectividade: ${error.message}`, false);
+                log(`Falha no teste de saúde: ${error.message}`, 'error');
+            }
+        }
+
+        async function testListConfigs() {
+            try {
+                log('Listando configurações...');
+                const result = await makeRequest('/config-loja');
+                const count = result.data?.items?.length || result.data?.length || 0;
+                showResult('list-result', `✅ Configurações obtidas: ${count}<br><pre>${JSON.stringify(result, null, 2)}</pre>`);
+                log(`Listagem bem-sucedida: ${count} configurações`, 'success');
+            } catch (error) {
+                showResult('list-result', `❌ Erro ao listar: ${error.message}`, false);
+                log(`Falha na listagem: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCreateConfig() {
+            try {
+                log('Criando configuração de teste...');
+                const testConfig = {
+                    store_id: "123e4567-e89b-12d3-a456-426614174000",
+                    discount_limit_vendor: 10.0,
+                    discount_limit_manager: 20.0,
+                    discount_limit_admin_master: 50.0,
+                    default_measurement_value: 120.0,
+                    freight_percentage: 8.5,
+                    assembly_percentage: 12.0,
+                    executive_project_percentage: 5.0,
+                    initial_number: 1001,
+                    number_format: "YYYY-NNNNNN",
+                    number_prefix: "TEST"
+                };
+
+                const result = await makeRequest('/config-loja', {
+                    method: 'POST',
+                    body: JSON.stringify(testConfig)
+                });
+
+                showResult('create-result', `✅ Configuração criada!<br><pre>${JSON.stringify(result, null, 2)}</pre>`);
+                log('Configuração de teste criada com sucesso', 'success');
+            } catch (error) {
+                showResult('create-result', `❌ Erro ao criar: ${error.message}`, false);
+                log(`Falha na criação: ${error.message}`, 'error');
+            }
+        }
+
+        async function testGetByStore() {
+            try {
+                const storeId = document.getElementById('store-id').value;
+                if (!storeId) {
+                    throw new Error('ID da loja é obrigatório');
+                }
+
+                log(`Obtendo configuração para loja ${storeId}...`);
+                const result = await makeRequest(`/config-loja/loja/${storeId}`);
+                showResult('get-result', `✅ Configuração encontrada!<br><pre>${JSON.stringify(result, null, 2)}</pre>`);
+                log(`Configuração da loja ${storeId} obtida com sucesso`, 'success');
+            } catch (error) {
+                showResult('get-result', `❌ Erro ao obter: ${error.message}`, false);
+                log(`Falha ao obter configuração: ${error.message}`, 'error');
+            }
+        }
+
+        // Inicializar página
+        document.addEventListener('DOMContentLoaded', function() {
+            log('Página de teste carregada. Backend esperado em: ' + API_BASE);
+            
+            // Teste automático de conectividade
+            setTimeout(() => {
+                log('Executando teste automático de conectividade...');
+                testHealth();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

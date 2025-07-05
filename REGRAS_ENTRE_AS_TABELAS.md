@@ -526,7 +526,6 @@ Este documento serve para registrar as regras de negócio e o fluxo de dados que
     4.  **Snapshot salvo** nos orçamentos para auditoria
 *   **Configurações Críticas:**
     - **Custos Operacionais:**
-      - `deflator_custo_fabrica`: 0.40 = 40% sobre valor XML
       - `valor_medidor_padrao`: R$ 200 (padrão para medição)
       - `valor_frete_percentual`: 0.02 = 2% sobre valor da venda
     - **Limites de Desconto:**
@@ -541,7 +540,6 @@ Este documento serve para registrar as regras de negócio e o fluxo de dados que
 *   **Impacto nos Cálculos:**
     ```
     Orçamento R$ 50.000:
-    - Custo fábrica = 50.000 × 0.40 = R$ 20.000
     - Frete = 50.000 × 0.02 = R$ 1.000
     - Medidor = R$ 200 (fixo)
     ```

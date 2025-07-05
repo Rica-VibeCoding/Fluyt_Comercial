@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Login - Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 500px; margin: 0 auto; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input { width: 100%; padding: 8px; border: 1px solid #ddd; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; }
+        .result { margin-top: 20px; padding: 10px; border: 1px solid #ddd; background: #f9f9f9; }
+        .error { background: #ffebee; border-color: #f44336; }
+        .success { background: #e8f5e8; border-color: #4caf50; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Teste de Login - Debug</h1>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" value="ricardo.nilton@hotmail.com" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Senha:</label>
+                <input type="password" id="password" value="123456" required>
+            </div>
+            
+            <button type="submit">🚀 Testar Login</button>
+        </form>
+        
+        <div id="result" class="result" style="display: none;"></div>
+        
+        <div class="form-group" style="margin-top: 30px;">
+            <h3>📊 Status dos Serviços:</h3>
+            <button type="button" onclick="testBackend()">🔍 Testar Backend</button>
+            <button type="button" onclick="testSupabase()">🔍 Testar Supabase</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api/v1';
+        
+        function showResult(message, isError = false) {
+            const result = document.getElementById('result');
+            result.style.display = 'block';
+            result.className = `result ${isError ? 'error' : 'success'}`;
+            result.innerHTML = message;
+        }
+        
+        async function testLogin(email, password) {
+            try {
+                console.log('🔐 Iniciando teste de login...');
+                console.log('📧 Email:', email);
+                
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                console.log('📡 Response status:', response.status);
+                console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+                
+                const data = await response.json();
+                console.log('📊 Response data:', data);
+                
+                if (response.ok) {
+                    showResult(`
+                        <h3>✅ Login realizado com sucesso!</h3>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Token:</strong> ${data.access_token ? 'Recebido' : 'Não recebido'}</p>
+                        <p><strong>Usuário:</strong> ${data.user?.email || 'N/A'}</p>
+                        <p><strong>Perfil:</strong> ${data.user?.user_metadata?.user_role || 'N/A'}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `);
+                } else {
+                    showResult(`
+                        <h3>❌ Erro no login</h3>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Erro:</strong> ${data.message || data.error || 'Erro desconhecido'}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `, true);
+                }
+                
+            } catch (error) {
+                console.error('💥 Erro na requisição:', error);
+                showResult(`
+                    <h3>💥 Erro de conexão</h3>
+                    <p><strong>Erro:</strong> ${error.message}</p>
+                    <p>Verifique se o backend está rodando na porta 8000</p>
+                `, true);
+            }
+        }
+        
+        async function testBackend() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                showResult(`
+                    <h3>🟢 Backend Status</h3>
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `);
+            } catch (error) {
+                showResult(`
+                    <h3>🔴 Backend Offline</h3>
+                    <p><strong>Erro:</strong> ${error.message}</p>
+                `, true);
+            }
+        }
+        
+        async function testSupabase() {
+            try {
+                const response = await fetch(`${API_BASE}/auth/test-connection`);
+                const data = await response.json();
+                showResult(`
+                    <h3>🟢 Supabase Status</h3>
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `);
+            } catch (error) {
+                showResult(`
+                    <h3>🔴 Supabase Connection Error</h3>
+                    <p><strong>Erro:</strong> ${error.message}</p>
+                `, true);
+            }
+        }
+        
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            await testLogin(email, password);
+        });
+        
+        // Teste automático ao carregar a página
+        window.addEventListener('load', () => {
+            console.log('🚀 Página de teste carregada');
+            testBackend();
+        });
+    </script>
+</body>
+</html> 

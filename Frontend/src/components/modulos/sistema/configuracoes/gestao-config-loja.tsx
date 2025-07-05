@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -14,20 +14,27 @@ export function GestaoConfigLoja() {
     loading,
     salvarConfiguracao,
     obterConfiguracao,
-    resetarDados
+    resetarDados,
+    loadConfiguracoes
   } = useConfigLoja();
+
+  // Carregar configurações apenas aqui (componente principal)
+  useEffect(() => {
+    loadConfiguracoes();
+  }, []);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingConfig, setEditingConfig] = useState<any>(null);
   const [termoBusca, setTermoBusca] = useState('');
   const [formData, setFormData] = useState<ConfiguracaoLojaFormData>({
     storeId: '',
-    deflatorCost: 15.5,
     discountLimitVendor: 10,
     discountLimitManager: 20,
     discountLimitAdminMaster: 50,
     defaultMeasurementValue: 120,
     freightPercentage: 8.5,
+    assemblyPercentage: 12.0,
+    executiveProjectPercentage: 5.0,
     initialNumber: 1001,
     numberFormat: 'YYYY-NNNNNN',
     numberPrefix: 'ORC'
@@ -51,13 +58,15 @@ export function GestaoConfigLoja() {
   const handleEdit = (config: any) => {
     setEditingConfig(config);
     setFormData({
+      id: config.id, // IMPORTANTE: Guardar o ID para o UPDATE
       storeId: config.storeId,
-      deflatorCost: config.deflatorCost,
       discountLimitVendor: config.discountLimitVendor,
       discountLimitManager: config.discountLimitManager,
       discountLimitAdminMaster: config.discountLimitAdminMaster,
       defaultMeasurementValue: config.defaultMeasurementValue,
       freightPercentage: config.freightPercentage,
+      assemblyPercentage: config.assemblyPercentage,
+      executiveProjectPercentage: config.executiveProjectPercentage,
       initialNumber: config.initialNumber,
       numberFormat: config.numberFormat,
       numberPrefix: config.numberPrefix
@@ -69,12 +78,13 @@ export function GestaoConfigLoja() {
     setEditingConfig(null);
     setFormData({
       storeId: '',
-      deflatorCost: 15.5,
       discountLimitVendor: 10,
       discountLimitManager: 20,
       discountLimitAdminMaster: 50,
       defaultMeasurementValue: 120,
       freightPercentage: 8.5,
+      assemblyPercentage: 12.0,
+      executiveProjectPercentage: 5.0,
       initialNumber: 1001,
       numberFormat: 'YYYY-NNNNNN',
       numberPrefix: 'ORC'
@@ -89,7 +99,6 @@ export function GestaoConfigLoja() {
 
   const handleDelete = async (storeId: string) => {
     // Implementar lógica de exclusão se necessário
-    console.log('Excluir configuração:', storeId);
   };
 
   return (
@@ -124,14 +133,16 @@ export function GestaoConfigLoja() {
                 {editingConfig ? 'Editar Configuração da Loja' : 'Nova Configuração da Loja'}
               </DialogTitle>
             </DialogHeader>
-            <ConfigLojaForm
-              formData={formData}
-              onFormDataChange={setFormData}
-              onSubmit={handleSubmit}
-              onCancel={handleCloseDialog}
-              isEditing={!!editingConfig}
-              loading={loading}
-            />
+            {isDialogOpen && (
+              <ConfigLojaForm
+                formData={formData}
+                onFormDataChange={setFormData}
+                onSubmit={handleSubmit}
+                onCancel={handleCloseDialog}
+                isEditing={!!editingConfig}
+                loading={loading}
+              />
+            )}
           </DialogContent>
         </Dialog>
       </div>

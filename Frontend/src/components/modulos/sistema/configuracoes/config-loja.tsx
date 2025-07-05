@@ -28,28 +28,46 @@ export function ConfigLoja() {
     discountLimitAdminMaster: 50,
     defaultMeasurementValue: 120,
     freightPercentage: 8.5,
+    assemblyPercentage: 12.0,
+    executiveProjectPercentage: 5.0,
     initialNumber: 1001,
     numberFormat: 'YYYY-NNNNNN',
     numberPrefix: 'ORC'
   });
 
-  const stores = obterLojas();
+  const [stores, setStores] = useState<Array<{ id: string; name: string }>>([]);
+
+  // Carregar lojas na inicialização
+  useEffect(() => {
+    const carregarLojas = async () => {
+      const lojasData = await obterLojas();
+      setStores(lojasData);
+    };
+    carregarLojas();
+  }, [obterLojas]);
 
   // Carregar configuração quando a loja mudar
   useEffect(() => {
-    const config = obterConfiguracao(selectedStore);
-    if (config) {
-      setFormData({
-        storeId: config.storeId,
-        discountLimitVendor: config.discountLimitVendor,
-        discountLimitManager: config.discountLimitManager,
-        discountLimitAdminMaster: config.discountLimitAdminMaster,
-        defaultMeasurementValue: config.defaultMeasurementValue,
-        freightPercentage: config.freightPercentage,
-        initialNumber: config.initialNumber,
-        numberFormat: config.numberFormat,
-        numberPrefix: config.numberPrefix
-      });
+    const carregarConfig = async () => {
+      const config = await obterConfiguracao(selectedStore);
+      if (config) {
+        setFormData({
+          storeId: config.storeId,
+          discountLimitVendor: config.discountLimitVendor,
+          discountLimitManager: config.discountLimitManager,
+          discountLimitAdminMaster: config.discountLimitAdminMaster,
+          defaultMeasurementValue: config.defaultMeasurementValue,
+          freightPercentage: config.freightPercentage,
+          assemblyPercentage: config.assemblyPercentage,
+          executiveProjectPercentage: config.executiveProjectPercentage,
+          initialNumber: config.initialNumber,
+          numberFormat: config.numberFormat,
+          numberPrefix: config.numberPrefix
+        });
+      }
+    };
+    if (selectedStore) {
+      carregarConfig();
     }
   }, [selectedStore, obterConfiguracao]);
 
@@ -69,7 +87,7 @@ export function ConfigLoja() {
     const success = await salvarConfiguracao(formData);
     if (success) {
       // Atualizar dados após salvar
-      const config = obterConfiguracao(selectedStore);
+      const config = await obterConfiguracao(selectedStore);
       if (config) {
         setFormData({
           storeId: config.storeId,
@@ -78,6 +96,8 @@ export function ConfigLoja() {
           discountLimitAdminMaster: config.discountLimitAdminMaster,
           defaultMeasurementValue: config.defaultMeasurementValue,
           freightPercentage: config.freightPercentage,
+          assemblyPercentage: config.assemblyPercentage,
+          executiveProjectPercentage: config.executiveProjectPercentage,
           initialNumber: config.initialNumber,
           numberFormat: config.numberFormat,
           numberPrefix: config.numberPrefix
@@ -87,7 +107,18 @@ export function ConfigLoja() {
   };
 
   const exemploNumeracao = gerarExemploNumeracao(formData.numberPrefix, formData.numberFormat, formData.initialNumber);
-  const config = obterConfiguracao(selectedStore);
+  
+  // Obter configuração de forma assíncrona para display
+  const [currentConfig, setCurrentConfig] = useState<any>(null);
+  useEffect(() => {
+    const carregarConfigAtual = async () => {
+      if (selectedStore) {
+        const config = await obterConfiguracao(selectedStore);
+        setCurrentConfig(config);
+      }
+    };
+    carregarConfigAtual();
+  }, [selectedStore, obterConfiguracao]);
 
   return (
     <div className="space-y-6">
@@ -155,8 +186,6 @@ export function ConfigLoja() {
               Configurações Financeiras
             </h3>
             <div className="space-y-4">
-
-
               <div>
                 <Label htmlFor="freightPercentage" className="text-sm font-medium">
                   Percentual de Frete (%)
@@ -169,6 +198,40 @@ export function ConfigLoja() {
                   step="0.1"
                   value={formData.freightPercentage}
                   onChange={(e) => handleChange('freightPercentage', Number(e.target.value))}
+                  className="mt-1"
+                  disabled={loading}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="assemblyPercentage" className="text-sm font-medium">
+                  Percentual de Montagem (%)
+                </Label>
+                <Input
+                  id="assemblyPercentage"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={formData.assemblyPercentage}
+                  onChange={(e) => handleChange('assemblyPercentage', Number(e.target.value))}
+                  className="mt-1"
+                  disabled={loading}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="executiveProjectPercentage" className="text-sm font-medium">
+                  Percentual de Projeto Executivo (%)
+                </Label>
+                <Input
+                  id="executiveProjectPercentage"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={formData.executiveProjectPercentage}
+                  onChange={(e) => handleChange('executiveProjectPercentage', Number(e.target.value))}
                   className="mt-1"
                   disabled={loading}
                 />
@@ -310,7 +373,7 @@ export function ConfigLoja() {
         {/* Footer com ações */}
         <div className="border-t border-border pt-4 flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
-            Última atualização: {config ? new Date(config.updatedAt).toLocaleDateString('pt-BR') : 'Nunca'}
+            Última atualização: {currentConfig ? new Date(currentConfig.updatedAt).toLocaleDateString('pt-BR') : 'Nunca'}
           </div>
           <Button onClick={handleSave} disabled={loading} className="flex items-center gap-2">
             <Save className="h-4 w-4" />

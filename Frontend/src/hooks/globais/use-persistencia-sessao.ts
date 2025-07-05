@@ -64,9 +64,10 @@ export function usePersistenciaSessao(options: UsePersistenciaSessaoOptions = {}
         salvarSessaoAtual();
         ultimoSalvamento.current = agora;
         
-        if (debugMode) {
-          console.log('🔄 Auto-save executado para cliente:', cliente.nome);
-        }
+        // Debug mode desabilitado para evitar spam nos logs
+        // if (debugMode) {
+        //   console.log('🔄 Auto-save executado para cliente:', cliente.nome);
+        // }
       }
     }, intervaloPersistencia);
 

@@ -153,6 +153,8 @@ export interface ConfiguracaoLoja {
   discountLimitAdminMaster: number;     // Limite Admin Master (%)
   defaultMeasurementValue: number;      // Valor Padrão Medição (R$)
   freightPercentage: number;            // Percentual de Frete (%)
+  assemblyPercentage: number;           // Percentual de Montagem (%)
+  executiveProjectPercentage: number;   // Percentual de Projeto Executivo (%)
   initialNumber: number;                // Número Inicial
   numberFormat: string;                 // Formato (YYYY-NNNNNN, etc.)
   numberPrefix: string;                 // Prefixo (ORC, etc.)
@@ -160,12 +162,15 @@ export interface ConfiguracaoLoja {
 }
 
 export interface ConfiguracaoLojaFormData {
+  id?: string; // ID da configuração (usado no update)
   storeId: string;
   discountLimitVendor: number;
   discountLimitManager: number;
   discountLimitAdminMaster: number;
   defaultMeasurementValue: number;
   freightPercentage: number;
+  assemblyPercentage: number;
+  executiveProjectPercentage: number;
   initialNumber: number;
   numberFormat: string;
   numberPrefix: string;

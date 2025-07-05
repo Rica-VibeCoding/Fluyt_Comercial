@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Users, DollarSign, Settings, FileText, Building2, Store, UserCog, Layers } from 'lucide-react';
 import Link from 'next/link';
-import { GestaoEmpresas, GestaoLojas, GestaoEquipe, GestaoSetores, GestaoComissoes, ConfigLoja, GestaoConfigLoja, GestaoTiposColaboradores, GestaoColaboradoresIndividuais } from '@/components/modulos/sistema';
+import { GestaoEmpresas, GestaoLojas, GestaoEquipe, GestaoSetores, GestaoComissoes, GestaoConfigLoja, GestaoTiposColaboradores, GestaoColaboradoresIndividuais } from '@/components/modulos/sistema';
 import { ResetDados } from '@/components/modulos/sistema/configuracoes/reset-dados';
 import { TesteConectividade } from '@/components/modulos/sistema/configuracoes/teste-conectividade';
 

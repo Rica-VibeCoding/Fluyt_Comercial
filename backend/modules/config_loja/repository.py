@@ -21,18 +21,25 @@ class ConfigLojaRepository:
     def buscar_por_loja(self, store_id: str) -> Optional[Dict[str, Any]]:
         """Busca configuração por ID da loja"""
         try:
-            # Busca configuração com dados da loja via JOIN
-            response = self.db.table(self.table).select(
-                "*",
-                "c_lojas!store_id(id, nome)"
-            ).eq("store_id", store_id).single().execute()
+            # Busca configuração simples (sem JOIN para evitar problemas)
+            response = self.db.table(self.table).select("*").eq("loja_id", store_id).limit(1).execute()
             
-            if response.data:
-                # Extrai nome da loja do JOIN
-                config = response.data
-                if config.get("c_lojas"):
-                    config["store_name"] = config["c_lojas"]["nome"]
-                    del config["c_lojas"]
+            if response.data and len(response.data) > 0:
+                config = response.data[0]
+                
+                # CORRIGIR: Mapear loja_id para store_id
+                if "loja_id" in config:
+                    config["store_id"] = config["loja_id"]
+                
+                # Buscar nome da loja separadamente
+                try:
+                    loja = self.db.table("c_lojas").select("nome").eq("id", store_id).limit(1).execute()
+                    if loja.data and len(loja.data) > 0:
+                        config["store_name"] = loja.data[0]["nome"]
+                    else:
+                        config["store_name"] = "Loja Não Encontrada"
+                except:
+                    config["store_name"] = "Erro ao buscar loja"
                 return config
             
             return None
@@ -45,16 +52,28 @@ class ConfigLojaRepository:
     def buscar_por_id(self, config_id: str, user_perfil: str = "USER") -> Optional[Dict[str, Any]]:
         """Busca configuração por ID"""
         try:
-            response = self.db.table(self.table).select(
-                "*",
-                "c_lojas!store_id(id, nome)"
-            ).eq("id", config_id).single().execute()
+            response = self.db.table(self.table).select("*").eq("id", config_id).limit(1).execute()
             
-            if response.data:
-                config = response.data
-                if config.get("c_lojas"):
-                    config["store_name"] = config["c_lojas"]["nome"]
-                    del config["c_lojas"]
+            if response.data and len(response.data) > 0:
+                config = response.data[0]
+                
+                # CORRIGIR: Mapear loja_id para store_id
+                if "loja_id" in config:
+                    config["store_id"] = config["loja_id"]
+                
+                # Buscar nome da loja separadamente
+                try:
+                    loja_id = config.get("loja_id") or config.get("store_id")
+                    if loja_id:
+                        loja = self.db.table("c_lojas").select("nome").eq("id", loja_id).limit(1).execute()
+                        if loja.data and len(loja.data) > 0:
+                            config["store_name"] = loja.data[0]["nome"]
+                        else:
+                            config["store_name"] = "Loja Não Encontrada"
+                    else:
+                        config["store_name"] = "Sem Loja Associada"
+                except:
+                    config["store_name"] = "Erro ao buscar loja"
                 return config
             
             return None
@@ -73,17 +92,23 @@ class ConfigLojaRepository:
     ) -> tuple[list[Dict[str, Any]], int]:
         """Lista configurações com filtros e paginação"""
         try:
+            # Seleciona campos usando os nomes reais das colunas no banco (inglês)
+            campos_selecionados = [
+                "id", "loja_id", "created_at", "updated_at", "updated_by",
+                "discount_limit_vendor", "discount_limit_manager", "discount_limit_admin_master",
+                "default_measurement_value", "freight_percentage", "assembly_percentage",
+                "executive_project_percentage", "initial_number", "number_format", "number_prefix"
+            ]
+            
             query = self.db.table(self.table).select(
-                "*",
-                "c_lojas!store_id(id, nome)",
+                ", ".join(campos_selecionados),  # Converte a lista em string para o select
                 count="exact"
             )
             
             # Aplicar filtros se fornecidos  
             if filtros:
                 if filtros.get("store_id"):
-                    query = query.eq("store_id", filtros["store_id"])
-                # Filtro para SUPER_ADMIN vs outros perfis pode ser adicionado aqui
+                    query = query.eq("loja_id", filtros["store_id"])
             
             # Ordenação e paginação
             offset = (page - 1) * limit
@@ -92,13 +117,26 @@ class ConfigLojaRepository:
             
             response = query.execute()
             
-            # Processar dados com JOIN
+            # Mapear dados diretos (colunas já estão em inglês)
             configs = []
-            for config in response.data:
-                if config.get("c_lojas"):
-                    config["store_name"] = config["c_lojas"]["nome"]
-                    del config["c_lojas"]
-                configs.append(config)
+            for config in response.data or []:
+                config_mapeado = {
+                    "id": config.get("id"),
+                    "store_id": config.get("loja_id"),  # Só precisa mapear loja_id -> store_id
+                    "created_at": config.get("created_at"),
+                    "updated_at": config.get("updated_at"),
+                    "discount_limit_vendor": config.get("discount_limit_vendor", 0),
+                    "discount_limit_manager": config.get("discount_limit_manager", 0),
+                    "discount_limit_admin_master": config.get("discount_limit_admin_master", 0),
+                    "default_measurement_value": config.get("default_measurement_value", 120.00),
+                    "freight_percentage": config.get("freight_percentage", 0),
+                    "assembly_percentage": config.get("assembly_percentage", 0.0),
+                    "executive_project_percentage": config.get("executive_project_percentage", 0.0),
+                    "initial_number": config.get("initial_number", 1001),
+                    "number_format": config.get("number_format", "YYYY-NNNNNN"),
+                    "number_prefix": config.get("number_prefix", "ORC")
+                }
+                configs.append(config_mapeado)
             
             return configs, response.count or 0
             
@@ -108,8 +146,6 @@ class ConfigLojaRepository:
     def criar(self, dados: Dict[str, Any]) -> Dict[str, Any]:
         """Cria nova configuração de loja"""
         try:
-            # Remove deflator_cost se existir (campo será removido)
-            dados.pop("deflator_cost", None)
             
             response = self.db.table(self.table).insert(dados).execute()
             
@@ -124,9 +160,8 @@ class ConfigLojaRepository:
     def atualizar(self, config_id: str, dados: Dict[str, Any]) -> Dict[str, Any]:
         """Atualiza configuração existente"""
         try:
-            # Remove campos None e deflator_cost
+            # Remove campos None
             dados_limpos = {k: v for k, v in dados.items() if v is not None}
-            dados_limpos.pop("deflator_cost", None)
             
             if not dados_limpos:
                 raise ValueError("Nenhum campo para atualizar")
@@ -161,12 +196,12 @@ class ConfigLojaRepository:
             raise DatabaseException(f"Erro ao deletar configuração: {str(e)}")
     
     def desativar(self, config_id: str) -> bool:
-        """Desativa configuração (marca como inativa)"""
+        """Desativa configuração (soft delete)"""
         try:
-            # Por enquanto usa hard delete até confirmar estrutura da tabela
-            response = self.db.table(self.table).delete().eq(
-                "id", config_id
-            ).execute()
+            response = self.db.table(self.table).update({
+                "ativo": False,
+                "updated_at": "now()"
+            }).eq("id", config_id).execute()
             
             return len(response.data) > 0
             
@@ -177,7 +212,7 @@ class ConfigLojaRepository:
         """Verifica se a loja já tem configuração"""
         try:
             response = self.db.table(self.table).select("id").eq(
-                "store_id", store_id
+                "loja_id", store_id
             ).execute()
             
             return len(response.data) > 0
@@ -189,8 +224,8 @@ class ConfigLojaRepository:
         """Verifica se store já tem configuração e retorna detalhes"""
         try:
             response = self.db.table(self.table).select(
-                "id, store_id, created_at"
-            ).eq("store_id", store_id).execute()
+                "id, loja_id, created_at"
+            ).eq("loja_id", store_id).execute()
             
             return {
                 "existe": len(response.data) > 0,

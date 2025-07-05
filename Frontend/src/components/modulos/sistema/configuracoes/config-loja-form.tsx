@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,17 +16,25 @@ interface ConfigLojaFormProps {
   loading?: boolean;
 }
 
-export function ConfigLojaForm({
+const ConfigLojaFormComponent = ({
   formData,
   onFormDataChange,
   onSubmit,
   onCancel,
   isEditing,
   loading = false
-}: ConfigLojaFormProps) {
+}: ConfigLojaFormProps) => {
   const { obterLojas, gerarExemploNumeracao } = useConfigLoja();
-  
-  const stores = obterLojas();
+  const [stores, setStores] = useState<Array<{ id: string; name: string }>>([]);
+
+  // Carregar lojas na inicialização
+  useEffect(() => {
+    const carregarLojas = async () => {
+      const lojasData = await obterLojas();
+      setStores(lojasData);
+    };
+    carregarLojas();
+  }, []); // Remover dependência para evitar recarregamentos
 
   const handleChange = (field: keyof ConfiguracaoLojaFormData, value: any) => {
     onFormDataChange({
@@ -70,8 +78,6 @@ export function ConfigLojaForm({
         <h3 className="text-lg font-medium border-b pb-2">Configurações Financeiras</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-
           <div className="space-y-2">
             <Label htmlFor="freightPercentage">Percentual de Frete (%)</Label>
             <Input
@@ -82,6 +88,34 @@ export function ConfigLojaForm({
               step="0.1"
               value={formData.freightPercentage}
               onChange={(e) => handleChange('freightPercentage', Number(e.target.value))}
+              disabled={loading}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="assemblyPercentage">Percentual de Montagem (%)</Label>
+            <Input
+              id="assemblyPercentage"
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              value={formData.assemblyPercentage}
+              onChange={(e) => handleChange('assemblyPercentage', Number(e.target.value))}
+              disabled={loading}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="executiveProjectPercentage">Percentual de Projeto Executivo (%)</Label>
+            <Input
+              id="executiveProjectPercentage"
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              value={formData.executiveProjectPercentage}
+              onChange={(e) => handleChange('executiveProjectPercentage', Number(e.target.value))}
               disabled={loading}
             />
           </div>
@@ -233,4 +267,6 @@ export function ConfigLojaForm({
       </div>
     </form>
   );
-} 
+};
+
+export const ConfigLojaForm = React.memo(ConfigLojaFormComponent);

@@ -6,6 +6,7 @@
 
 import { API_CONFIG, FRONTEND_CONFIG, logConfig } from '@/lib/config';
 import type { Cliente, ClienteFormData, FiltrosCliente } from '@/types/cliente';
+import type { ConfiguracaoLoja, ConfiguracaoLojaFormData } from '@/types/sistema';
 
 // ============= TIPOS ALINHADOS COM BACKEND =============
 
@@ -626,6 +627,110 @@ class ApiClient {
     return payload;
   }
 
+  // ============= MÉTODOS ESPECÍFICOS PARA CONFIG_LOJA =============
+
+  // Listar configurações com filtros
+  async listarConfiguracoes(filtros?: { store_id?: string; page?: number; limit?: number }): Promise<ApiResponse<ApiListResponse<any>>> {
+    const params = new URLSearchParams();
+    
+    if (filtros?.store_id) params.append('store_id', filtros.store_id);
+    if (filtros?.page) params.append('page', filtros.page.toString());
+    if (filtros?.limit) params.append('limit', filtros.limit.toString());
+
+    let endpoint = '/api/v1/config-loja';
+    if (params.toString()) {
+      endpoint += `?${params.toString()}`;
+    }
+
+    return this.request<ApiListResponse<any>>(endpoint);
+  }
+
+  // Obter configuração por loja
+  async obterConfiguracaoPorLoja(storeId: string): Promise<ApiResponse<any>> {
+    const endpoint = `/api/v1/config-loja/loja/${storeId}`;
+    return this.request<any>(endpoint);
+  }
+
+  // Criar configuração padrão para loja
+  async criarConfiguracaoPadrao(storeId: string): Promise<ApiResponse<any>> {
+    const endpoint = `/api/v1/config-loja/loja/${storeId}/padrao`;
+    return this.request<any>(endpoint, {
+      method: 'POST',
+    });
+  }
+
+  // Criar nova configuração
+  async criarConfiguracao(dados: ConfiguracaoLojaFormData): Promise<ApiResponse<any>> {
+    const payload = this.mapearConfigLojaParaBackend(dados);
+    const endpoint = '/api/v1/config-loja';
+    return this.request<any>(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // Atualizar configuração existente
+  async atualizarConfiguracao(configId: string, dados: Partial<ConfiguracaoLojaFormData>): Promise<ApiResponse<any>> {
+    const payload = this.mapearConfigLojaParaBackend(dados);
+    const endpoint = `/api/v1/config-loja/${configId}`;
+    return this.request<any>(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // Excluir configuração
+  async excluirConfiguracao(configId: string): Promise<ApiResponse<void>> {
+    const endpoint = `/api/v1/config-loja/${configId}`;
+    return this.request<void>(endpoint, {
+      method: 'DELETE',
+    });
+  }
+
+  // Verificar se store já possui configuração
+  async verificarStoreConfiguracao(storeId: string): Promise<ApiResponse<any>> {
+    const endpoint = `/api/v1/config-loja/verificar-store/${storeId}`;
+    return this.request<any>(endpoint);
+  }
+
+  // Mapear dados do frontend para backend (camelCase → snake_case)
+  private mapearConfigLojaParaBackend(dados: Partial<ConfiguracaoLojaFormData>): any {
+    const payload: any = {};
+
+    if (dados.storeId !== undefined) payload.store_id = dados.storeId;
+    if (dados.discountLimitVendor !== undefined) payload.discount_limit_vendor = dados.discountLimitVendor;
+    if (dados.discountLimitManager !== undefined) payload.discount_limit_manager = dados.discountLimitManager;
+    if (dados.discountLimitAdminMaster !== undefined) payload.discount_limit_admin_master = dados.discountLimitAdminMaster;
+    if (dados.defaultMeasurementValue !== undefined) payload.default_measurement_value = dados.defaultMeasurementValue;
+    if (dados.freightPercentage !== undefined) payload.freight_percentage = dados.freightPercentage;
+    if (dados.assemblyPercentage !== undefined) payload.assembly_percentage = dados.assemblyPercentage;
+    if (dados.executiveProjectPercentage !== undefined) payload.executive_project_percentage = dados.executiveProjectPercentage;
+    if (dados.initialNumber !== undefined) payload.initial_number = dados.initialNumber;
+    if (dados.numberFormat !== undefined) payload.number_format = dados.numberFormat;
+    if (dados.numberPrefix !== undefined) payload.number_prefix = dados.numberPrefix;
+
+    return payload;
+  }
+
+  // Mapear dados do backend para frontend (snake_case → camelCase)
+  private mapearConfigLojaParaFrontend(dados: any): ConfiguracaoLoja {
+    return {
+      storeId: dados.store_id,
+      storeName: dados.store_name || dados.loja_nome || 'Loja Desconhecida',
+      discountLimitVendor: dados.discount_limit_vendor,
+      discountLimitManager: dados.discount_limit_manager,
+      discountLimitAdminMaster: dados.discount_limit_admin_master,
+      defaultMeasurementValue: dados.default_measurement_value,
+      freightPercentage: dados.freight_percentage,
+      assemblyPercentage: dados.assembly_percentage,
+      executiveProjectPercentage: dados.executive_project_percentage,
+      initialNumber: dados.initial_number,
+      numberFormat: dados.number_format,
+      numberPrefix: dados.number_prefix,
+      updatedAt: dados.updated_at || dados.updated_at || new Date().toISOString().split('T')[0],
+    };
+  }
+
   // ============= MÉTODOS DE AUTENTICAÇÃO =============
 
   // Renovar token de acesso
@@ -761,6 +866,9 @@ export function converterFormDataParaPayload(formData: ClienteFormData): Cliente
 // ============= INSTÂNCIA SINGLETON =============
 
 export const apiClient = new ApiClient();
+
+// Exportar a classe também para uso direto
+export { ApiClient };
 
 // ============= LOGS DE INICIALIZAÇÃO =============
 

@@ -22,7 +22,7 @@ class ConfigLojaService:
     def __init__(self, repository: ConfigLojaRepository):
         self.repository = repository
     
-    def obter_por_loja(self, store_id: UUID) -> Optional[ConfigLojaResponse]:
+    async def obter_por_loja(self, store_id: UUID) -> Optional[ConfigLojaResponse]:
         """Obtém configuração de uma loja específica"""
         config = self.repository.buscar_por_loja(str(store_id))
         
@@ -86,13 +86,13 @@ class ConfigLojaService:
             raise ValidationException("\n".join(erros))
         
         # Preparar dados para criação
-        dados_dict = dados.model_dump()
+        dados_dict = dados.model_dump(mode='json')
         
         # Criar configuração
         config_criada = self.repository.criar(dados_dict)
         
-        # Buscar com JOIN para retornar completo
-        return self.obter_por_id(config_criada["id"])
+        # Buscar com JOIN para retornar completo (convertendo UUID para string)
+        return self.obter_por_id(str(config_criada["id"]))
     
     def atualizar(
         self, 
@@ -105,7 +105,7 @@ class ConfigLojaService:
         config_atual = self.obter_por_id(config_id)
         
         # Preparar dados para update
-        dados_update = dados.model_dump(exclude_unset=True)
+        dados_update = dados.model_dump(mode='json', exclude_unset=True)
         
         if not dados_update:
             raise ValidationException("Nenhum campo para atualizar")
@@ -166,6 +166,8 @@ class ConfigLojaService:
             discount_limit_admin_master=50.0,
             default_measurement_value=120.0,
             freight_percentage=8.5,
+            assembly_percentage=12.0,
+            executive_project_percentage=5.0,
             initial_number=1001,
             number_format="YYYY-NNNNNN",
             number_prefix="ORC"
