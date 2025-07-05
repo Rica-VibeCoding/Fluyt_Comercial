@@ -24,7 +24,7 @@ export function ConfigLojaForm({
   isEditing,
   loading = false
 }: ConfigLojaFormProps) {
-  const { obterLojas, calcularImpactoMargem, gerarExemploNumeracao } = useConfigLoja();
+  const { obterLojas, gerarExemploNumeracao } = useConfigLoja();
   
   const stores = obterLojas();
 
@@ -40,7 +40,6 @@ export function ConfigLojaForm({
     onSubmit(formData);
   };
 
-  const marginImpact = calcularImpactoMargem(formData.deflatorCost);
   const exemploNumeracao = gerarExemploNumeracao(formData.numberPrefix, formData.numberFormat, formData.initialNumber);
 
   return (
@@ -71,22 +70,7 @@ export function ConfigLojaForm({
         <h3 className="text-lg font-medium border-b pb-2">Configurações Financeiras</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="deflatorCost">Deflator Custo Fábrica (%)</Label>
-            <Input
-              id="deflatorCost"
-              type="number"
-              min="0"
-              max="100"
-              step="0.1"
-              value={formData.deflatorCost}
-              onChange={(e) => handleChange('deflatorCost', Number(e.target.value))}
-              disabled={loading}
-            />
-            <div className="text-xs text-muted-foreground">
-              Impacto na margem: R$ {marginImpact.diferenca.toFixed(2)} por R$ 1.000
-            </div>
-          </div>
+
 
           <div className="space-y-2">
             <Label htmlFor="freightPercentage">Percentual de Frete (%)</Label>

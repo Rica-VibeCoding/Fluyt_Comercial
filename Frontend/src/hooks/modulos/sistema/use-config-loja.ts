@@ -14,7 +14,6 @@ const mockConfiguracoes: ConfiguracaoLoja[] = [
   {
     storeId: '1',
     storeName: 'Loja Centro',
-    deflatorCost: 15.5,
     discountLimitVendor: 10,
     discountLimitManager: 20,
     discountLimitAdminMaster: 50,
@@ -28,7 +27,6 @@ const mockConfiguracoes: ConfiguracaoLoja[] = [
   {
     storeId: '2',
     storeName: 'Loja Shopping Norte',
-    deflatorCost: 12.0,
     discountLimitVendor: 8,
     discountLimitManager: 18,
     discountLimitAdminMaster: 45,
@@ -42,7 +40,6 @@ const mockConfiguracoes: ConfiguracaoLoja[] = [
   {
     storeId: '3',
     storeName: 'Loja Sul',
-    deflatorCost: 18.0,
     discountLimitVendor: 12,
     discountLimitManager: 25,
     discountLimitAdminMaster: 55,
@@ -62,11 +59,6 @@ export function useConfigLoja() {
   // Validar configuração
   const validarConfiguracao = useCallback((dados: ConfiguracaoLojaFormData): string[] => {
     const erros: string[] = [];
-
-    // Validar deflator
-    if (dados.deflatorCost < 0 || dados.deflatorCost > 100) {
-      erros.push('Deflator deve estar entre 0% e 100%');
-    }
 
     // Validar limites de desconto (hierarquia)
     if (dados.discountLimitVendor > dados.discountLimitManager) {
@@ -153,19 +145,7 @@ export function useConfigLoja() {
     }
   }, [validarConfiguracao, setConfiguracoes]);
 
-  // Calcular impacto da margem
-  const calcularImpactoMargem = useCallback((deflator: number, valorBase: number = 1000) => {
-    const semDeflator = valorBase;
-    const comDeflator = valorBase * (1 - deflator / 100);
-    const diferenca = semDeflator - comDeflator;
-    
-    return {
-      semDeflator,
-      comDeflator,
-      diferenca,
-      percentualEconomia: deflator
-    };
-  }, []);
+
 
   // Gerar exemplo de numeração
   const gerarExemploNumeracao = useCallback((prefix: string, format: string, initialNumber: number): string => {
@@ -197,9 +177,6 @@ export function useConfigLoja() {
     totalLojas: mockLojas.length,
     lojasConfiguradas: configuracoes.length,
     lojasNaoConfiguradas: mockLojas.length - configuracoes.length,
-    deflatoresMedio: configuracoes.length > 0 
-      ? configuracoes.reduce((sum, config) => sum + config.deflatorCost, 0) / configuracoes.length
-      : 0,
     limiteDescontoMedio: configuracoes.length > 0
       ? configuracoes.reduce((sum, config) => sum + config.discountLimitVendor, 0) / configuracoes.length
       : 0
@@ -211,7 +188,6 @@ export function useConfigLoja() {
     estatisticas,
     obterConfiguracao,
     salvarConfiguracao,
-    calcularImpactoMargem,
     gerarExemploNumeracao,
     obterLojas,
     resetarDados,

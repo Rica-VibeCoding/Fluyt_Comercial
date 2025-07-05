@@ -148,7 +148,6 @@ export interface RegraComissaoFormData {
 export interface ConfiguracaoLoja {
   storeId: string;
   storeName: string;
-  deflatorCost: number;                 // Deflator Custo Fábrica (%)
   discountLimitVendor: number;          // Limite Vendedor (%)
   discountLimitManager: number;         // Limite Gerente (%)
   discountLimitAdminMaster: number;     // Limite Admin Master (%)
@@ -162,7 +161,6 @@ export interface ConfiguracaoLoja {
 
 export interface ConfiguracaoLojaFormData {
   storeId: string;
-  deflatorCost: number;
   discountLimitVendor: number;
   discountLimitManager: number;
   discountLimitAdminMaster: number;

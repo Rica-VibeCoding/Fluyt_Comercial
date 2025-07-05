@@ -15,7 +15,6 @@ export function ConfigLoja() {
     estatisticas,
     obterConfiguracao,
     salvarConfiguracao,
-    calcularImpactoMargem,
     gerarExemploNumeracao,
     obterLojas,
     resetarDados
@@ -24,7 +23,6 @@ export function ConfigLoja() {
   const [selectedStore, setSelectedStore] = useState('1');
   const [formData, setFormData] = useState<ConfiguracaoLojaFormData>({
     storeId: '1',
-    deflatorCost: 15.5,
     discountLimitVendor: 10,
     discountLimitManager: 20,
     discountLimitAdminMaster: 50,
@@ -43,7 +41,6 @@ export function ConfigLoja() {
     if (config) {
       setFormData({
         storeId: config.storeId,
-        deflatorCost: config.deflatorCost,
         discountLimitVendor: config.discountLimitVendor,
         discountLimitManager: config.discountLimitManager,
         discountLimitAdminMaster: config.discountLimitAdminMaster,
@@ -76,7 +73,6 @@ export function ConfigLoja() {
       if (config) {
         setFormData({
           storeId: config.storeId,
-          deflatorCost: config.deflatorCost,
           discountLimitVendor: config.discountLimitVendor,
           discountLimitManager: config.discountLimitManager,
           discountLimitAdminMaster: config.discountLimitAdminMaster,
@@ -90,7 +86,6 @@ export function ConfigLoja() {
     }
   };
 
-  const marginImpact = calcularImpactoMargem(formData.deflatorCost);
   const exemploNumeracao = gerarExemploNumeracao(formData.numberPrefix, formData.numberFormat, formData.initialNumber);
   const config = obterConfiguracao(selectedStore);
 
@@ -160,25 +155,7 @@ export function ConfigLoja() {
               Configurações Financeiras
             </h3>
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="deflatorCost" className="text-sm font-medium">
-                  Deflator Custo Fábrica (%)
-                </Label>
-                <Input
-                  id="deflatorCost"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.1"
-                  value={formData.deflatorCost}
-                  onChange={(e) => handleChange('deflatorCost', Number(e.target.value))}
-                  className="mt-1"
-                  disabled={loading}
-                />
-                <div className="text-xs text-muted-foreground mt-1">
-                  Impacto na margem: R$ {marginImpact.diferenca.toFixed(2)} por R$ 1.000
-                </div>
-              </div>
+
 
               <div>
                 <Label htmlFor="freightPercentage" className="text-sm font-medium">
