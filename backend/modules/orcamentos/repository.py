@@ -6,6 +6,7 @@ import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from uuid import UUID
+from decimal import Decimal
 
 from supabase import Client
 from core.exceptions import NotFoundException, DatabaseException, ConflictException
@@ -131,13 +132,23 @@ class OrcamentoRepository:
                 else:
                     dados['numero'] = "orc-0001"
             
-            # Define status padrão se não fornecido
-            if not dados.get('status_id'):
-                status_rascunho = self.db.table('c_status_orcamento').select('id').eq('nome', 'Rascunho').execute()
-                if status_rascunho.data:
-                    dados['status_id'] = status_rascunho.data[0]['id']
+            # Define status padrão se não fornecido - TEMPORARIAMENTE DESABILITADO
+            # if not dados.get('status_id'):
+            #     status_rascunho = self.db.table('c_status_orcamento').select('id').eq('nome', 'Rascunho').execute()
+            #     if status_rascunho.data:
+            #         dados['status_id'] = status_rascunho.data[0]['id']
             
-            result = self.db.table(self.table).insert(dados).execute()
+            # Converter todos os UUIDs e Decimals para tipos serializáveis antes de inserir
+            dados_convertidos = {}
+            for key, value in dados.items():
+                if isinstance(value, UUID):
+                    dados_convertidos[key] = str(value)
+                elif isinstance(value, Decimal):
+                    dados_convertidos[key] = float(value)
+                else:
+                    dados_convertidos[key] = value
+            
+            result = self.db.table(self.table).insert(dados_convertidos).execute()
             
             if not result.data:
                 raise DatabaseException("Erro ao criar orçamento")
@@ -154,8 +165,16 @@ class OrcamentoRepository:
             # Verifica se existe
             await self.buscar_por_id(orcamento_id)
             
-            # Remove campos None
-            dados_limpos = {k: v for k, v in dados.items() if v is not None}
+            # Remove campos None e converte tipos não serializáveis
+            dados_limpos = {}
+            for k, v in dados.items():
+                if v is not None:
+                    if isinstance(v, UUID):
+                        dados_limpos[k] = str(v)
+                    elif isinstance(v, Decimal):
+                        dados_limpos[k] = float(v)
+                    else:
+                        dados_limpos[k] = v
             
             result = self.db.table(self.table).update(dados_limpos).eq('id', orcamento_id).execute()
             

@@ -300,14 +300,19 @@ class OrcamentoService {
    * Converte dados do frontend para payload do backend
    */
   converterFrontendParaBackend(dados: any): OrcamentoCreatePayload {
+    // Garantir que todos os IDs sejam strings válidas
+    const converterParaString = (valor: any) => {
+      return valor ? String(valor) : undefined;
+    };
+    
     return {
-      cliente_id: dados.clienteId,
-      loja_id: dados.lojaId,
-      vendedor_id: dados.vendedorId,
-      aprovador_id: dados.aprovadorId,
-      medidor_selecionado_id: dados.medidorSelecionadoId,
-      montador_selecionado_id: dados.montadorSelecionadoId,
-      transportadora_selecionada_id: dados.transportadoraSelecionadaId,
+      cliente_id: converterParaString(dados.clienteId),
+      loja_id: converterParaString(dados.lojaId),
+      vendedor_id: converterParaString(dados.vendedorId),
+      aprovador_id: converterParaString(dados.aprovadorId),
+      medidor_selecionado_id: converterParaString(dados.medidorSelecionadoId),
+      montador_selecionado_id: converterParaString(dados.montadorSelecionadoId),
+      transportadora_selecionada_id: converterParaString(dados.transportadoraSelecionadaId),
       
       valor_ambientes: dados.valorAmbientes,
       desconto_percentual: dados.descontoPercentual,
@@ -322,7 +327,7 @@ class OrcamentoService {
       margem_lucro: dados.margemLucro,
       
       necessita_aprovacao: dados.necessitaAprovacao,
-      status_id: dados.statusId,
+      status_id: converterParaString(dados.statusId),
       observacoes: dados.observacoes,
     };
   }
