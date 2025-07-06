@@ -1,70 +1,63 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import type { RegraComissao, RegraComissaoFormData } from '@/types/sistema';
-import { useLocalStorage } from '@/hooks/globais/use-local-storage';
-
-// Mock data para desenvolvimento
-const mockRegrasComissao: RegraComissao[] = [
-  {
-    id: '1',
-    tipo: 'VENDEDOR',
-    ordem: 1,
-    valorMinimo: 0,
-    valorMaximo: 50000,
-    percentual: 2.5,
-    ativo: true,
-    descricao: 'Comissão básica para vendas até R$ 50.000',
-    createdAt: '2024-01-10T10:00:00Z'
-  },
-  {
-    id: '2',
-    tipo: 'VENDEDOR',
-    ordem: 2,
-    valorMinimo: 50001,
-    valorMaximo: 100000,
-    percentual: 3.0,
-    ativo: true,
-    descricao: 'Comissão intermediária para vendas de R$ 50.001 a R$ 100.000',
-    createdAt: '2024-01-10T10:00:00Z'
-  },
-  {
-    id: '3',
-    tipo: 'VENDEDOR',
-    ordem: 3,
-    valorMinimo: 100001,
-    valorMaximo: null,
-    percentual: 3.5,
-    ativo: true,
-    descricao: 'Comissão premium para vendas acima de R$ 100.000',
-    createdAt: '2024-01-10T10:00:00Z'
-  },
-  {
-    id: '4',
-    tipo: 'GERENTE',
-    ordem: 1,
-    valorMinimo: 0,
-    valorMaximo: 200000,
-    percentual: 1.5,
-    ativo: true,
-    descricao: 'Comissão de gerência para vendas da equipe até R$ 200.000',
-    createdAt: '2024-01-15T10:00:00Z'
-  },
-  {
-    id: '5',
-    tipo: 'GERENTE',
-    ordem: 2,
-    valorMinimo: 200001,
-    valorMaximo: null,
-    percentual: 2.0,
-    ativo: true,
-    descricao: 'Comissão de gerência para vendas da equipe acima de R$ 200.000',
-    createdAt: '2024-01-15T10:00:00Z'
-  }
-];
+import { apiClient } from '@/services/api-client';
 
 export function useComissoes() {
-  const [regrasComissao, setRegrasComissao, clearRegrasComissao] = useLocalStorage<RegraComissao[]>('fluyt_regras_comissao', mockRegrasComissao);
+  const [regrasComissao, setRegrasComissao] = useState<RegraComissao[]>([]);
   const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Carregar regras da API
+  const carregarRegras = useCallback(async (filtros?: any) => {
+    if (loading) {
+      console.log('🔄 Carregamento já em andamento, ignorando nova chamada');
+      return;
+    }
+
+    setLoading(true);
+    setErro(null);
+
+    try {
+      const response = await apiClient.listarComissoes(filtros);
+      
+      if (response.success && response.data) {
+        // Mapear dados do backend para formato frontend
+        const regras = response.data.items.map(item => ({
+          id: item.id,
+          tipo: item.tipo_comissao,
+          ordem: item.ordem,
+          valorMinimo: item.valor_minimo,
+          valorMaximo: item.valor_maximo,
+          percentual: item.percentual,
+          ativo: item.ativo,
+          descricao: item.descricao,
+          createdAt: item.created_at,
+          updatedAt: item.updated_at
+        }));
+        
+        setRegrasComissao(regras);
+        setIsInitialized(true);
+      } else {
+        throw new Error(response.error || 'Erro ao carregar regras de comissão');
+      }
+    } catch (error: any) {
+      const mensagemErro = error.message || 'Erro ao carregar regras de comissão';
+      setErro(mensagemErro);
+      toast.error(mensagemErro);
+      setRegrasComissao([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [loading]);
+
+  // Carregar regras ao montar componente
+  useEffect(() => {
+    if (!isInitialized && !loading) {
+      carregarRegras();
+    }
+  }, [carregarRegras, isInitialized, loading]);
 
   // Validar dados da regra de comissão
   const validarRegraComissao = useCallback((dados: RegraComissaoFormData): string[] => {
@@ -103,7 +96,6 @@ export function useComissoes() {
       const existenteMin = regra.valorMinimo;
       const existenteMax = regra.valorMaximo || Infinity;
 
-      // Verificar se há sobreposição
       return !(novoMax < existenteMin || novoMin > existenteMax);
     });
   }, [regrasComissao]);
@@ -119,7 +111,7 @@ export function useComissoes() {
     setLoading(true);
     
     try {
-      // Validações
+      // Validações locais
       const erros = validarRegraComissao(dados);
       
       if (verificarSobreposicaoFaixas(dados)) {
@@ -131,35 +123,43 @@ export function useComissoes() {
         return false;
       }
 
-      // Simular API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      const novaRegra: RegraComissao = {
-        id: Date.now().toString(),
-        ...dados,
+      // Preparar dados para API (mapear para snake_case)
+      const dadosAPI = {
+        loja_id: '317c3115-e071-40a6-9bc5-7c3227e0d82c', // TODO: obter da sessão
+        tipo_comissao: dados.tipo,
+        valor_minimo: dados.valorMinimo,
+        valor_maximo: dados.valorMaximo,
+        percentual: dados.percentual,
         ordem: gerarProximaOrdem(dados.tipo),
         ativo: true,
-        createdAt: new Date().toISOString()
+        descricao: dados.descricao
       };
 
-      setRegrasComissao(prev => [...prev, novaRegra]);
-      toast.success('Regra de comissão criada com sucesso!');
-      return true;
+      const response = await apiClient.criarComissao(dadosAPI);
+      
+      if (response.success) {
+        await carregarRegras();
+        toast.success('Regra de comissão criada com sucesso!');
+        return true;
+      } else {
+        throw new Error(response.error || 'Erro ao criar regra');
+      }
 
-    } catch (error) {
-      toast.error('Erro ao criar regra de comissão');
+    } catch (error: any) {
+      const mensagemErro = error.message || 'Erro ao criar regra de comissão';
+      toast.error(mensagemErro);
       return false;
     } finally {
       setLoading(false);
     }
-  }, [validarRegraComissao, verificarSobreposicaoFaixas, gerarProximaOrdem]);
+  }, [validarRegraComissao, verificarSobreposicaoFaixas, gerarProximaOrdem, carregarRegras]);
 
   // Atualizar regra de comissão
   const atualizarRegraComissao = useCallback(async (id: string, dados: RegraComissaoFormData): Promise<boolean> => {
     setLoading(true);
     
     try {
-      // Validações
+      // Validações locais
       const erros = validarRegraComissao(dados);
       
       if (verificarSobreposicaoFaixas(dados, id)) {
@@ -171,50 +171,57 @@ export function useComissoes() {
         return false;
       }
 
-      // Simular API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Preparar dados para API
+      const dadosAPI = {
+        tipo_comissao: dados.tipo,
+        valor_minimo: dados.valorMinimo,
+        valor_maximo: dados.valorMaximo,
+        percentual: dados.percentual,
+        descricao: dados.descricao
+      };
 
-      setRegrasComissao(prev => prev.map(regra => 
-        regra.id === id 
-          ? { ...regra, ...dados, updatedAt: new Date().toISOString() }
-          : regra
-      ));
+      const response = await apiClient.atualizarComissao(id, dadosAPI);
+      
+      if (response.success) {
+        await carregarRegras();
+        toast.success('Regra de comissão atualizada com sucesso!');
+        return true;
+      } else {
+        throw new Error(response.error || 'Erro ao atualizar regra');
+      }
 
-      toast.success('Regra de comissão atualizada com sucesso!');
-      return true;
-
-    } catch (error) {
-      toast.error('Erro ao atualizar regra de comissão');
+    } catch (error: any) {
+      const mensagemErro = error.message || 'Erro ao atualizar regra de comissão';
+      toast.error(mensagemErro);
       return false;
     } finally {
       setLoading(false);
     }
-  }, [validarRegraComissao, verificarSobreposicaoFaixas]);
+  }, [validarRegraComissao, verificarSobreposicaoFaixas, carregarRegras]);
 
   // Alternar status da regra
   const alternarStatusRegra = useCallback(async (id: string): Promise<void> => {
     setLoading(true);
     
     try {
-      // Simular API call
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = await apiClient.alternarStatusComissao(id);
+      
+      if (response.success) {
+        await carregarRegras();
+        const regra = regrasComissao.find(r => r.id === id);
+        const novoStatus = !regra?.ativo ? 'ativada' : 'desativada';
+        toast.success(`Regra ${novoStatus} com sucesso!`);
+      } else {
+        throw new Error(response.error || 'Erro ao alterar status');
+      }
 
-      setRegrasComissao(prev => prev.map(regra => 
-        regra.id === id 
-          ? { ...regra, ativo: !regra.ativo, updatedAt: new Date().toISOString() }
-          : regra
-      ));
-
-      const regra = regrasComissao.find(r => r.id === id);
-      const novoStatus = !regra?.ativo ? 'ativada' : 'desativada';
-      toast.success(`Regra ${novoStatus} com sucesso!`);
-
-    } catch (error) {
-      toast.error('Erro ao alterar status da regra');
+    } catch (error: any) {
+      const mensagemErro = error.message || 'Erro ao alterar status da regra';
+      toast.error(mensagemErro);
     } finally {
       setLoading(false);
     }
-  }, [regrasComissao]);
+  }, [regrasComissao, carregarRegras]);
 
   // Excluir regra de comissão
   const excluirRegraComissao = useCallback(async (id: string): Promise<boolean> => {
@@ -228,20 +235,24 @@ export function useComissoes() {
     setLoading(true);
     
     try {
-      // Simular API call
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const response = await apiClient.excluirComissao(id);
+      
+      if (response.success) {
+        await carregarRegras();
+        toast.success('Regra de comissão excluída com sucesso!');
+        return true;
+      } else {
+        throw new Error(response.error || 'Erro ao excluir regra');
+      }
 
-      setRegrasComissao(prev => prev.filter(r => r.id !== id));
-      toast.success('Regra de comissão excluída com sucesso!');
-      return true;
-
-    } catch (error) {
-      toast.error('Erro ao excluir regra de comissão');
+    } catch (error: any) {
+      const mensagemErro = error.message || 'Erro ao excluir regra de comissão';
+      toast.error(mensagemErro);
       return false;
     } finally {
       setLoading(false);
     }
-  }, [regrasComissao]);
+  }, [regrasComissao, carregarRegras]);
 
   // Obter regras por tipo
   const obterRegrasPorTipo = useCallback((tipo: string): RegraComissao[] => {
@@ -251,22 +262,23 @@ export function useComissoes() {
   }, [regrasComissao]);
 
   // Calcular comissão
-  const calcularComissao = useCallback((valor: number, tipo: string): { percentual: number; valor: number; regraId: string } | null => {
-    const regrasAplicaveis = obterRegrasPorTipo(tipo);
-    
-    for (const regra of regrasAplicaveis) {
-      const valorMax = regra.valorMaximo || Infinity;
-      if (valor >= regra.valorMinimo && valor <= valorMax) {
+  const calcularComissao = useCallback(async (valor: number, tipo: string): Promise<{ percentual: number; valor: number; regraId: string } | null> => {
+    try {
+      const response = await apiClient.calcularComissao(valor, tipo, '317c3115-e071-40a6-9bc5-7c3227e0d82c');
+      
+      if (response.success && response.data) {
         return {
-          percentual: regra.percentual,
-          valor: (valor * regra.percentual) / 100,
-          regraId: regra.id
+          percentual: response.data.percentual_aplicado,
+          valor: response.data.valor_comissao,
+          regraId: response.data.regra_id
         };
       }
+    } catch (error) {
+      console.error('Erro ao calcular comissão:', error);
     }
     
     return null;
-  }, [obterRegrasPorTipo]);
+  }, []);
 
   // Buscar regras
   const buscarRegras = useCallback((termo: string): RegraComissao[] => {
@@ -280,7 +292,7 @@ export function useComissoes() {
     );
   }, [regrasComissao]);
 
-  // Estadísticas
+  // Estatísticas
   const estatisticas = {
     total: regrasComissao.length,
     ativas: regrasComissao.filter(r => r.ativo).length,
@@ -292,15 +304,19 @@ export function useComissoes() {
       : 0
   };
 
-  // Resetar dados para mock inicial
+  // Resetar dados para recarregar
   const resetarDados = useCallback(() => {
-    clearRegrasComissao();
-    toast.success('Dados resetados para configuração inicial!');
-  }, [clearRegrasComissao]);
+    setRegrasComissao([]);
+    setIsInitialized(false);
+    setErro(null);
+    carregarRegras();
+    toast.success('Dados recarregados do servidor!');
+  }, [carregarRegras]);
 
   return {
     regrasComissao,
     loading,
+    erro,
     estatisticas,
     criarRegraComissao,
     atualizarRegraComissao,

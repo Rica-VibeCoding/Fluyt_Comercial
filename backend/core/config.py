@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     api_prefix: str = "/api/v1"
     
     # ===== CORS =====
-    cors_origins: str = "http://localhost:3000"
+    cors_origins: str = "http://localhost:3000,http://localhost:8080,http://localhost:5500,http://127.0.0.1:3000,http://127.0.0.1:8080,http://127.0.0.1:5500,file://"
     
     # ===== LIMITES =====
     max_file_size_mb: int = 10

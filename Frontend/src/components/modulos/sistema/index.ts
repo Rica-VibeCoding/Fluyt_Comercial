@@ -36,3 +36,6 @@ export { TesteConectividade } from './configuracoes/teste-conectividade';
 
 // Colaboradores (substitui Prestadores)
 export { GestaoTiposColaboradores, GestaoColaboradoresIndividuais } from './colaboradores';
+
+// Status de Orçamento
+export { GestaoStatusOrcamento } from './status-orcamento';

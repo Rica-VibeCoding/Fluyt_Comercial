@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Users, DollarSign, Settings, FileText, Building2, Store, UserCog, Layers } from 'lucide-react';
 import Link from 'next/link';
-import { GestaoEmpresas, GestaoLojas, GestaoEquipe, GestaoSetores, GestaoComissoes, GestaoConfigLoja, GestaoTiposColaboradores, GestaoColaboradoresIndividuais } from '@/components/modulos/sistema';
+import { GestaoEmpresas, GestaoLojas, GestaoEquipe, GestaoSetores, GestaoComissoes, GestaoConfigLoja, GestaoTiposColaboradores, GestaoColaboradoresIndividuais, GestaoStatusOrcamento } from '@/components/modulos/sistema';
 import { ResetDados } from '@/components/modulos/sistema/configuracoes/reset-dados';
 import { TesteConectividade } from '@/components/modulos/sistema/configuracoes/teste-conectividade';
 
@@ -102,16 +102,7 @@ export default function ConfiguracoesPage() {
       case 'configuracoes-config-loja':
         return <GestaoConfigLoja />;
       case 'configuracoes-status':
-        return (
-          <Card className="shadow-md border-0 bg-white">
-            <CardContent className="p-6">
-              <div className="text-center text-muted-foreground">
-                <div className="text-lg font-medium mb-2">Status de Orçamento</div>
-                <p>Funcionalidade em desenvolvimento</p>
-              </div>
-            </CardContent>
-          </Card>
-        );
+        return <GestaoStatusOrcamento />;
       case 'operacional-tipos-colaboradores':
         return <GestaoTiposColaboradores />;
       case 'operacional-colaboradores-individuais':

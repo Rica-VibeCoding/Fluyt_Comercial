@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste DELETE Comissões</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .result { margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 3px; }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e9; color: #2e7d32; }
+        .warning { background: #fff3e0; color: #ef6c00; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        input { padding: 8px; margin: 5px; width: 300px; }
+        .log { background: #f8f9fa; padding: 10px; margin: 10px 0; border-left: 4px solid #007bff; font-family: monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Teste DELETE Comissões - API Backend</h1>
+        
+        <div class="test-section">
+            <h2>1. Configuração</h2>
+            <label>URL da API: <input type="text" id="apiUrl" value="http://localhost:8000/api/v1/comissoes"></label><br>
+            <label>Token de Auth: <input type="text" id="authToken" placeholder="Bearer token (opcional)"></label><br>
+            <button onclick="testConnection()">Testar Conexão</button>
+            <div id="connectionResult" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>2. Listar Comissões</h2>
+            <button onclick="listComissoes()">Listar Comissões</button>
+            <div id="listResult" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>3. Criar Comissão de Teste</h2>
+            <button onclick="createTestComissao()">Criar Comissão</button>
+            <div id="createResult" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>4. Testar DELETE</h2>
+            <label>ID da Comissão: <input type="text" id="comissaoId" placeholder="UUID da comissão"></label><br>
+            <button onclick="deleteComissao()">Deletar Comissão</button>
+            <button onclick="deleteInexistente()">Deletar ID Inexistente</button>
+            <div id="deleteResult" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>5. Log de Requisições</h2>
+            <button onclick="clearLog()">Limpar Log</button>
+            <div id="requestLog"></div>
+        </div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('requestLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'warning';
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = `log ${className}`;
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function clearLog() {
+            document.getElementById('requestLog').innerHTML = '';
+        }
+        
+        function getApiUrl() {
+            return document.getElementById('apiUrl').value;
+        }
+        
+        function getAuthHeaders() {
+            const token = document.getElementById('authToken').value.trim();
+            const headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            };
+            
+            if (token) {
+                headers['Authorization'] = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+            }
+            
+            return headers;
+        }
+        
+        async function makeRequest(url, options = {}) {
+            const fullUrl = url.startsWith('http') ? url : `${getApiUrl()}${url}`;
+            
+            try {
+                log(`${options.method || 'GET'} ${fullUrl}`, 'info');
+                
+                const response = await fetch(fullUrl, {
+                    ...options,
+                    headers: {
+                        ...getAuthHeaders(),
+                        ...options.headers
+                    }
+                });
+                
+                const responseText = await response.text();
+                let responseData;
+                
+                try {
+                    responseData = JSON.parse(responseText);
+                } catch {
+                    responseData = responseText;
+                }
+                
+                log(`Response: ${response.status} - ${JSON.stringify(responseData, null, 2)}`, 
+                    response.ok ? 'success' : 'error');
+                
+                return {
+                    ok: response.ok,
+                    status: response.status,
+                    data: responseData
+                };
+                
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+                return {
+                    ok: false,
+                    status: 0,
+                    error: error.message
+                };
+            }
+        }
+        
+        async function testConnection() {
+            const result = await makeRequest('/health');
+            const resultDiv = document.getElementById('connectionResult');
+            
+            if (result.ok) {
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = `✅ Conexão OK - Status: ${result.status}`;
+            } else {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Falha na conexão - Status: ${result.status}`;
+            }
+        }
+        
+        async function listComissoes() {
+            const result = await makeRequest('');
+            const resultDiv = document.getElementById('listResult');
+            
+            if (result.ok) {
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = `✅ Listagem OK - ${result.data.total || 0} comissões encontradas`;
+                
+                if (result.data.items && result.data.items.length > 0) {
+                    document.getElementById('comissaoId').value = result.data.items[0].id;
+                }
+            } else {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Falha na listagem - Status: ${result.status}`;
+            }
+        }
+        
+        async function createTestComissao() {
+            const testData = {
+                loja_id: "123e4567-e89b-12d3-a456-426614174000",
+                tipo_comissao: "VENDEDOR",
+                valor_minimo: 0,
+                valor_maximo: 1000,
+                percentual: 5.0,
+                ordem: 1,
+                ativo: true,
+                descricao: "Teste DELETE"
+            };
+            
+            const result = await makeRequest('', {
+                method: 'POST',
+                body: JSON.stringify(testData)
+            });
+            
+            const resultDiv = document.getElementById('createResult');
+            
+            if (result.ok) {
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = `✅ Comissão criada - ID: ${result.data.id}`;
+                document.getElementById('comissaoId').value = result.data.id;
+            } else {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Falha na criação - Status: ${result.status}<br>Erro: ${JSON.stringify(result.data)}`;
+            }
+        }
+        
+        async function deleteComissao() {
+            const comissaoId = document.getElementById('comissaoId').value.trim();
+            
+            if (!comissaoId) {
+                alert('Por favor, informe o ID da comissão');
+                return;
+            }
+            
+            const result = await makeRequest(`/${comissaoId}`, {
+                method: 'DELETE'
+            });
+            
+            const resultDiv = document.getElementById('deleteResult');
+            
+            if (result.ok || result.status === 204) {
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = `✅ DELETE OK - Status: ${result.status}`;
+            } else if (result.status === 404) {
+                resultDiv.className = 'result warning';
+                resultDiv.innerHTML = `⚠️ Comissão não encontrada - Status: ${result.status}`;
+            } else {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Falha no DELETE - Status: ${result.status}<br>Erro: ${JSON.stringify(result.data)}`;
+            }
+        }
+        
+        async function deleteInexistente() {
+            const result = await makeRequest('/00000000-0000-0000-0000-000000000000', {
+                method: 'DELETE'
+            });
+            
+            const resultDiv = document.getElementById('deleteResult');
+            
+            if (result.status === 404) {
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = `✅ DELETE retornou 404 corretamente para ID inexistente`;
+            } else {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ DELETE deveria retornar 404 - Status: ${result.status}`;
+            }
+        }
+        
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            log('Página carregada. Configurar URL da API e testar conexão.', 'info');
+        });
+    </script>
+</body>
+</html>

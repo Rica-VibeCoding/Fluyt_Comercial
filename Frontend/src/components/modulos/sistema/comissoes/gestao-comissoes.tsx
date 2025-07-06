@@ -19,7 +19,6 @@ export function GestaoComissoes() {
     estatisticas,
     criarRegraComissao,
     atualizarRegraComissao,
-    alternarStatusRegra,
     excluirRegraComissao,
     buscarRegras
   } = useComissoes();
@@ -235,7 +234,8 @@ export function GestaoComissoes() {
                                 <Textarea 
                                   placeholder="Descrição da regra de comissão..."
                                   className="min-h-[60px] text-sm border-slate-300 focus:border-slate-400"
-                                  {...field} 
+                                  {...field}
+                                  value={field.value || ''}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -282,7 +282,6 @@ export function GestaoComissoes() {
         regras={regrasFiltradas}
         onEdit={handleEdit}
         onDelete={excluirRegraComissao}
-        onToggleStatus={alternarStatusRegra}
         loading={loading}
       />
     </div>

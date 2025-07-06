@@ -181,19 +181,18 @@ export interface ConfiguracaoLojaFormData {
 // ========================================
 export interface StatusOrcamento extends BaseEntity {
   nome: string;
-  cor: string;
-  descricao: string;
+  descricao?: string;
+  cor?: string;
   ordem: number;
   ativo: boolean;
-  estadoFinal: boolean; // Se é um estado final do processo
 }
 
 export interface StatusOrcamentoFormData {
   nome: string;
-  cor: string;
-  descricao: string;
+  descricao?: string;
+  cor?: string;
   ordem: number;
-  estadoFinal: boolean;
+  ativo?: boolean;
 }
 
 // ========================================

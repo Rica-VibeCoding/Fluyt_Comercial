@@ -64,10 +64,14 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# CORS Middleware
+# CORS Middleware - Permitir arquivos locais para debug
+cors_origins = settings.cors_origins_list
+if settings.is_development:
+    cors_origins.extend(["*"])  # Permite qualquer origem em desenvolvimento
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
+    allow_origins=["*"] if settings.is_development else settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -207,6 +211,7 @@ from modules.ambientes.controller import router as ambientes_router
 from modules.colaboradores.controller import router as colaboradores_router, colaboradores_router as colaboradores_individuais_router
 from modules.orcamentos.controller import router as orcamentos_router, forma_router as formas_pagamento_router
 from modules.config_loja.controller import router as config_loja_router
+from modules.comissoes.controller import router as comissoes_router
 
 # Registrar routers na aplicação
 app.include_router(auth_router, prefix="/api/v1/auth")
@@ -222,6 +227,7 @@ app.include_router(colaboradores_individuais_router, prefix="/api/v1")
 app.include_router(orcamentos_router, prefix="/api/v1")
 app.include_router(formas_pagamento_router, prefix="/api/v1")
 app.include_router(config_loja_router, prefix="/api/v1")
+app.include_router(comissoes_router)
 
 
 # Execução direta (desenvolvimento)

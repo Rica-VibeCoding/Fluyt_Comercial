@@ -30,6 +30,7 @@ export const API_CONFIG = {
     ORCAMENTOS: '/api/v1/orcamentos',
     STATUS_ORCAMENTO: '/api/v1/status-orcamento',
     FORMAS_PAGAMENTO: '/api/v1/formas-pagamento',
+    COMISSOES: '/api/v1/comissoes/',
     DOCS: '/api/v1/docs',
   }
 } as const;

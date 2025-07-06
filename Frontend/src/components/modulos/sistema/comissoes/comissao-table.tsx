@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Switch } from '@/components/ui/switch';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -21,15 +20,13 @@ interface ComissaoTableProps {
   regras: RegraComissao[];
   onEdit: (regra: RegraComissao) => void;
   onDelete: (id: string) => void;
-  onToggleStatus: (id: string) => void;
   loading?: boolean;
 }
 
 export function ComissaoTable({ 
   regras, 
   onEdit, 
-  onDelete, 
-  onToggleStatus,
+  onDelete,
   loading = false 
 }: ComissaoTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -100,7 +97,6 @@ export function ComissaoTable({
             <TableHead className="font-semibold text-slate-700 h-10">Tipo</TableHead>
             <TableHead className="font-semibold text-slate-700 h-10">Faixa de Valores</TableHead>
             <TableHead className="font-semibold text-slate-700 h-10">Comissão</TableHead>
-            <TableHead className="font-semibold text-slate-700 h-10">Status</TableHead>
             <TableHead className="text-right font-semibold text-slate-700 h-10">Ações</TableHead>
           </TableRow>
         </TableHeader>
@@ -151,21 +147,6 @@ export function ComissaoTable({
                   </div>
                 </TableCell>
 
-                {/* Status */}
-                <TableCell className="py-2">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={regra.ativo}
-                      onCheckedChange={() => onToggleStatus(regra.id)}
-                      className="data-[state=checked]:bg-slate-600"
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    <Badge variant={regra.ativo ? "default" : "secondary"} className={regra.ativo ? "bg-slate-600 hover:bg-slate-700" : ""}>
-                      {regra.ativo ? 'Ativa' : 'Inativa'}
-                    </Badge>
-                  </div>
-                </TableCell>
-
                 {/* Ações */}
                 <TableCell className="text-right py-2" onClick={(e) => e.stopPropagation()}>
                   <div className="flex justify-end gap-2">
@@ -213,7 +194,7 @@ export function ComissaoTable({
               {/* LINHA EXPANDIDA COM DETALHES */}
               {expandedRows.has(regra.id) && (
                 <TableRow key={`${regra.id}-expanded`} className="bg-blue-50/20 hover:bg-blue-50/30">
-                  <TableCell colSpan={7} className="py-4">
+                  <TableCell colSpan={6} className="py-4">
                     <div className="pl-4">
                       {/* Layout Grid Responsivo - Mais denso */}
                       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
@@ -276,17 +257,6 @@ export function ComissaoTable({
                             </span>
                           </div>
 
-                          {/* Status Visual */}
-                          <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${regra.ativo ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                            <span className="text-xs font-medium text-slate-600 min-w-[50px]">Status:</span>
-                            <Badge 
-                              variant={regra.ativo ? "default" : "secondary"} 
-                              className={`text-xs ${regra.ativo ? "bg-green-600 hover:bg-green-700" : ""}`}
-                            >
-                              {regra.ativo ? 'Ativa' : 'Inativa'}
-                            </Badge>
-                          </div>
                         </div>
 
                       </div>

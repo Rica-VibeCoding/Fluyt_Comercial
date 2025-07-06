@@ -6,7 +6,7 @@
 
 import { API_CONFIG, FRONTEND_CONFIG, logConfig } from '@/lib/config';
 import type { Cliente, ClienteFormData, FiltrosCliente } from '@/types/cliente';
-import type { ConfiguracaoLoja, ConfiguracaoLojaFormData } from '@/types/sistema';
+import type { ConfiguracaoLoja, ConfiguracaoLojaFormData, StatusOrcamento, StatusOrcamentoFormData } from '@/types/sistema';
 
 // ============= TIPOS ALINHADOS COM BACKEND =============
 
@@ -218,10 +218,18 @@ class ApiClient {
         throw new Error(errorMessage);
       }
 
-      const data = await response.json();
+      // 🔧 CORREÇÃO: Verificar se resposta tem conteúdo antes de fazer parse JSON
+      let data = null;
+      
+      if (response.status !== 204 && response.headers.get('content-length') !== '0') {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          data = await response.json();
+        }
+      }
       
       if (FRONTEND_CONFIG.FEATURES.DEBUG_API) {
-        console.log(`✅ ${endpoint} - ${data.items?.length || 'dados'} recebidos`);
+        console.log(`✅ ${endpoint} - ${data?.items?.length || 'sucesso'}`);
       }
       
       return {
@@ -606,6 +614,91 @@ class ApiClient {
     return payload;
   }
 
+  // ============= MÉTODOS ESPECÍFICOS PARA COMISSÕES =============
+
+  // Listar regras de comissão
+  async listarComissoes(filtros?: {
+    loja_id?: string;
+    tipo_comissao?: string;
+    ativo?: boolean;
+    busca?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<ApiResponse<ApiListResponse<any>>> {
+    const params = new URLSearchParams();
+    
+    if (filtros?.loja_id) params.append('loja_id', filtros.loja_id);
+    if (filtros?.tipo_comissao) params.append('tipo_comissao', filtros.tipo_comissao);
+    if (filtros?.ativo !== undefined) params.append('ativo', filtros.ativo.toString());
+    if (filtros?.busca) params.append('busca', filtros.busca);
+    if (filtros?.page) params.append('page', filtros.page.toString());
+    if (filtros?.limit) params.append('limit', filtros.limit.toString());
+
+    let endpoint = API_CONFIG.ENDPOINTS.COMISSOES;
+    if (params.toString()) {
+      endpoint += `?${params.toString()}`;
+    }
+
+    return this.request<ApiListResponse<any>>(endpoint);
+  }
+
+  // Buscar regra por ID
+  async buscarComissaoPorId(id: string): Promise<ApiResponse<any>> {
+    const endpoint = `${API_CONFIG.ENDPOINTS.COMISSOES}${id}`;
+    return this.request<any>(endpoint);
+  }
+
+  // Criar nova regra
+  async criarComissao(dados: any): Promise<ApiResponse<any>> {
+    const endpoint = API_CONFIG.ENDPOINTS.COMISSOES;
+    return this.request<any>(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(dados),
+    });
+  }
+
+  // Atualizar regra
+  async atualizarComissao(id: string, dados: any): Promise<ApiResponse<any>> {
+    const endpoint = `${API_CONFIG.ENDPOINTS.COMISSOES}${id}`;
+    return this.request<any>(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(dados),
+    });
+  }
+
+  // Excluir regra
+  async excluirComissao(id: string): Promise<ApiResponse<void>> {
+    // CORREÇÃO: remover barra dupla - COMISSOES já termina com /
+    const endpoint = `${API_CONFIG.ENDPOINTS.COMISSOES}${id}`;
+    console.log('🗑️ Iniciando DELETE para comissão:', id);
+    console.log('🔗 Endpoint completo:', endpoint);
+    console.log('🔑 Auth token disponível:', !!this.authToken);
+    
+    const result = await this.request<void>(endpoint, {
+      method: 'DELETE',
+    });
+    
+    console.log('📝 Resultado do DELETE:', result);
+    return result;
+  }
+
+  // Alternar status
+  async alternarStatusComissao(id: string): Promise<ApiResponse<any>> {
+    const endpoint = `${API_CONFIG.ENDPOINTS.COMISSOES}${id}/toggle-status`;
+    return this.request<any>(endpoint, {
+      method: 'PATCH',
+    });
+  }
+
+  // Calcular comissão
+  async calcularComissao(valor: number, tipo_comissao: string, loja_id: string): Promise<ApiResponse<any>> {
+    const endpoint = `${API_CONFIG.ENDPOINTS.COMISSOES}calcular`;
+    return this.request<any>(endpoint, {
+      method: 'POST',
+      body: JSON.stringify({ valor, tipo_comissao, loja_id }),
+    });
+  }
+
   // ============= MÉTODOS ESPECÍFICOS PARA CONFIG_LOJA =============
 
   // Listar configurações com filtros
@@ -765,6 +858,49 @@ class ApiClient {
       document.cookie = 'fluyt_auth_token=; path=/; max-age=0';
       window.location.href = '/login';
     }
+  }
+
+  // ============= MÉTODOS ESPECÍFICOS PARA STATUS ORÇAMENTO =============
+
+  // Listar status de orçamento
+  async listarStatusOrcamento(apenasAtivos = true): Promise<ApiResponse<ApiListResponse<StatusOrcamento>>> {
+    const params = new URLSearchParams();
+    params.append('apenas_ativos', apenasAtivos.toString());
+    
+    const endpoint = `${API_CONFIG.ENDPOINTS.STATUS_ORCAMENTO}?${params.toString()}`;
+    return this.request<ApiListResponse<StatusOrcamento>>(endpoint);
+  }
+
+  // Buscar status por ID
+  async buscarStatusOrcamentoPorId(id: string): Promise<ApiResponse<StatusOrcamento>> {
+    const endpoint = `${API_CONFIG.ENDPOINTS.STATUS_ORCAMENTO}/${id}`;
+    return this.request<StatusOrcamento>(endpoint);
+  }
+
+  // Criar novo status
+  async criarStatusOrcamento(dados: StatusOrcamentoFormData): Promise<ApiResponse<StatusOrcamento>> {
+    const endpoint = API_CONFIG.ENDPOINTS.STATUS_ORCAMENTO;
+    return this.request<StatusOrcamento>(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(dados),
+    });
+  }
+
+  // Atualizar status
+  async atualizarStatusOrcamento(id: string, dados: Partial<StatusOrcamentoFormData>): Promise<ApiResponse<StatusOrcamento>> {
+    const endpoint = `${API_CONFIG.ENDPOINTS.STATUS_ORCAMENTO}/${id}`;
+    return this.request<StatusOrcamento>(endpoint, {
+      method: 'PATCH',
+      body: JSON.stringify(dados),
+    });
+  }
+
+  // Excluir status (soft delete)
+  async excluirStatusOrcamento(id: string): Promise<ApiResponse<void>> {
+    const endpoint = `${API_CONFIG.ENDPOINTS.STATUS_ORCAMENTO}/${id}`;
+    return this.request<void>(endpoint, {
+      method: 'DELETE',
+    });
   }
 
   // ============= MÉTODOS DE CONECTIVIDADE =============
