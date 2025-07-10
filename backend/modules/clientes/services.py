@@ -75,9 +75,9 @@ class ClienteService:
                 filtros_dict['data_fim'] = filtros.data_fim
             
             # Define loja_id baseado no perfil
-            # SUPER_ADMIN vê todos os clientes de todas as lojas
+            # ADMIN_MASTER e SUPER_ADMIN veem todos os clientes de todas as lojas
             # Outros usuários veem apenas da sua loja
-            loja_id = None if user.perfil == "SUPER_ADMIN" else user.loja_id
+            loja_id = None if user.perfil in ["ADMIN_MASTER", "SUPER_ADMIN"] else user.loja_id
             
             # Busca no repository
             resultado = await repository.listar(

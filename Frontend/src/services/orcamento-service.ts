@@ -75,6 +75,7 @@ export interface OrcamentoBackend {
 }
 
 export interface OrcamentoCreatePayload {
+  // ========== CAMPOS ESSENCIAIS DO ORÇAMENTO ==========
   cliente_id: string;
   loja_id: string;
   vendedor_id: string;
@@ -83,10 +84,18 @@ export interface OrcamentoCreatePayload {
   montador_selecionado_id?: string;
   transportadora_selecionada_id?: string;
   
+  // Valores do orçamento
   valor_ambientes?: number;
   desconto_percentual?: number;
   valor_final?: number;
   
+  // Controle
+  necessita_aprovacao?: boolean;
+  status_id?: string;
+  observacoes?: string;
+  
+  // ========== CAMPOS DE CUSTO COM VALORES PADRÃO ==========
+  // Estes campos serão usados futuramente na seção de Lucratividade
   custo_fabrica?: number;
   comissao_vendedor?: number;
   comissao_gerente?: number;
@@ -94,10 +103,6 @@ export interface OrcamentoCreatePayload {
   custo_montador?: number;
   custo_frete?: number;
   margem_lucro?: number;
-  
-  necessita_aprovacao?: boolean;
-  status_id?: string;
-  observacoes?: string;
 }
 
 export interface FormaPagamentoCreatePayload {
@@ -306,6 +311,8 @@ class OrcamentoService {
     };
     
     return {
+      // ========== CAMPOS ESSENCIAIS DO ORÇAMENTO ==========
+      // Foco na venda: cliente, ambientes, valor, pagamento
       cliente_id: converterParaString(dados.clienteId),
       loja_id: converterParaString(dados.lojaId),
       vendedor_id: converterParaString(dados.vendedorId),
@@ -314,21 +321,26 @@ class OrcamentoService {
       montador_selecionado_id: converterParaString(dados.montadorSelecionadoId),
       transportadora_selecionada_id: converterParaString(dados.transportadoraSelecionadaId),
       
-      valor_ambientes: dados.valorAmbientes,
-      desconto_percentual: dados.descontoPercentual,
-      valor_final: dados.valorFinal,
+      // Valores do orçamento (com valores padrão para evitar erros)
+      valor_ambientes: dados.valorAmbientes || 0,
+      desconto_percentual: dados.descontoPercentual || 0,
+      valor_final: dados.valorFinal || 0,
       
-      custo_fabrica: dados.custoFabrica,
-      comissao_vendedor: dados.comissaoVendedor,
-      comissao_gerente: dados.comissaoGerente,
-      custo_medidor: dados.custoMedidor,
-      custo_montador: dados.custoMontador,
-      custo_frete: dados.custoFrete,
-      margem_lucro: dados.margemLucro,
-      
-      necessita_aprovacao: dados.necessitaAprovacao,
-      status_id: converterParaString(dados.statusId),
+      // Controle
+      necessita_aprovacao: dados.necessitaAprovacao || false,
+      // Status padrão: usar um ID válido da tabela c_config_status_orcamento
+      status_id: converterParaString(dados.statusId) || "2aa69438-8ccb-4948-aec0-d34de96bd95e", // ID do status "Negociação" (padrão)
       observacoes: dados.observacoes,
+      
+      // ========== CAMPOS DE CUSTO COM ZEROS OBRIGATÓRIOS ==========
+      // O banco exige esses campos, enviando zeros para evitar constraint NOT NULL
+      custo_fabrica: 0,
+      comissao_vendedor: 0,
+      comissao_gerente: 0,
+      custo_medidor: 0,
+      custo_montador: 0,
+      custo_frete: 0,
+      margem_lucro: 0,
     };
   }
 }

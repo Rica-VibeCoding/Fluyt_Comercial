@@ -6,6 +6,7 @@
 import { useCallback } from 'react';
 import { useOrcamento } from './use-orcamento';
 import { useOrcamentoApi } from './use-orcamento-api';
+import { useUsuarioLogado } from '@/hooks/globais/use-usuario-logado';
 import { orcamentoService } from '@/services/orcamento-service';
 import type { FormaPagamento } from '@/types/orcamento';
 import type { FormaPagamentoCreatePayload } from '@/services/orcamento-service';
@@ -14,6 +15,9 @@ export const useOrcamentoIntegrado = () => {
   // Hooks base
   const store = useOrcamento();
   const api = useOrcamentoApi();
+  
+  // PROTEÇÃO: Hook de usuário protegido
+  const { usuarioId, lojaId, nome } = useUsuarioLogado();
 
   // ========== MÉTODOS DE SALVAMENTO ==========
 
@@ -49,17 +53,19 @@ export const useOrcamentoIntegrado = () => {
       quantidadeAmbientes: ambientesParaUsar.length
     });
     
-    // Gerar UUIDs temporários válidos para campos obrigatórios
-    const generateUUID = () => '00000000-0000-4000-8000-000000000000';
+    // Usar dados reais do usuário logado
+    if (!usuarioId || !lojaId) {
+      throw new Error('Usuário não está logado ou não tem loja definida');
+    }
     
     const payload = orcamentoService.converterFrontendParaBackend({
       clienteId: clienteParaUsar.id,
-      lojaId: generateUUID(), // UUID temporário válido
-      vendedorId: generateUUID(), // UUID temporário válido  
+      lojaId: lojaId, // Loja real do usuário logado
+      vendedorId: usuarioId, // Usuário logado como vendedor
       valorAmbientes: valorTotal,
       descontoPercentual: store.descontoPercentual || 0,
       valorFinal: valorTotal,
-      observacoes: 'Orçamento criado via frontend - loja e vendedor temporários',
+      observacoes: `Orçamento criado por ${nome || 'usuário'}`,
     });
     
     console.log('📤 Payload final:', payload);

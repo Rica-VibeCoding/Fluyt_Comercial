@@ -20,7 +20,7 @@ verificar_*.py
 # Arquivos temporários
 *.log
 
-
+backend/venv_backend/
 
 # Pastas temporárias
 Frontend/src/app/teste_importar_xml/

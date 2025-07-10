@@ -16,6 +16,8 @@ import { Textarea } from '../../ui/textarea';
 import { UseFormReturn } from 'react-hook-form';
 import { Vendedor } from '../../../types/cliente';
 import { useProcedencias } from '../../../hooks/data/use-procedencias';
+import { useUsuarioLogado } from '../../../hooks/globais/use-usuario-logado';
+import { useEffect } from 'react';
 
 interface ClienteFormConfigProps {
   form: UseFormReturn<any>;
@@ -24,6 +26,28 @@ interface ClienteFormConfigProps {
 
 export function ClienteFormConfig({ form, vendedores }: ClienteFormConfigProps) {
   const { procedencias, isLoading: loadingProcedencias } = useProcedencias();
+  
+  // PROTEÇÃO: Hook sempre executa, mas só usa dados se estivermos no painel
+  const { usuarioId, isVendedor, nome } = useUsuarioLogado();
+  const isInPainel = typeof window !== 'undefined' && window.location.pathname.startsWith('/painel');
+
+  // Auto-preencher vendedor com usuário logado se for vendedor e campo estiver vazio
+  useEffect(() => {
+    // PROTEÇÃO: Só executar se estivermos no painel
+    if (!isInPainel) return;
+    
+    const vendedorAtual = form.getValues('vendedor_id');
+    
+    // Se campo vendedor está vazio E usuário é vendedor E usuário está na lista de vendedores
+    if (!vendedorAtual && isVendedor && usuarioId) {
+      const usuarioNaLista = vendedores.find(v => v.id === usuarioId);
+      
+      if (usuarioNaLista) {
+        form.setValue('vendedor_id', usuarioId);
+        console.log(`✅ Auto-preenchido vendedor: ${nome} (${usuarioId})`);
+      }
+    }
+  }, [form, isVendedor, usuarioId, vendedores, nome, isInPainel]);
   
   return (
     <div className="space-y-1">

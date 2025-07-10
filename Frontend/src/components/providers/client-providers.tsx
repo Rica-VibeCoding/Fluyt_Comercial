@@ -59,18 +59,17 @@ export function ClientProviders({ children }: ClientProvidersProps) {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           {/* <FluytProvider> TEMPORARIAMENTE DESABILITADO */}
-            <PersistenceManager>
-              {children}
-              
-              {/* Sistema de notificações */}
-              <Toaster />
-              <SonnerToaster />
-              
-              {/* Debug de persistência - REATIVADO com correções de loop */}
-              {process.env.NODE_ENV === 'development' && (
-                <DebugPersistenciaCompacto />
-              )}
-            </PersistenceManager>
+            {/* DESABILITANDO PERSISTENCIA TEMPORARIAMENTE PARA RESOLVER LOGIN */}
+            {children}
+            
+            {/* Sistema de notificações */}
+            <Toaster />
+            <SonnerToaster />
+            
+            {/* Debug de persistência - DESABILITADO TEMPORARIAMENTE */}
+            {/* {process.env.NODE_ENV === 'development' && (
+              <DebugPersistenciaCompacto />
+            )} */}
           {/* </FluytProvider> */}
         </TooltipProvider>
       </QueryClientProvider>

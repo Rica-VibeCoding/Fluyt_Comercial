@@ -70,7 +70,11 @@
       "WebFetch(domain:stackoverflow.com)",
       "Bash(npm run lint:*)",
       "Bash(npm run:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(pip --version)",
+      "Bash(pip3:*)",
+      "Bash(./iniciar-backend.sh:*)",
+      "Bash(./venv_backend/bin/python3:*)"
     ],
     "deny": []
   }

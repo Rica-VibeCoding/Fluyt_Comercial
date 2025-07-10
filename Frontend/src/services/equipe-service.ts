@@ -163,6 +163,15 @@ class EquipeService {
     try {
       logConfig('📡 Listando funcionários via API...', { filtros });
       
+      // Garantir que o token está carregado no apiClient
+      const token = localStorage.getItem('fluyt_auth_token');
+      if (token) {
+        apiClient.setAuthToken(token);
+        logConfig('🔑 Token carregado no apiClient para equipe');
+      } else {
+        logConfig('⚠️ Token não encontrado no localStorage');
+      }
+      
       // Usar método do apiClient
       const response = await apiClient.listarFuncionarios(filtros);
 

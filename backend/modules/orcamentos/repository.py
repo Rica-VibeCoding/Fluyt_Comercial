@@ -242,7 +242,17 @@ class FormaPagamentoRepository:
     async def criar(self, dados: Dict[str, Any]) -> Dict[str, Any]:
         """Cria nova forma de pagamento"""
         try:
-            result = self.db.table(self.table).insert(dados).execute()
+            # Converter tipos não serializáveis para JSON
+            dados_convertidos = {}
+            for key, value in dados.items():
+                if isinstance(value, UUID):
+                    dados_convertidos[key] = str(value)
+                elif isinstance(value, Decimal):
+                    dados_convertidos[key] = float(value)
+                else:
+                    dados_convertidos[key] = value
+            
+            result = self.db.table(self.table).insert(dados_convertidos).execute()
             
             if not result.data:
                 raise DatabaseException("Erro ao criar forma de pagamento")

@@ -10,18 +10,13 @@ import type { Cliente, ClienteFormData, FiltrosCliente, Vendedor } from '@/types
 import { useToast } from '@/hooks/globais/use-toast';
 import { logConfig } from '@/lib/config';
 
-// Dados de vendedores (mock temporário até integração completa)
-const exemploVendedores: Vendedor[] = [
-  { id: 'v1', nome: 'Ana Costa', perfil: 'VENDEDOR' },
-  { id: 'v2', nome: 'Carlos Mendes', perfil: 'VENDEDOR' },
-  { id: 'v3', nome: 'Pedro Santos', perfil: 'GERENTE' },
-  { id: 'v4', nome: 'Marina Silva', perfil: 'VENDEDOR' }
-];
+// Importar serviço de equipe para buscar vendedores reais
+import { equipeService } from '@/services/equipe-service';
 
 export function useClientesApi() {
   // ============= ESTADO =============
   const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [vendedores] = useState<Vendedor[]>(exemploVendedores);
+  const [vendedores, setVendedores] = useState<Vendedor[]>([]);
   const [filtros, setFiltros] = useState<FiltrosCliente>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -29,11 +24,61 @@ export function useClientesApi() {
   const [ultimaFonte, setUltimaFonte] = useState<'api' | 'mock' | null>(null);
   const { toast } = useToast();
 
+  // ============= CARREGAR VENDEDORES REAIS =============
+  const carregarVendedores = useCallback(async () => {
+    try {
+      logConfig('useClientesApi: Carregando vendedores reais da API...');
+      
+      // Buscar vendedores da equipe (sem filtro de perfil por enquanto)
+      const response = await equipeService.listar({});
+      
+      if (response.success && response.data) {
+        // Converter funcionários para formato de vendedores
+        const vendedoresReais: Vendedor[] = response.data.items.map(funcionario => ({
+          id: funcionario.id,
+          nome: funcionario.nome,
+          perfil: funcionario.tipoFuncionario as 'VENDEDOR' | 'GERENTE'
+        }));
+        
+        setVendedores(vendedoresReais);
+        logConfig('useClientesApi: Vendedores carregados com sucesso', { 
+          quantidade: vendedoresReais.length 
+        });
+      } else {
+        throw new Error(response.error || 'Erro ao carregar vendedores');
+      }
+    } catch (error) {
+      console.error('❌ Erro ao carregar vendedores:', error);
+      
+      // Fallback com vendedores reais baseados na tabela cad_equipe vista no Supabase
+      const vendedoresFallback: Vendedor[] = [
+        { id: '98eb7f87-4c0c-481b-9f96-47131952e125', nome: 'Ricardo Nilton Borges', perfil: 'VENDEDOR' },
+        { id: 'e4cb96eb-81dc-4d96-9389-fe68a276f215', nome: 'Carlos', perfil: 'VENDEDOR' },
+        { id: '0c756322-619f-416f-9990-637d35ff4bf3', nome: 'Marcelo', perfil: 'GERENTE' }
+      ];
+      
+      setVendedores(vendedoresFallback);
+      logConfig('useClientesApi: Usando fallback com vendedores reais do Supabase');
+      
+      toast({
+        title: "Aviso",
+        description: "Usando dados temporários de vendedores. Verifique autenticação do backend.",
+      });
+    }
+  }, [toast]);
+
   // ============= HIDRATAÇÃO =============
   useEffect(() => {
     setIsHydrated(true);
     logConfig('useClientesApi: Hidratação completa');
   }, []);
+
+  // ============= CARREGAR VENDEDORES AO INICIALIZAR =============
+  useEffect(() => {
+    if (isHydrated) {
+      carregarVendedores();
+    }
+  }, [isHydrated, carregarVendedores]);
 
   // ============= CARREGAR CLIENTES =============
   const carregarClientes = useCallback(async () => {

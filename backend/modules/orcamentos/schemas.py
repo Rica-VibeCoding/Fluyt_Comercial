@@ -63,14 +63,15 @@ class OrcamentoBase(BaseModel):
     desconto_percentual: Decimal = Field(default=Decimal('0'), ge=0, le=100)
     valor_final: Decimal = Field(default=Decimal('0'), ge=0)
     
-    # Custos
-    custo_fabrica: Decimal = Field(default=Decimal('0'), ge=0)
-    comissao_vendedor: Decimal = Field(default=Decimal('0'), ge=0)
-    comissao_gerente: Decimal = Field(default=Decimal('0'), ge=0)
-    custo_medidor: Decimal = Field(default=Decimal('0'), ge=0)
-    custo_montador: Decimal = Field(default=Decimal('0'), ge=0)
-    custo_frete: Decimal = Field(default=Decimal('0'), ge=0)
-    margem_lucro: Decimal = Field(default=Decimal('0'))
+    # Custos - OPCIONAIS (para futura seção de Lucratividade)
+    # Orçamento foca apenas na venda, campos de custo serão usados em relatórios
+    custo_fabrica: Optional[Decimal] = Field(default=None, ge=0)
+    comissao_vendedor: Optional[Decimal] = Field(default=None, ge=0)
+    comissao_gerente: Optional[Decimal] = Field(default=None, ge=0)
+    custo_medidor: Optional[Decimal] = Field(default=None, ge=0)
+    custo_montador: Optional[Decimal] = Field(default=None, ge=0)
+    custo_frete: Optional[Decimal] = Field(default=None, ge=0)
+    margem_lucro: Optional[Decimal] = Field(default=None)
     
     # Controle
     necessita_aprovacao: bool = False
@@ -96,6 +97,7 @@ class OrcamentoUpdate(BaseModel):
     desconto_percentual: Optional[Decimal] = Field(None, ge=0, le=100)
     valor_final: Optional[Decimal] = Field(None, ge=0)
     
+    # Custos - OPCIONAIS (para futura seção de Lucratividade)
     custo_fabrica: Optional[Decimal] = Field(None, ge=0)
     comissao_vendedor: Optional[Decimal] = Field(None, ge=0)
     comissao_gerente: Optional[Decimal] = Field(None, ge=0)

@@ -96,12 +96,13 @@ export function verificarConfiguracoes(): {
 }
 
 /**
- * Log helper para desenvolvimento
+ * Log helper para desenvolvimento - REDUZIDO TEMPORARIAMENTE
  */
 export function logConfig(message: string, data?: any) {
-  if (FRONTEND_CONFIG.FEATURES.ENABLE_LOGS) {
-    console.log(`🔧 [CONFIG] ${message}`, data);
-  }
+  // DESABILITADO TEMPORARIAMENTE PARA RESOLVER PROBLEMAS DE LOGIN
+  // if (FRONTEND_CONFIG.FEATURES.ENABLE_LOGS) {
+  //   console.log(`🔧 [CONFIG] ${message}`, data);
+  // }
 }
 
 /**

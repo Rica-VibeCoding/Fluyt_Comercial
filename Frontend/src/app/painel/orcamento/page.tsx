@@ -205,9 +205,14 @@ function OrcamentoPageContent() {
 
   // 🆕 FUNÇÃO SALVAR ORÇAMENTO NO BANCO
   const handleSalvarOrcamento = async () => {
-    if (!cliente || ambientes.length === 0 || formasPagamento.length === 0) {
-      alert('É necessário ter cliente, ambientes e formas de pagamento para salvar o orçamento.');
+    if (!cliente || ambientes.length === 0) {
+      alert('É necessário ter cliente e ambientes para salvar o orçamento.');
       return;
+    }
+    
+    // TESTE: Permitir salvamento sem formas de pagamento temporariamente
+    if (formasPagamento.length === 0) {
+      console.log('⚠️ Salvando orçamento sem formas de pagamento (modo teste)');
     }
 
     setIsSaving(true);
@@ -677,7 +682,7 @@ function OrcamentoPageContent() {
               {/* Botão Salvar Orçamento */}
               <Button
                 onClick={handleSalvarOrcamento}
-                disabled={!(cliente && ambientes.length > 0 && formasPagamento.length > 0) || isSaving}
+                disabled={!(cliente && ambientes.length > 0) || isSaving}
                 className="gap-2 bg-blue-600 hover:bg-blue-700 text-white touch-manipulation
                            focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2"
                 aria-label="Salvar orçamento no banco de dados"

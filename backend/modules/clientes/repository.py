@@ -47,14 +47,8 @@ class ClienteRepository:
             Dicionário com items e informações de paginação
         """
         try:
-            # Inicia a query base
-            query = self.db.table(self.table).select(
-                """
-                *,
-                vendedor:cad_equipe!vendedor_id(id, nome),
-                procedencia:c_procedencias!procedencia_id(id, nome)
-                """
-            ).eq('ativo', True)  # Filtrar apenas clientes ativos (soft delete)
+            # Inicia a query base - removendo JOIN problemático
+            query = self.db.table(self.table).select("*").eq('ativo', True)  # Filtrar apenas clientes ativos (soft delete)
             
             # Aplica filtro de loja apenas se fornecido (RLS)
             # Se loja_id é None, não filtra (SUPER_ADMIN)
@@ -109,17 +103,28 @@ class ClienteRepository:
             # Executa a query
             result = query.execute()
             
-            # Processa os dados retornados
+            # Processa os dados retornados e busca vendedores manualmente
             items = []
+            vendedor_ids = []
+            
+            # Coleta IDs únicos de vendedores
             for item in result.data:
-                # Extrai dados do vendedor
-                if item.get('vendedor'):
-                    item['vendedor_nome'] = item['vendedor'].get('nome')
-                    del item['vendedor']
-                
-                # Extrai dados da procedência
-                if item.get('procedencia'):
-                    item['procedencia'] = item['procedencia'].get('nome')
+                if item.get('vendedor_id'):
+                    vendedor_ids.append(item['vendedor_id'])
+            
+            # Busca vendedores em lote
+            vendedores_map = {}
+            if vendedor_ids:
+                vendedores_result = self.db.table('cad_equipe').select('id, nome').in_('id', list(set(vendedor_ids))).execute()
+                vendedores_map = {v['id']: v['nome'] for v in vendedores_result.data}
+            
+            # Processa cada cliente adicionando nome do vendedor
+            for item in result.data:
+                # Adiciona nome do vendedor
+                if item.get('vendedor_id') and item['vendedor_id'] in vendedores_map:
+                    item['vendedor_nome'] = vendedores_map[item['vendedor_id']]
+                else:
+                    item['vendedor_nome'] = None
                 
                 items.append(item)
             

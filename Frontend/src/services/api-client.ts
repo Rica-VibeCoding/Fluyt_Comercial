@@ -30,7 +30,8 @@ export interface ClienteBackend {
   observacoes?: string;
   loja_id: string;
   vendedor_nome?: string;
-  procedencia?: string;
+  vendedor?: { id: string; nome: string } | null;
+  procedencia?: { id: string; nome: string } | null;
   created_at: string;
   updated_at: string;
 }
@@ -945,7 +946,7 @@ export function converterClienteBackendParaFrontend(clienteBackend: ClienteBacke
     vendedor_id: clienteBackend.vendedor_id,
     loja_id: clienteBackend.loja_id,
     procedencia: clienteBackend.procedencia,
-    vendedor_nome: clienteBackend.vendedor_nome,
+    vendedor_nome: clienteBackend.vendedor_nome || null,
     observacoes: clienteBackend.observacoes,
     created_at: clienteBackend.created_at,
     updated_at: clienteBackend.updated_at,
