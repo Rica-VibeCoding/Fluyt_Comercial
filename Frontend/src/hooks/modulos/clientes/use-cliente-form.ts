@@ -56,9 +56,10 @@ export function useClienteForm({ cliente, vendedores, onSalvar, onFechar }: UseC
     }
   });
 
-  // Preencher form ao editar cliente
+  // Preencher form ao editar ou limpar para criar
   useEffect(() => {
     if (cliente) {
+      // Modo de edição: preenche o formulário com os dados do cliente
       form.reset({
         nome: cliente.nome,
         cpf_cnpj: cliente.cpf_cnpj || '',
@@ -77,8 +78,11 @@ export function useClienteForm({ cliente, vendedores, onSalvar, onFechar }: UseC
         vendedor_id: cliente.vendedor_id || '',
         observacoes: cliente.observacoes || ''
       });
+    } else {
+      // Modo de criação: limpa o formulário para os valores padrão
+      form.reset();
     }
-  }, [cliente, form]);
+  }, [cliente, form.reset]);
 
   // Calcular abas preenchidas - agora com critérios mais flexíveis
   const abasPreenchidas = useMemo(() => {

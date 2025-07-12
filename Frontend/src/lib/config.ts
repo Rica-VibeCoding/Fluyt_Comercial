@@ -4,9 +4,9 @@
  */
 
 export const API_CONFIG = {
-  // 🔧 URLs do backend - CORRIGIDO para conectar diretamente ao backend
+  // 🔧 URLs do backend - VOLTANDO PARA CONFIGURAÇÃO ORIGINAL
   BASE_URL: process.env.NODE_ENV === 'development' 
-    ? 'http://localhost:8000' // CONECTAR DIRETAMENTE AO BACKEND
+    ? 'http://localhost:8000' // CONFIGURAÇÃO ORIGINAL QUE FUNCIONAVA
     : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'),
   API_VERSION: 'v1',
   

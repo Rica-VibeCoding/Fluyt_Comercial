@@ -342,25 +342,33 @@ export function usePersistenciaCliente(clienteId: string | undefined) {
 
 // Cleanup global (para usar em useEffect de componentes principais)
 export function configurarCleanupGlobal() {
-  // Cleanup ao fechar a página
-  window.addEventListener('beforeunload', () => {
-    persistenciaInteligente.destruir();
-  });
-
-  // Cleanup quando a aba perde foco por muito tempo
   let timeoutInativo: NodeJS.Timeout;
   
-  document.addEventListener('visibilitychange', () => {
+  const handleBeforeUnload = () => {
+    persistenciaInteligente.destruir();
+  };
+  
+  const handleVisibilityChange = () => {
     if (document.hidden) {
-      // Usuário saiu da aba, iniciar timer de inatividade
       timeoutInativo = setTimeout(() => {
         persistenciaInteligente.limparSessoesExpiradas();
-      }, 10 * 60 * 1000); // 10 minutos
+      }, 10 * 60 * 1000);
     } else {
-      // Usuário voltou para a aba
       if (timeoutInativo) {
         clearTimeout(timeoutInativo);
       }
     }
-  });
+  };
+
+  window.addEventListener('beforeunload', handleBeforeUnload);
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+
+  // Retornar função de cleanup
+  return () => {
+    window.removeEventListener('beforeunload', handleBeforeUnload);
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+    if (timeoutInativo) {
+      clearTimeout(timeoutInativo);
+    }
+  };
 }

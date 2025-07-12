@@ -1,0 +1,436 @@
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../ui/dialog';
+import { Button } from '../../ui/button';
+import { Input } from '../../ui/input';
+import { Label } from '../../ui/label';
+import { Alert, AlertDescription } from '../../ui/alert';
+import { Loader2, AlertTriangle, Home, Package, Receipt } from 'lucide-react';
+import { Cliente } from '../../../types/cliente';
+
+interface ClienteDeleteModalProps {
+  aberto: boolean;
+  onFechar: () => void;
+  cliente: Cliente | null;
+  onConfirmar: (clienteId: string) => Promise<boolean>;
+  isLoading: boolean;
+}
+
+interface DadosRelacionados {
+  ambientes: number;
+  orcamentos: number;
+  materiais: number;
+}
+
+export function ClienteDeleteModal({
+  aberto,
+  onFechar,
+  cliente,
+  onConfirmar,
+  isLoading
+}: ClienteDeleteModalProps) {
+  const [confirmacao, setConfirmacao] = useState('');
+  const [dadosRelacionados, setDadosRelacionados] = useState<DadosRelacionados | null>(null);
+  const [carregandoDados, setCarregandoDados] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  // Ref para verificar se componente ainda está montado
+  const isMountedRef = React.useRef(true);
+  // Ref para controlar requisições em andamento
+  const abortControllerRef = React.useRef<AbortController | null>(null);
+
+  // Cleanup ao desmontar
+  React.useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      // Cancelar requisições em andamento
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  // Funções seguras de setState que só executam se componente estiver montado
+  const safeSetCarregandoDados = React.useCallback((valor: boolean) => {
+    if (isMountedRef.current) {
+      setCarregandoDados(valor);
+    }
+  }, []);
+
+  const safeSetErro = React.useCallback((valor: string | null) => {
+    if (isMountedRef.current) {
+      setErro(valor);
+    }
+  }, []);
+
+  const safeSetDadosRelacionados = React.useCallback((valor: DadosRelacionados | null) => {
+    if (isMountedRef.current) {
+      setDadosRelacionados(valor);
+    }
+  }, []);
+
+  const safeSetConfirmacao = React.useCallback((valor: string) => {
+    if (isMountedRef.current) {
+      setConfirmacao(valor);
+    }
+  }, []);
+
+  // ============= SISTEMA DE DEBUG =============
+  const debugLog = (acao: string, dados?: any) => {
+    const timestamp = new Date().toLocaleTimeString();
+    console.log(`🔍 [ClienteDeleteModal] ${timestamp} - ${acao}`, dados ? dados : '');
+  };
+
+  // Log de mudanças de estado
+  React.useEffect(() => {
+    debugLog('Estado atualizado', {
+      aberto,
+      clienteId: cliente?.id,
+      clienteNome: cliente?.nome,
+      isLoading,
+      carregandoDados,
+      temDadosRelacionados: !!dadosRelacionados,
+      confirmacao: confirmacao ? '***preenchido***' : 'vazio',
+      erro: !!erro
+    });
+  }, [aberto, cliente, isLoading, carregandoDados, dadosRelacionados, confirmacao, erro]);
+
+  // ============= FUNÇÃO DEVE VIR ANTES DO useEffect =============
+  const buscarDadosRelacionados = React.useCallback(async () => {
+    if (!cliente) {
+      debugLog('❌ buscarDadosRelacionados: cliente não informado');
+      return;
+    }
+    
+    debugLog('🔄 Iniciando busca de dados relacionados', { clienteId: cliente.id });
+    
+    // Usar setState direto para evitar dependências
+    if (isMountedRef.current) setCarregandoDados(true);
+    if (isMountedRef.current) setErro(null);
+    
+    try {
+      // Cancelar requisição anterior se existir
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      
+      // Criar novo AbortController
+      abortControllerRef.current = new AbortController();
+      
+      // Buscar token de autenticação
+      const token = localStorage.getItem('fluyt_auth_token');
+      debugLog('🔐 Token encontrado', { temToken: !!token });
+      
+      const headers: any = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      debugLog('📡 Fazendo requisição para API', {
+        url: `http://localhost:8000/api/v1/clientes/${cliente.id}/dados-relacionados`,
+        temAuthorization: !!headers['Authorization']
+      });
+
+      // Tentar buscar dados reais da API
+      const response = await fetch(`http://localhost:8000/api/v1/clientes/${cliente.id}/dados-relacionados`, {
+        method: 'GET',
+        headers,
+        signal: abortControllerRef.current.signal
+      });
+
+      debugLog('📡 Resposta da API recebida', { 
+        status: response.status, 
+        ok: response.ok 
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        debugLog('✅ Dados recebidos da API', data);
+        
+        const dadosFinais = {
+          ambientes: data.ambientes || 0,
+          orcamentos: data.orcamentos || 0,
+          materiais: data.materiais || 0
+        };
+        
+        if (isMountedRef.current) {
+          setDadosRelacionados(dadosFinais);
+          setCarregandoDados(false);
+        }
+        debugLog('✅ Estados atualizados com dados da API', dadosFinais);
+        
+      } else if (response.status === 403) {
+        throw new Error('Sem permissão - Usuário não autenticado');
+      } else if (response.status === 401) {
+        throw new Error('Token expirado - Faça login novamente');
+      } else {
+        throw new Error(`API retornou erro ${response.status}`);
+      }
+    } catch (error) {
+      // Se foi cancelado pelo AbortController, não fazer nada
+      if (error instanceof Error && error.name === 'AbortError') {
+        debugLog('🚫 Requisição cancelada (componente desmontado)');
+        return;
+      }
+      
+      debugLog('❌ Erro na busca, usando fallback', { erro: error });
+      
+      // Fallback: assumir que cliente tem dados (modo cauteloso)
+      const dadosFallback = { ambientes: 2, orcamentos: 1, materiais: 8 };
+      if (isMountedRef.current) {
+        setErro('Sistema offline - assumindo que cliente possui dados importantes');
+        setDadosRelacionados(dadosFallback);
+        setCarregandoDados(false);
+      }
+      
+      debugLog('⚠️ Fallback aplicado', dadosFallback);
+    }
+  }, [cliente]); // ← REMOVIDO AS DEPENDÊNCIAS PROBLEMÁTICAS
+
+  // Buscar dados relacionados quando o modal abrir
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    debugLog('useEffect disparado', { aberto, clienteId: cliente?.id });
+    
+    if (aberto && cliente) {
+      debugLog('Modal aberto - iniciando busca de dados');
+      buscarDadosRelacionados();
+    } else if (!aberto) {
+      debugLog('Modal fechando - limpando estados');
+      // Limpar estado ao fechar com pequeno delay para evitar travamento
+      timeoutId = setTimeout(() => {
+        debugLog('Limpeza de estados executada');
+        if (isMountedRef.current) {
+          setConfirmacao('');
+          setDadosRelacionados(null);
+          setErro(null);
+          setCarregandoDados(false);
+        }
+      }, 100);
+    }
+
+    // Cleanup
+    return () => {
+      debugLog('Cleanup useEffect executado');
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      // Cancelar requisições pendentes
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, [aberto, cliente?.id]); // ← SIMPLIFICADO AS DEPENDÊNCIAS
+
+  const handleConfirmar = async () => {
+    debugLog('🚨 handleConfirmar chamado', { 
+      temCliente: !!cliente, 
+      confirmacao, 
+      confirmacaoCorreta: confirmacao === 'EXCLUIR' 
+    });
+    
+    if (!cliente || confirmacao !== 'EXCLUIR') {
+      debugLog('❌ Condições não atendidas para confirmação');
+      return;
+    }
+    
+    debugLog('▶️ Iniciando processo de exclusão', { clienteId: cliente.id });
+    
+    try {
+      debugLog('📞 Chamando onConfirmar do pai');
+      const sucesso = await onConfirmar(cliente.id);
+      
+      debugLog('📞 onConfirmar retornou', { sucesso });
+      
+      // Só fechar se o pai retornar sucesso
+      if (sucesso) {
+        debugLog('✅ Exclusão bem-sucedida, fechando modal');
+        onFechar();
+      } else {
+        debugLog('❌ Exclusão falhou, mantendo modal aberto');
+      }
+    } catch (error) {
+      debugLog('💥 Erro na confirmação', { erro: error });
+      // Em caso de erro, deixar o pai decidir se fecha ou não
+    }
+  };
+
+  const temDados = dadosRelacionados && (
+    dadosRelacionados.ambientes > 0 || 
+    dadosRelacionados.orcamentos > 0 || 
+    dadosRelacionados.materiais > 0
+  );
+
+  const podeConfirmar = confirmacao === 'EXCLUIR' && !carregandoDados;
+
+  return (
+    <Dialog 
+      open={aberto} 
+      onOpenChange={(novoEstado) => {
+        debugLog('🔄 Dialog onOpenChange', { 
+          estadoAnterior: aberto, 
+          novoEstado,
+          // Se está fechando via ESC ou clique fora
+          fechandoViaEvento: !novoEstado && aberto
+        });
+        
+        // Só fechar se realmente está mudando para fechado
+        if (!novoEstado && aberto) {
+          debugLog('🚪 Fechando modal via Dialog');
+          onFechar();
+        }
+      }}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-red-600">
+            <AlertTriangle className="h-5 w-5" />
+            Confirmar Exclusão
+          </DialogTitle>
+          <DialogDescription>
+            Esta ação irá excluir permanentemente o cliente e todos os dados relacionados. Esta operação não pode ser desfeita.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Nome do cliente */}
+          <div className="p-3 bg-slate-50 rounded-lg">
+            <p className="text-sm text-slate-600">Cliente a ser excluído:</p>
+            <p className="font-semibold text-slate-900">{cliente?.nome}</p>
+          </div>
+
+          {/* Loading de dados relacionados */}
+          {carregandoDados && (
+            <div className="flex items-center justify-center p-4">
+              <Loader2 className="h-5 w-5 animate-spin mr-2" />
+              <span className="text-sm text-slate-600">Verificando dados relacionados...</span>
+            </div>
+          )}
+
+          {/* Erro ao carregar dados */}
+          {erro && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{erro}</AlertDescription>
+            </Alert>
+          )}
+
+          {/* Dados relacionados */}
+          {dadosRelacionados && !carregandoDados && (
+            <div className="space-y-3">
+              {temDados ? (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>ATENÇÃO: Este cliente possui dados importantes!</strong>
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Alert>
+                  <AlertDescription>
+                    Este cliente não possui dados relacionados.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <div className="grid gap-2">
+                <div className="flex items-center justify-between p-2 bg-slate-50 rounded">
+                  <div className="flex items-center gap-2">
+                    <Home className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm">Ambientes</span>
+                  </div>
+                  <span className={`font-bold ${dadosRelacionados.ambientes > 0 ? 'text-red-600' : 'text-slate-600'}`}>
+                    {dadosRelacionados.ambientes}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between p-2 bg-slate-50 rounded">
+                  <div className="flex items-center gap-2">
+                    <Package className="h-4 w-4 text-orange-600" />
+                    <span className="text-sm">Materiais</span>
+                  </div>
+                  <span className={`font-bold ${dadosRelacionados.materiais > 0 ? 'text-red-600' : 'text-slate-600'}`}>
+                    {dadosRelacionados.materiais}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between p-2 bg-slate-50 rounded">
+                  <div className="flex items-center gap-2">
+                    <Receipt className="h-4 w-4 text-green-600" />
+                    <span className="text-sm">Orçamentos</span>
+                  </div>
+                  <span className={`font-bold ${dadosRelacionados.orcamentos > 0 ? 'text-red-600' : 'text-slate-600'}`}>
+                    {dadosRelacionados.orcamentos}
+                  </span>
+                </div>
+              </div>
+
+              {temDados && (
+                <Alert variant="destructive">
+                  <AlertDescription>
+                    <strong>Todos esses dados serão perdidos PERMANENTEMENTE!</strong>
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          )}
+
+          {/* Campo de confirmação */}
+          <div className="space-y-2">
+            <Label htmlFor="confirmacao">
+              Para confirmar a exclusão, digite <strong>EXCLUIR</strong>:
+            </Label>
+            <Input
+              id="confirmacao"
+              type="text"
+              value={confirmacao}
+              onChange={(e) => safeSetConfirmacao(e.target.value)}
+              placeholder="Digite EXCLUIR"
+              className="border-red-300 focus:border-red-500"
+              disabled={carregandoDados || isLoading}
+            />
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              debugLog('🚪 Botão Cancelar clicado');
+              onFechar();
+            }}
+            disabled={isLoading}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            variant="destructive"
+            onClick={() => {
+              debugLog('💥 Botão Excluir clicado', {
+                podeConfirmar,
+                isLoading,
+                disabled: !podeConfirmar || isLoading
+              });
+              handleConfirmar();
+            }}
+            disabled={!podeConfirmar || isLoading}
+            className="min-w-[100px]"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Excluindo...
+              </>
+            ) : (
+              'Excluir Cliente'
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

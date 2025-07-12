@@ -199,6 +199,8 @@ async def health_check() -> Dict[str, Any]:
     }
 
 
+
+
 # Importar e registrar routers dos módulos
 from modules.auth.controller import router as auth_router
 from modules.clientes.controller import router as clientes_router
@@ -212,6 +214,7 @@ from modules.colaboradores.controller import router as colaboradores_router, col
 from modules.orcamentos.controller import router as orcamentos_router, forma_router as formas_pagamento_router
 from modules.config_loja.controller import router as config_loja_router
 from modules.comissoes.controller import router as comissoes_router
+from modules.procedencias.controller import router as procedencias_router
 
 # Registrar routers na aplicação
 app.include_router(auth_router, prefix="/api/v1/auth")
@@ -228,6 +231,7 @@ app.include_router(orcamentos_router, prefix="/api/v1")
 app.include_router(formas_pagamento_router, prefix="/api/v1")
 app.include_router(config_loja_router, prefix="/api/v1")
 app.include_router(comissoes_router)
+app.include_router(procedencias_router, prefix="/api/v1")
 
 
 # Execução direta (desenvolvimento)

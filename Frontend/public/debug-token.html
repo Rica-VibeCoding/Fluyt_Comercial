@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Token - Fluyt Comercial</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Token - Fluyt Comercial</h1>
+    
+    <button onclick="verificarTudo()">🔍 Verificar Tudo</button>
+    <button onclick="testarClientes()">📋 Testar Clientes</button>
+    <button onclick="limparStorage()">🗑️ Limpar Storage</button>
+    
+    <div id="resultados"></div>
+
+    <script>
+        function log(message, type = 'info') {
+            const div = document.getElementById('resultados');
+            div.innerHTML += `<div class="status ${type}">${new Date().toLocaleTimeString()} - ${message}</div>`;
+        }
+
+        function verificarTudo() {
+            document.getElementById('resultados').innerHTML = '';
+            
+            log('🔍 Verificando localStorage...', 'info');
+            
+            // Verificar todos os tokens possíveis
+            const tokens = {
+                'fluyt_auth_token': localStorage.getItem('fluyt_auth_token'),
+                'auth_token': localStorage.getItem('auth_token'),
+                'fluyt_refresh_token': localStorage.getItem('fluyt_refresh_token'),
+                'fluyt_user': localStorage.getItem('fluyt_user')
+            };
+            
+            Object.entries(tokens).forEach(([key, value]) => {
+                if (value) {
+                    log(`✅ ${key}: ${value.substring(0, 50)}...`, 'success');
+                } else {
+                    log(`❌ ${key}: não encontrado`, 'error');
+                }
+            });
+            
+            // Verificar sessionStorage
+            log('🔍 Verificando sessionStorage...', 'info');
+            const sessionToken = sessionStorage.getItem('auth_token');
+            if (sessionToken) {
+                log(`✅ sessionStorage auth_token: ${sessionToken.substring(0, 50)}...`, 'success');
+            } else {
+                log('❌ sessionStorage auth_token: não encontrado', 'error');
+            }
+            
+            // Verificar cookies
+            log('🔍 Verificando cookies...', 'info');
+            const cookies = document.cookie.split(';');
+            const authCookie = cookies.find(c => c.trim().startsWith('fluyt_auth_token='));
+            if (authCookie) {
+                log(`✅ Cookie: ${authCookie.substring(0, 50)}...`, 'success');
+            } else {
+                log('❌ Cookie fluyt_auth_token: não encontrado', 'error');
+            }
+        }
+
+        async function testarClientes() {
+            log('📋 Testando endpoint de clientes...', 'info');
+            
+            const token = localStorage.getItem('fluyt_auth_token');
+            
+            if (!token) {
+                log('❌ Token não encontrado no localStorage', 'error');
+                return;
+            }
+            
+            log(`🔑 Usando token: ${token.substring(0, 30)}...`, 'info');
+            
+            try {
+                const response = await fetch('http://localhost:8000/api/v1/clientes', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                log(`📡 Status: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`✅ Sucesso! Clientes carregados: ${data.items?.length || 0}`, 'success');
+                    log(`<pre>${JSON.stringify(data, null, 2)}</pre>`, 'info');
+                } else {
+                    const errorText = await response.text();
+                    log(`❌ Erro: ${errorText}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Erro de conexão: ${error.message}`, 'error');
+            }
+        }
+        
+        function limparStorage() {
+            localStorage.clear();
+            sessionStorage.clear();
+            document.cookie = 'fluyt_auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            log('🗑️ Storage limpo', 'info');
+        }
+
+        // Executar verificação inicial
+        window.onload = function() {
+            verificarTudo();
+        };
+    </script>
+</body>
+</html> 

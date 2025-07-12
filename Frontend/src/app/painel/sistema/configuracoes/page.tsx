@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Users, DollarSign, Settings, FileText, Building2, Store, UserCog, Layers } from 'lucide-react';
 import Link from 'next/link';
-import { GestaoEmpresas, GestaoLojas, GestaoEquipe, GestaoSetores, GestaoComissoes, GestaoConfigLoja, GestaoTiposColaboradores, GestaoColaboradoresIndividuais, GestaoStatusOrcamento } from '@/components/modulos/sistema';
+import { GestaoEmpresas, GestaoLojas, GestaoEquipe, GestaoSetores, GestaoComissoes, GestaoConfigLoja, GestaoTiposColaboradores, GestaoColaboradoresIndividuais, GestaoStatusOrcamento, GestaoProcedencias } from '@/components/modulos/sistema';
 import { ResetDados } from '@/components/modulos/sistema/configuracoes/reset-dados';
 import { TesteConectividade } from '@/components/modulos/sistema/configuracoes/teste-conectividade';
 
@@ -54,6 +54,9 @@ export default function ConfiguracoesPage() {
     }, {
       id: 'status',
       label: 'Status de Orçamento'
+    }, {
+      id: 'procedencias',
+      label: 'Procedências'
     }]
   }, {
     id: 'operacional',
@@ -103,6 +106,8 @@ export default function ConfiguracoesPage() {
         return <GestaoConfigLoja />;
       case 'configuracoes-status':
         return <GestaoStatusOrcamento />;
+      case 'configuracoes-procedencias':
+        return <GestaoProcedencias />;
       case 'operacional-tipos-colaboradores':
         return <GestaoTiposColaboradores />;
       case 'operacional-colaboradores-individuais':

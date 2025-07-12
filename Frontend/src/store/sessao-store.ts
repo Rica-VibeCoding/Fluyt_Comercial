@@ -111,8 +111,11 @@ export const useSessaoStore = create<SessaoState>()(
           };
         }, false, 'definirCliente');
 
-        // Salvar automaticamente após mudança
-        setTimeout(() => {
+        // Salvar automaticamente após mudança com debounce
+        if ((window as any).sessaoStoreTimeout) {
+          clearTimeout((window as any).sessaoStoreTimeout);
+        }
+        (window as any).sessaoStoreTimeout = setTimeout(() => {
           get().salvarSessaoAtual();
         }, 100);
       },
@@ -171,8 +174,11 @@ export const useSessaoStore = create<SessaoState>()(
           };
         }, false, 'adicionarAmbiente');
 
-        // Salvar automaticamente após mudança
-        setTimeout(() => {
+        // Salvar automaticamente após mudança com debounce
+        if ((window as any).sessaoStoreTimeout) {
+          clearTimeout((window as any).sessaoStoreTimeout);
+        }
+        (window as any).sessaoStoreTimeout = setTimeout(() => {
           get().salvarSessaoAtual();
         }, 100);
       },
@@ -204,8 +210,11 @@ export const useSessaoStore = create<SessaoState>()(
           ultimaAtualizacao: new Date().toISOString()
         }, false, 'definirOrcamento');
 
-        // Salvar automaticamente após mudança
-        setTimeout(() => {
+        // Salvar automaticamente após mudança com debounce
+        if ((window as any).sessaoStoreTimeout) {
+          clearTimeout((window as any).sessaoStoreTimeout);
+        }
+        (window as any).sessaoStoreTimeout = setTimeout(() => {
           get().salvarSessaoAtual();
         }, 100);
       },

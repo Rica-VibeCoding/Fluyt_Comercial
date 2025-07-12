@@ -12,6 +12,7 @@ from .schemas import (
     AmbienteMaterialCreate, AmbienteMaterialResponse
 )
 from .xml_importer import XMLImporter
+from ..clientes.services import ClienteService
 
 logger = logging.getLogger(__name__)
 
@@ -200,6 +201,18 @@ class AmbienteService:
         self._validar_nome(dados.nome, obrigatorio=False)
         self._validar_valores_monetarios(dados.valor_custo_fabrica, dados.valor_venda)
         self._validar_origem(dados.origem, obrigatorio=False)
-    async def importar_xml_ambiente(self, cliente_id: str, conteudo_xml: str, nome_arquivo: str) -> AmbienteResponse:
+    async def importar_xml_ambiente(self, cliente_id: str, conteudo_xml: str, nome_arquivo: str, user=None) -> AmbienteResponse:
         """Importa ambiente a partir de XML do Promob"""
-        return await self.xml_importer.importar_xml(cliente_id, conteudo_xml, nome_arquivo)
+        resultado = await self.xml_importer.importar_xml(cliente_id, conteudo_xml, nome_arquivo)
+        
+        # TRIGGER AUTOMÁTICO: XML importado → Ordem 2 (Projeto Importado)
+        if user:
+            try:
+                cliente_service = ClienteService()
+                await cliente_service.atualizar_status_cliente(cliente_id, 2, user)
+                logger.info(f"Status atualizado para ordem 2 - cliente {cliente_id}")
+            except Exception as status_error:
+                logger.warning(f"Erro ao atualizar status após import XML: {status_error}")
+                # Não falha a importação por erro de status
+        
+        return resultado

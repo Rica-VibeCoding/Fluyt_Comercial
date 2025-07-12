@@ -39,3 +39,6 @@ export { GestaoTiposColaboradores, GestaoColaboradoresIndividuais } from './cola
 
 // Status de Orçamento
 export { GestaoStatusOrcamento } from './status-orcamento';
+
+// Procedências
+export { GestaoProcedencias } from './procedencias';

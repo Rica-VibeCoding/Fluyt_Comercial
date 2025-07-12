@@ -102,7 +102,7 @@ export function ClienteModal({
                 <Tabs value={abaAtiva} className="h-full">
                   <TabsContent value="essencial" className="h-full p-2 mt-0">
                     <div className="h-full">
-                      <ClienteFormEssencial form={form} />
+                      <ClienteFormEssencial form={form} cliente={cliente} />
                     </div>
                   </TabsContent>
 

@@ -238,6 +238,24 @@ export interface TransportadoraFormData {
 }
 
 // ========================================
+// PROCEDÊNCIAS
+// ========================================
+export interface Procedencia {
+  id: string;                      // ✅ ID único
+  nome: string;                    // ✅ ÚNICO OBRIGATÓRIO
+  descricao?: string;              // ✅ opcional - descrição da procedência
+  ativo: boolean;                  // ✅ campo soft delete
+  created_at: string;              // ✅ data de criação
+  updated_at?: string | null;      // ✅ data de atualização (opcional)
+}
+
+export interface ProcedenciaFormData {
+  nome: string;                    // ✅ único obrigatório
+  descricao?: string;              // ✅ opcional - descrição da procedência
+  ativo: boolean;                  // ✅ status ativo/inativo
+}
+
+// ========================================
 // AUDITORIA
 // ========================================
 export type TipoAcaoAuditoria = 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT';

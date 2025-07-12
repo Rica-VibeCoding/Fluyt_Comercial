@@ -3,10 +3,12 @@ Controller - Endpoints da API para clientes
 Define todas as rotas HTTP para gerenciar clientes
 """
 import logging
+from datetime import datetime
 from typing import Optional, List
-from fastapi import APIRouter, Depends, Query, status, HTTPException
+from fastapi import APIRouter, Depends, Query, status, HTTPException, Request
 
-from core.auth import get_current_user, User
+from core.dependencies import get_current_user
+from core.rate_limiter import limiter
 from core.dependencies import (
     get_pagination,
     PaginationParams,
@@ -46,7 +48,7 @@ async def listar_clientes(
     pagination: PaginationParams = Depends(get_pagination),
     
     # Usuário logado
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ) -> ClienteListResponse:
     """
     Lista clientes da loja do usuário com filtros e paginação
@@ -84,11 +86,9 @@ async def listar_clientes(
         
         # Se data_inicio e data_fim foram fornecidas, converte para datetime
         if data_inicio:
-            from datetime import datetime
             filtros.data_inicio = datetime.fromisoformat(data_inicio)
         
         if data_fim:
-            from datetime import datetime
             filtros.data_fim = datetime.fromisoformat(data_fim)
         
         # Chama o serviço
@@ -113,7 +113,7 @@ async def listar_clientes(
 @router.get("/{cliente_id}", response_model=ClienteResponse)
 async def buscar_cliente(
     cliente_id: str,
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ) -> ClienteResponse:
     """
     Busca um cliente específico pelo ID
@@ -149,7 +149,7 @@ async def buscar_cliente(
 @router.post("/", response_model=ClienteResponse, status_code=status.HTTP_201_CREATED)
 async def criar_cliente(
     dados: ClienteCreate,
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ) -> ClienteResponse:
     """
     Cria um novo cliente
@@ -194,7 +194,7 @@ async def criar_cliente(
 async def atualizar_cliente(
     cliente_id: str,
     dados: ClienteUpdate,
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ) -> ClienteResponse:
     """
     Atualiza dados de um cliente existente
@@ -228,10 +228,39 @@ async def atualizar_cliente(
         raise
 
 
+@router.get("/{cliente_id}/dados-relacionados", response_model=dict)
+async def contar_dados_relacionados(
+    cliente_id: str,
+    current_user: dict = Depends(get_current_user)
+) -> dict:
+    """
+    Conta dados relacionados ao cliente antes da exclusão
+    
+    **Parâmetros:**
+    - `cliente_id`: UUID do cliente
+    
+    **Retorna:**
+    ```json
+    {
+        "ambientes": 3,
+        "orcamentos": 1, 
+        "materiais": 15
+    }
+    ```
+    """
+    try:
+        contadores = await cliente_service.contar_dados_relacionados(cliente_id, current_user)
+        return contadores
+    
+    except Exception as e:
+        logger.error(f"Erro ao contar dados relacionados do cliente {cliente_id}: {str(e)}")
+        raise
+
+
 @router.delete("/{cliente_id}", response_model=SuccessResponse)
 async def excluir_cliente(
     cliente_id: str,
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ) -> SuccessResponse:
     """
     Exclui um cliente (soft delete)
@@ -241,7 +270,7 @@ async def excluir_cliente(
     
     **Regras:**
     - Apenas administradores podem excluir clientes
-    - Cliente é marcado como inativo, não deletado fisicamente
+    - Cliente é marcado com status "Rejeitado", não deletado fisicamente
     - Histórico de orçamentos/contratos é preservado
     
     **Response:**
@@ -267,10 +296,12 @@ async def excluir_cliente(
 
 
 @router.get("/verificar-cpf-cnpj/{cpf_cnpj}", response_model=dict)
+@limiter.limit("10/minute")
 async def verificar_cpf_cnpj(
+    request: Request,
     cpf_cnpj: str,
     cliente_id: Optional[str] = Query(None, description="ID do cliente a ignorar (para edição)"),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ) -> dict:
     """
     Verifica se um CPF/CNPJ está disponível para uso
@@ -309,112 +340,31 @@ async def verificar_cpf_cnpj(
         raise
 
 
-@router.get("/test/public", response_model=dict, include_in_schema=False)
-async def test_clientes_publico() -> dict:
-    """
-    Endpoint público para teste de conectividade
-    
-    **APENAS PARA DESENVOLVIMENTO**
-    Permite testar se a API está funcionando sem necessidade de autenticação
-    
-    **Response:**
-    ```json
-    {
-        "success": true,
-        "message": "API de clientes funcionando",
-        "total_clientes": 5,
-        "ambiente": "development"
-    }
-    ```
-    """
-    from core.config import settings
-    if not settings.is_development:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Endpoint não encontrado")
-    try:
-        # Teste básico de conectividade com o serviço
-        # Usar um método do serviço que não dependa de autenticação
-        from .repository import ClienteRepository
-        from core.database import get_database
-        
-        db = get_database()
-        repo = ClienteRepository(db)
-        # Contagem básica de clientes (sem filtros de loja)
-        total = await repo.contar_total_publico()
-        
-        logger.info("Teste público de conectividade da API de clientes executado")
-        
-        return {
-            "success": True,
-            "message": "API de clientes funcionando",
-            "total_clientes": total,
-            "ambiente": "development"
-        }
-    
-    except Exception as e:
-        logger.error(f"Erro no teste público: {str(e)}")
-        return {
-            "success": False,
-            "message": f"Erro na API: {str(e)}",
-            "total_clientes": 0,
-            "ambiente": "development"
-        }
 
 
-@router.get("/test/debug", response_model=dict, include_in_schema=False)
-async def debug_clientes() -> dict:
+
+
+@router.get("/procedencias-public", response_model=List[dict])
+async def listar_procedencias_publico() -> List[dict]:
     """
-    Endpoint de debug detalhado para verificar tabela de clientes
-    
-    **APENAS PARA DESENVOLVIMENTO**
-    Mostra informações detalhadas sobre a tabela e dados
+    Endpoint PÚBLICO para buscar procedências (sem autenticação)
+    Lista todas as procedências ativas sem necessidade de token
     """
-    from core.config import settings
-    if not settings.is_development:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Endpoint não encontrado")
-    
     try:
-        from .repository import ClienteRepository
+        # Busca procedências usando cliente admin (bypassa RLS)
         from core.database import get_admin_database
+        supabase = get_admin_database()
         
-        # Usa admin database para bypassar RLS
-        db = get_admin_database()
+        result = supabase.table('c_procedencias').select('*').eq('ativo', True).order('nome').execute()
         
-        # Testa conexão básica
-        logger.info("=== DEBUG CLIENTES ===")
-        logger.info(f"Database client criado: {type(db)}")
-        
-        # Tenta query simples
-        result = db.table('c_clientes').select('*').limit(5).execute()
-        
-        logger.info(f"Query executada com sucesso")
-        logger.info(f"Dados retornados: {result.data}")
-        
-        # Conta total
-        count_result = db.table('c_clientes').select('id', count='exact').execute()
-        total = count_result.count or 0
-        
-        return {
-            "success": True,
-            "message": "Debug executado",
-            "total_clientes": total,
-            "primeiros_5": result.data if result.data else [],
-            "info": {
-                "tabela": "c_clientes",
-                "database": "admin (bypass RLS)",
-                "tem_dados": len(result.data) > 0 if result.data else False
-            }
-        }
+        return result.data
     
     except Exception as e:
-        logger.error(f"Erro no debug: {str(e)}")
-        import traceback
-        logger.error(traceback.format_exc())
-        
-        return {
-            "success": False,
-            "message": f"Erro no debug: {str(e)}",
-            "traceback": traceback.format_exc()
-        }
+        logger.error(f"Erro ao listar procedências público: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro ao buscar procedências"
+        )
 
 
 @router.get("/procedencias", response_model=List[dict])
@@ -438,7 +388,7 @@ async def listar_procedencias() -> List[dict]:
         from core.database import get_admin_database
         supabase = get_admin_database()
         
-        result = supabase.table('cad_procedencias').select('*').eq('ativo', True).order('nome').execute()
+        result = supabase.table('c_procedencias').select('*').eq('ativo', True).order('nome').execute()
         
         return result.data
     
@@ -450,97 +400,5 @@ async def listar_procedencias() -> List[dict]:
         )
 
 
-@router.post("/test/criar-sem-auth", response_model=dict, include_in_schema=False)
-async def criar_cliente_sem_auth(dados: ClienteCreate) -> dict:
-    """
-    ENDPOINT TEMPORÁRIO - Criar cliente sem autenticação
-    
-    **APENAS PARA DEBUG/DESENVOLVIMENTO**
-    Permite testar criação de cliente sem token de autenticação
-    """
-    from core.config import settings
-    if not settings.is_development:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Endpoint não encontrado")
-    
-    try:
-        # Criar um usuário fake para o teste
-        from core.auth import User
-        fake_user = User(
-            id="test-user-id",
-            email="test@test.com",
-            nome="Usuário Teste",
-            perfil="ADMIN",
-            loja_id="test-loja-id"
-        )
-        
-        cliente = await cliente_service.criar_cliente(dados, fake_user)
-        
-        logger.info(f"Cliente criado via endpoint de teste: {cliente.id}")
-        
-        return {
-            "success": True,
-            "message": "Cliente criado com sucesso (endpoint de teste)",
-            "cliente": {
-                "id": cliente.id,
-                "nome": cliente.nome,
-                "cpf_cnpj": cliente.cpf_cnpj,
-                "telefone": cliente.telefone
-            }
-        }
-    
-    except Exception as e:
-        logger.error(f"Erro ao criar cliente via teste: {str(e)}")
-        import traceback
-        logger.error(traceback.format_exc())
-        
-        return {
-            "success": False,
-            "message": f"Erro ao criar cliente: {str(e)}",
-            "traceback": traceback.format_exc()
-        }
 
 
-@router.delete("/test/excluir-sem-auth/{cliente_id}", response_model=dict, include_in_schema=False)
-async def excluir_cliente_sem_auth(cliente_id: str) -> dict:
-    """
-    ENDPOINT TEMPORÁRIO - Excluir cliente sem autenticação
-    
-    **APENAS PARA DEBUG/DESENVOLVIMENTO**
-    Permite testar exclusão de cliente sem token de autenticação
-    """
-    from core.config import settings
-    if not settings.is_development:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Endpoint não encontrado")
-    
-    try:
-        # Criar um usuário fake admin para o teste
-        from core.auth import User
-        fake_user = User(
-            id="test-admin-id",
-            email="admin@test.com",
-            nome="Admin Teste",
-            perfil="ADMIN",
-            loja_id="a3579ff1-1c64-44bc-8850-10a088d382a0"  # Loja Romanza
-        )
-        
-        sucesso = await cliente_service.excluir_cliente(cliente_id, fake_user)
-        
-        logger.info(f"Cliente excluído via endpoint de teste: {cliente_id}")
-        
-        return {
-            "success": True,
-            "message": "Cliente excluído com sucesso (endpoint de teste)",
-            "cliente_id": cliente_id,
-            "excluido": sucesso
-        }
-    
-    except Exception as e:
-        logger.error(f"Erro ao excluir cliente via teste: {str(e)}")
-        import traceback
-        logger.error(traceback.format_exc())
-        
-        return {
-            "success": False,
-            "message": f"Erro ao excluir cliente: {str(e)}",
-            "traceback": traceback.format_exc()
-        }

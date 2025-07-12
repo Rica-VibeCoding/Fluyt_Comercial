@@ -47,8 +47,8 @@ class ClienteRepository:
             Dicionário com items e informações de paginação
         """
         try:
-            # Inicia a query base - removendo JOIN problemático
-            query = self.db.table(self.table).select("*").eq('ativo', True)  # Filtrar apenas clientes ativos (soft delete)
+            # Inicia a query base
+            query = self.db.table(self.table).select("*")
             
             # Aplica filtro de loja apenas se fornecido (RLS)
             # Se loja_id é None, não filtra (SUPER_ADMIN)
@@ -86,7 +86,7 @@ class ClienteRepository:
                     query = query.lte('created_at', filtros['data_fim'].isoformat())
             
             # Conta total de registros (sem paginação)
-            count_query = self.db.table(self.table).select('id', count='exact').eq('ativo', True)
+            count_query = self.db.table(self.table).select('id', count='exact')
             if loja_id is not None:
                 count_query = count_query.eq('loja_id', loja_id)
             count_result = count_query.execute()
@@ -161,7 +161,7 @@ class ClienteRepository:
                 vendedor:cad_equipe!vendedor_id(id, nome),
                 procedencia:c_procedencias!procedencia_id(id, nome)
                 """
-            ).eq('id', cliente_id).eq('ativo', True)  # Filtrar apenas clientes ativos
+            ).eq('id', cliente_id)
             
             # Aplica filtro de loja apenas se fornecido
             if loja_id is not None:
@@ -202,7 +202,7 @@ class ClienteRepository:
             Dados do cliente ou None se não encontrado
         """
         try:
-            query = self.db.table(self.table).select('*').eq('cpf_cnpj', cpf_cnpj).eq('ativo', True)
+            query = self.db.table(self.table).select('*').eq('cpf_cnpj', cpf_cnpj)
             
             # Aplica filtro de loja apenas se fornecido
             if loja_id is not None:
@@ -231,7 +231,7 @@ class ClienteRepository:
             Dados do cliente ou None se não encontrado
         """
         try:
-            query = self.db.table(self.table).select('*').eq('nome', nome).eq('ativo', True)
+            query = self.db.table(self.table).select('*').eq('nome', nome)
             
             # Aplica filtro de loja apenas se fornecido
             if loja_id is not None:
@@ -357,7 +357,7 @@ class ClienteRepository:
     
     async def excluir(self, cliente_id: str, loja_id: Optional[str]) -> bool:
         """
-        Exclui um cliente (soft delete - marca como inativo)
+        Exclui um cliente permanentemente (hard delete).
         
         Args:
             cliente_id: ID do cliente
@@ -370,18 +370,19 @@ class ClienteRepository:
             NotFoundException: Se cliente não encontrado
         """
         try:
-            # Verifica se existe
+            # Verifica se o cliente existe antes de tentar deletar
             await self.buscar_por_id(cliente_id, loja_id)
             
-            # Marca como inativo em vez de deletar fisicamente
-            query = self.db.table(self.table).update({'ativo': False}).eq('id', cliente_id)
+            # Deleta fisicamente o registro do banco
+            query = self.db.table(self.table).delete().eq('id', cliente_id)
             
-            # Aplica filtro de loja apenas se fornecido
+            # Aplica filtro de loja apenas se fornecido (camada extra de segurança RLS)
             if loja_id is not None:
                 query = query.eq('loja_id', loja_id)
                 
             result = query.execute()
             
+            # A API de delete retorna os dados deletados. Se a lista não estiver vazia, foi sucesso.
             return bool(result.data)
         
         except NotFoundException:
@@ -415,3 +416,51 @@ class ClienteRepository:
         except Exception as e:
             logger.error(f"Erro ao contar clientes publicamente: {str(e)}")
             return 0
+    
+    async def contar(self, loja_id: Optional[str] = None, filtros: Dict[str, Any] = None) -> int:
+        """
+        Conta clientes com filtros opcionais
+        
+        Args:
+            loja_id: ID da loja (para RLS)
+            filtros: Filtros opcionais
+            
+        Returns:
+            Número de clientes que atendem aos critérios
+        """
+        try:
+            query = self.db.table(self.table).select('id', count='exact')
+            
+            # Aplica filtro de loja apenas se fornecido
+            if loja_id is not None:
+                query = query.eq('loja_id', loja_id)
+            
+            # Aplica filtros opcionais
+            if filtros:
+                # Busca textual
+                if filtros.get('busca'):
+                    busca = f"%{filtros['busca']}%"
+                    query = query.or_(
+                        f"nome.ilike.{busca},"
+                        f"cpf_cnpj.ilike.{busca},"
+                        f"telefone.ilike.{busca}"
+                    )
+                
+                # Tipo de venda
+                if filtros.get('tipo_venda'):
+                    query = query.eq('tipo_venda', filtros['tipo_venda'])
+                
+                # Vendedor
+                if filtros.get('vendedor_id'):
+                    query = query.eq('vendedor_id', filtros['vendedor_id'])
+                
+                # Procedência
+                if filtros.get('procedencia_id'):
+                    query = query.eq('procedencia_id', filtros['procedencia_id'])
+            
+            result = query.execute()
+            return result.count or 0
+            
+        except Exception as e:
+            logger.error(f"Erro ao contar clientes: {str(e)}")
+            raise DatabaseException(f"Erro ao contar clientes: {str(e)}")

@@ -4,10 +4,10 @@
  * Transparente para componentes - eles não sabem se estão usando API ou mock
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { clienteService, type ClienteServiceResponse, type ClienteListResponse } from '@/services/cliente-service';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { clienteService, converterClienteAPIParaFrontend, type ClienteListResponse } from '@/services/cliente-service';
 import type { Cliente, ClienteFormData, FiltrosCliente, Vendedor } from '@/types/cliente';
-import { useToast } from '@/hooks/globais/use-toast';
+import { toast } from 'sonner';
 import { logConfig } from '@/lib/config';
 
 // Importar serviço de equipe para buscar vendedores reais
@@ -21,8 +21,17 @@ export function useClientesApi() {
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
-  const [ultimaFonte, setUltimaFonte] = useState<'api' | 'mock' | null>(null);
-  const { toast } = useToast();
+  const [erro, setErro] = useState<string | null>(null);
+  
+  // Ref para verificar se componente ainda está montado
+  const isMountedRef = useRef(true);
+  
+  // Cleanup ao desmontar
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // ============= CARREGAR VENDEDORES REAIS =============
   const carregarVendedores = useCallback(async () => {
@@ -60,12 +69,9 @@ export function useClientesApi() {
       setVendedores(vendedoresFallback);
       logConfig('useClientesApi: Usando fallback com vendedores reais do Supabase');
       
-      toast({
-        title: "Aviso",
-        description: "Usando dados temporários de vendedores. Verifique autenticação do backend.",
-      });
+      toast.error('Aviso: Usando dados temporários de vendedores. Verifique autenticação do backend.');
     }
-  }, [toast]);
+  }, []);
 
   // ============= HIDRATAÇÃO =============
   useEffect(() => {
@@ -88,58 +94,77 @@ export function useClientesApi() {
     }
     
     setIsLoading(true);
+    setErro(null);
     logConfig('useClientesApi: Carregando clientes...', { filtros });
     
     try {
-      const response = await clienteService.listarClientes(filtros);
+      const response = await clienteService.listar(filtros);
       
       if (response.success && response.data) {
-        setClientes(response.data.items);
-        setUltimaFonte(response.source);
-        
-        // Se usar mock, lançar erro ao invés de mostrar toast
-        if (response.source === 'mock') {
-          throw new Error('Backend não disponível. Verifique se o servidor está rodando.');
-        }
+        // Converter clientes da API para formato frontend
+        const clientesConvertidos = response.data.items.map(converterClienteAPIParaFrontend);
+        setClientes(clientesConvertidos);
         
         logConfig('useClientesApi: Clientes carregados com sucesso', {
-          total: response.data.items.length,
-          fonte: response.source
+          total: response.data.items.length
         });
       } else {
         throw new Error(response.error || 'Erro desconhecido ao carregar clientes');
       }
     } catch (error) {
       console.error('❌ useClientesApi: Erro ao carregar clientes:', error);
-      const mensagemErro = error instanceof Error ? error.message : "Não foi possível carregar a lista de clientes.";
-      toast({
-        title: "Erro ao carregar clientes",
-        description: mensagemErro,
-        variant: "destructive"
-      });
+      
+      // Tratamento específico de erros
+      let mensagemErro = "Não foi possível carregar a lista de clientes.";
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+          mensagemErro = "Erro de conexão com o servidor. Verifique se o backend está rodando.";
+        } else if (error.message.includes('403') || error.message.includes('Not authenticated')) {
+          mensagemErro = "Sessão expirada. Faça login novamente.";
+          // Limpar dados de autenticação inválidos
+          localStorage.removeItem('fluyt_auth_token');
+          localStorage.removeItem('fluyt_refresh_token');
+          localStorage.removeItem('fluyt_user');
+          
+          // Redirecionar para login se não estiver na página de login
+          if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+            window.location.href = '/login';
+            return;
+          }
+        } else if (error.message.includes('timeout')) {
+          mensagemErro = "Conexão muito lenta. Tente novamente.";
+        } else {
+          mensagemErro = error.message;
+        }
+      }
+      
+      setErro(mensagemErro);
+      toast.error(mensagemErro);
       setClientes([]);
-      setUltimaFonte(null);
     } finally {
       setIsLoading(false);
       setIsInitialized(true);
     }
-  }, [filtros, toast, isHydrated]);
+  }, [filtros, isHydrated]);
 
   // Carregar na inicialização e quando filtros mudarem
   useEffect(() => {
-    carregarClientes();
-  }, [carregarClientes]);
+    if (isHydrated) {
+      carregarClientes();
+    }
+  }, [filtros, isHydrated, carregarClientes]);
 
   // ============= BUSCAR CLIENTE POR ID =============
   const buscarClientePorId = useCallback(async (id: string): Promise<Cliente | null> => {
     logConfig('useClientesApi: Buscando cliente por ID...', { id });
     
     try {
-      const response = await clienteService.buscarClientePorId(id);
+      const response = await clienteService.buscarPorId(id);
       
       if (response.success && response.data) {
-        logConfig('useClientesApi: Cliente encontrado', { nome: response.data.nome, fonte: response.source });
-        return response.data;
+        const clienteConvertido = converterClienteAPIParaFrontend(response.data);
+        logConfig('useClientesApi: Cliente encontrado');
+        return clienteConvertido;
       } else {
         logConfig('useClientesApi: Cliente não encontrado', { id, erro: response.error });
         return null;
@@ -150,12 +175,58 @@ export function useClientesApi() {
     }
   }, []);
 
+  // ============= VERIFICAR DADOS COMPLETOS =============
+  const verificarDadosCompletos = useCallback((cliente: Cliente): boolean => {
+    return !!(
+      cliente?.cpf_cnpj && 
+      cliente?.telefone && 
+      cliente?.email &&
+      cliente?.logradouro &&
+      cliente?.cidade &&
+      cliente?.uf &&
+      !cliente.cpf_cnpj.includes('não informado')
+    );
+  }, []);
+
+  // ============= DETERMINAR STATUS BASEADO EM REGRAS =============
+  const determinarStatusCliente = useCallback((cliente: Cliente, statusList: any[]): string | null => {
+    if (!statusList.length) return null;
+
+    // Buscar status por ordem na tabela c_status_orcamento
+    const statusOrdem1 = statusList.find(s => s.ordem === 1)?.id; // Cadastrado
+    const statusOrdem2 = statusList.find(s => s.ordem === 2)?.id; // Ambiente Importado  
+    const statusOrdem3 = statusList.find(s => s.ordem === 3)?.id; // Orçamento
+    const statusOrdem4 = statusList.find(s => s.ordem === 4)?.id; // Negociação
+    const statusOrdem5 = statusList.find(s => s.ordem === 5)?.id; // Fechado
+
+    // REGRA 4: Se tem contrato → ordem 4 (Fechado preserva ordem 5)
+    // TODO: Verificar se cliente tem contrato quando módulo contratos estiver pronto
+    
+    // REGRA 3: Se tem plano de pagamento salvo → ordem 3 (Orçamento)
+    // TODO: Verificar se cliente tem orçamento/pagamento quando módulo estiver pronto
+    
+    // REGRA 2: Se tem ambiente importado/criado → ordem 2 (Ambiente Importado)
+    // TODO: Verificar se cliente tem ambientes quando módulo estiver pronto
+    
+    // REGRA 1: Cliente recém cadastrado → ordem 1 (Cadastrado)
+    // Se não tem status_id ou status inválido, usar ordem 1
+    if (!cliente.status_id || !statusList.find(s => s.id === cliente.status_id)) {
+      return statusOrdem1 || null;
+    }
+
+    // Manter status atual se válido
+    return cliente.status_id;
+  }, []);
+
   // ============= ADICIONAR CLIENTE =============
-  const adicionarCliente = useCallback(async (novoCliente: Omit<Cliente, 'id' | 'created_at' | 'updated_at'>): Promise<Cliente | null> => {
+  const adicionarCliente = useCallback(async (novoCliente: Omit<Cliente, 'id' | 'created_at' | 'updated_at'>, statusList: any[] = []): Promise<Cliente | null> => {
     setIsLoading(true);
     logConfig('useClientesApi: Criando cliente...', { nome: novoCliente.nome });
     
     try {
+      // REGRA: Cliente recém cadastrado recebe status ordem 1 (Cadastrado)
+      const statusInicial = statusList.find(s => s.ordem === 1)?.id || null;
+      
       // Converter para formato de formulário
       const dadosFormulario: ClienteFormData = {
         nome: novoCliente.nome,
@@ -173,47 +244,65 @@ export function useClientesApi() {
         cep: novoCliente.cep || '',
         procedencia_id: novoCliente.procedencia_id || '',
         vendedor_id: novoCliente.vendedor_id || '',
+        status_id: statusInicial || '',
         observacoes: novoCliente.observacoes,
       };
 
-      const response = await clienteService.criarCliente(dadosFormulario);
+      const response = await clienteService.criar(dadosFormulario);
       
       if (response.success && response.data) {
         // Recarregar lista
         await carregarClientes();
         
-        // Se foi salvo em mock, lançar erro
-        if (response.source === 'mock') {
-          throw new Error('Não foi possível conectar ao servidor. As alterações não foram salvas.');
-        }
+        const clienteConvertido = converterClienteAPIParaFrontend(response.data);
         
-        toast({
-          title: "Cliente cadastrado com sucesso!",
-          description: `${response.data.nome} foi adicionado.`,
-        });
+        toast.success(`Cliente ${response.data.nome} foi adicionado.`);
         
         logConfig('useClientesApi: Cliente criado com sucesso', { 
-          nome: response.data.nome, 
-          fonte: response.source 
+          nome: response.data.nome
         });
         
-        return response.data;
+        return clienteConvertido;
       } else {
         throw new Error(response.error || 'Erro ao criar cliente');
       }
     } catch (error) {
       console.error('❌ useClientesApi: Erro ao criar cliente:', error);
-      const mensagemErro = error instanceof Error ? error.message : "Verifique os dados e tente novamente.";
-      toast({
-        title: "Erro ao cadastrar cliente",
-        description: mensagemErro,
-        variant: "destructive"
-      });
+      
+      // Tratamento específico de erros
+      let mensagemErro = "Verifique os dados e tente novamente.";
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+          mensagemErro = "Erro de conexão com o servidor. Verifique se o backend está rodando.";
+        } else if (error.message.includes('403') || error.message.includes('Not authenticated')) {
+          mensagemErro = "Sessão expirada. Faça login novamente.";
+          // Limpar dados de autenticação inválidos
+          localStorage.removeItem('fluyt_auth_token');
+          localStorage.removeItem('fluyt_refresh_token');
+          localStorage.removeItem('fluyt_user');
+          
+          // Redirecionar para login se não estiver na página de login
+          if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+            window.location.href = '/login';
+            return null;
+          }
+        } else if (error.message.includes('timeout')) {
+          mensagemErro = "Conexão muito lenta. Tente novamente.";
+        } else if (error.message.includes('duplicat') || error.message.includes('unique')) {
+          mensagemErro = "CPF/CNPJ já cadastrado no sistema.";
+        } else if (error.message.includes('validation')) {
+          mensagemErro = "Dados inválidos. Verifique os campos obrigatórios.";
+        } else {
+          mensagemErro = error.message;
+        }
+      }
+      
+      toast.error(`Erro ao cadastrar cliente: ${mensagemErro}`);
       return null;
     } finally {
       setIsLoading(false);
     }
-  }, [carregarClientes, toast]);
+  }, [carregarClientes]);
 
   // ============= ATUALIZAR CLIENTE =============
   const atualizarCliente = useCallback(async (id: string, dadosAtualizados: Partial<Cliente>): Promise<Cliente | null> => {
@@ -221,44 +310,53 @@ export function useClientesApi() {
     logConfig('useClientesApi: Atualizando cliente...', { id });
     
     try {
-      const response = await clienteService.atualizarCliente(id, dadosAtualizados);
+      const response = await clienteService.atualizar(id, dadosAtualizados);
       
       if (response.success && response.data) {
         // Recarregar lista
         await carregarClientes();
         
-        // Se foi salvo em mock, lançar erro
-        if (response.source === 'mock') {
-          throw new Error('Não foi possível conectar ao servidor. As alterações não foram salvas.');
-        }
+        const clienteConvertido = converterClienteAPIParaFrontend(response.data);
         
-        toast({
-          title: "Cliente atualizado com sucesso!",
-          description: "Alterações sincronizadas com o servidor.",
-        });
+        toast.success("Cliente atualizado com sucesso!");
         
-        logConfig('useClientesApi: Cliente atualizado com sucesso', { 
-          id, 
-          fonte: response.source 
-        });
+        logConfig('useClientesApi: Cliente atualizado com sucesso', { id });
         
-        return response.data;
+        return clienteConvertido;
       } else {
         throw new Error(response.error || 'Erro ao atualizar cliente');
       }
     } catch (error) {
       console.error('❌ useClientesApi: Erro ao atualizar cliente:', error);
-      const mensagemErro = error instanceof Error ? error.message : "Tente novamente em alguns instantes.";
-      toast({
-        title: "Erro ao atualizar cliente",
-        description: mensagemErro,
-        variant: "destructive"
-      });
+      
+      // Tratamento específico de erros
+      let mensagemErro = "Tente novamente em alguns instantes.";
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+          mensagemErro = "Erro de conexão com o servidor. Verifique se o backend está rodando.";
+        } else if (error.message.includes('403') || error.message.includes('Not authenticated')) {
+          mensagemErro = "Sessão expirada. Faça login novamente.";
+          // Limpar dados de autenticação inválidos
+          localStorage.removeItem('fluyt_auth_token');
+          localStorage.removeItem('fluyt_refresh_token');
+          localStorage.removeItem('fluyt_user');
+          
+          // Redirecionar para login se não estiver na página de login
+          if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+            window.location.href = '/login';
+            return null;
+          }
+        } else {
+          mensagemErro = error.message;
+        }
+      }
+      
+      toast.error(`Erro ao atualizar cliente: ${mensagemErro}`);
       return null;
     } finally {
       setIsLoading(false);
     }
-  }, [carregarClientes, toast]);
+  }, [carregarClientes]);
 
   // ============= REMOVER CLIENTE =============
   const removerCliente = useCallback(async (id: string): Promise<boolean> => {
@@ -266,26 +364,15 @@ export function useClientesApi() {
     logConfig('useClientesApi: Removendo cliente...', { id });
     
     try {
-      const response = await clienteService.deletarCliente(id);
+      const response = await clienteService.excluir(id);
       
       if (response.success) {
         // Recarregar lista
         await carregarClientes();
         
-        // Se foi removido em mock, lançar erro
-        if (response.source === 'mock') {
-          throw new Error('Não foi possível conectar ao servidor. A remoção não foi efetivada.');
-        }
+        toast.success("Cliente removido com sucesso!");
         
-        toast({
-          title: "Cliente removido",
-          description: "Cliente removido do servidor.",
-        });
-        
-        logConfig('useClientesApi: Cliente removido com sucesso', { 
-          id, 
-          fonte: response.source 
-        });
+        logConfig('useClientesApi: Cliente removido com sucesso', { id });
         
         return true;
       } else {
@@ -293,22 +380,40 @@ export function useClientesApi() {
       }
     } catch (error) {
       console.error('❌ useClientesApi: Erro ao remover cliente:', error);
-      const mensagemErro = error instanceof Error ? error.message : "Tente novamente em alguns instantes.";
-      toast({
-        title: "Erro ao remover cliente",
-        description: mensagemErro,
-        variant: "destructive"
-      });
+      
+      // Tratamento específico de erros
+      let mensagemErro = "Tente novamente em alguns instantes.";
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+          mensagemErro = "Erro de conexão com o servidor. Verifique se o backend está rodando.";
+        } else if (error.message.includes('403') || error.message.includes('Not authenticated')) {
+          mensagemErro = "Sessão expirada. Faça login novamente.";
+          // Limpar dados de autenticação inválidos
+          localStorage.removeItem('fluyt_auth_token');
+          localStorage.removeItem('fluyt_refresh_token');
+          localStorage.removeItem('fluyt_user');
+          
+          // Redirecionar para login se não estiver na página de login
+          if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+            window.location.href = '/login';
+            return false;
+          }
+        } else {
+          mensagemErro = error.message;
+        }
+      }
+      
+      toast.error(`Erro ao remover cliente: ${mensagemErro}`);
       return false;
     } finally {
       setIsLoading(false);
     }
-  }, [carregarClientes, toast]);
+  }, [carregarClientes]);
 
   // ============= STATUS DE CONECTIVIDADE =============
   const obterStatusConectividade = useCallback(async () => {
     try {
-      return await clienteService.obterStatusConectividade();
+      return await clienteService.testePublico();
     } catch (error) {
       console.error('❌ useClientesApi: Erro ao obter status:', error);
       return null;
@@ -326,7 +431,7 @@ export function useClientesApi() {
     // Estados
     isLoading: isLoading || !isHydrated,
     isInitialized: isInitialized && isHydrated,
-    ultimaFonte,
+    erro,
     
     // Ações CRUD
     adicionarCliente,
@@ -337,6 +442,8 @@ export function useClientesApi() {
     // Ações auxiliares
     carregarClientes,
     obterStatusConectividade,
+    verificarDadosCompletos,
+    determinarStatusCliente,
     
     // Estatísticas
     totalClientes: clientes.length,
@@ -346,5 +453,5 @@ export function useClientesApi() {
 // ============= LOGS DE INICIALIZAÇÃO =============
 
 logConfig('🚀 useClientesApi carregado');
-logConfig('🔀 Estratégia: API-first com fallback automático para mock');
-logConfig('📡 Integração transparente para componentes');
+logConfig('🔀 Estratégia: API-first com autenticação JWT (padrão Empresas)');
+logConfig('📡 Integração autenticada com backend FastAPI');

@@ -3,8 +3,8 @@ import { useSearchParams } from 'next/navigation';
 import { useSessaoSimples } from '../../../../hooks/globais/use-sessao-simples';
 import { contratoMock, ContratoData } from '../../../../types/contrato';
 // ✅ CORREÇÃO FASE 1: Importar tipos e hook para cliente completo
-import { useClienteCompleto } from '../../../../hooks/use-cliente-completo';
-import { formatarEnderecoCliente, CLIENTE_FALLBACKS } from '../../../../types/cliente-completo';
+import { useClientesApi } from '../../../../hooks/modulos/clientes/use-clientes-api';
+import { formatarEnderecoCliente } from '../../../../types/cliente';
 
 // Hook para gerenciamento de dados do contrato
 export function useContractDataManager() {
@@ -17,7 +17,21 @@ export function useContractDataManager() {
   } = useSessaoSimples();
   
   // ✅ CORREÇÃO FASE 1: Usar hook para dados completos do cliente
-  const { clienteCompleto, carregando: carregandoCliente, temDadosCompletos } = useClienteCompleto(cliente);
+  const { buscarClientePorId, verificarDadosCompletos } = useClientesApi();
+  const [clienteCompleto, setClienteCompleto] = useState(null);
+  const [carregandoCliente, setCarregandoCliente] = useState(false);
+  
+  useEffect(() => {
+    if (cliente?.id) {
+      setCarregandoCliente(true);
+      buscarClientePorId(cliente.id).then(clienteData => {
+        setClienteCompleto(clienteData);
+        setCarregandoCliente(false);
+      });
+    }
+  }, [cliente?.id, buscarClientePorId]);
+  
+  const temDadosCompletos = clienteCompleto ? verificarDadosCompletos(clienteCompleto) : false;
   
   const [contratoData, setContratoData] = useState<ContratoData>(contratoMock);
   const [isLoading, setIsLoading] = useState(false);

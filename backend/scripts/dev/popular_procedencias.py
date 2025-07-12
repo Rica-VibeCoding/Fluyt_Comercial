@@ -1,5 +1,5 @@
 """
-Script para popular a tabela cad_procedencias no Supabase
+Script para popular a tabela c_procedencias no Supabase
 """
 import os
 import sys
@@ -44,7 +44,7 @@ def criar_procedencias():
     for nome in PROCEDENCIAS_PADRAO:
         try:
             # Verifica se já existe
-            result = supabase.table('cad_procedencias').select('*').eq('nome', nome).execute()
+            result = supabase.table('c_procedencias').select('*').eq('nome', nome).execute()
             
             if result.data:
                 print(f"✓ Procedência '{nome}' já existe")
@@ -57,7 +57,7 @@ def criar_procedencias():
                 'ativo': True
             }
             
-            supabase.table('cad_procedencias').insert(nova_procedencia).execute()
+            supabase.table('c_procedencias').insert(nova_procedencia).execute()
             print(f"✅ Procedência '{nome}' criada com sucesso")
             
         except Exception as e:
@@ -65,7 +65,7 @@ def criar_procedencias():
     
     # Lista todas as procedências criadas
     print("\n📋 Procedências no banco:")
-    result = supabase.table('cad_procedencias').select('*').order('nome').execute()
+    result = supabase.table('c_procedencias').select('*').order('nome').execute()
     
     for proc in result.data:
         print(f"  - {proc['nome']} (ID: {proc['id']})")

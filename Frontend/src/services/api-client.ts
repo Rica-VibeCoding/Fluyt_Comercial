@@ -85,19 +85,23 @@ class ApiClient {
     this.defaultHeaders = { ...API_CONFIG.DEFAULT_HEADERS };
     
     // Carregar token de autenticação se existir
-    if (typeof window !== 'undefined') {
-      this.authToken = localStorage.getItem('fluyt_auth_token');
-      
-      // Se tiver token, verificar se ainda é válido
-      if (this.authToken) {
-        logConfig('Token de autenticação encontrado no localStorage');
-      }
-    }
+    this.initializeAuth();
     
     logConfig('ApiClient inicializado', { 
       baseURL: this.baseURL,
       hasAuthToken: !!this.authToken 
     });
+  }
+
+  // Inicializar autenticação
+  private initializeAuth() {
+    if (typeof window !== 'undefined') {
+      const storedToken = localStorage.getItem('fluyt_auth_token');
+      if (storedToken) {
+        this.authToken = storedToken;
+        logConfig('🔑 Token de autenticação carregado do localStorage');
+      }
+    }
   }
 
   // Configurar token de autenticação
@@ -113,21 +117,36 @@ class ApiClient {
     logConfig('Token de autenticação atualizado', { hasToken: !!token });
   }
 
+  // Forçar recarregamento do token do localStorage
+  refreshAuthFromStorage() {
+    if (typeof window !== 'undefined') {
+      const storedToken = localStorage.getItem('fluyt_auth_token');
+      if (storedToken !== this.authToken) {
+        this.authToken = storedToken;
+        console.log('🔄 Token recarregado do localStorage:', !!storedToken);
+      }
+    }
+  }
+
   // Headers com autenticação
   private getHeaders(): Record<string, string> {
     const headers = { ...this.defaultHeaders };
     
+    // Sempre tentar carregar token mais recente do localStorage
+    if (typeof window !== 'undefined') {
+      const currentToken = localStorage.getItem('fluyt_auth_token');
+      if (currentToken && currentToken !== this.authToken) {
+        this.authToken = currentToken;
+        console.log('🔄 Token atualizado do localStorage');
+      }
+    }
+    
     // Adicionar token de autenticação se disponível
     if (this.authToken) {
       headers.Authorization = `Bearer ${this.authToken}`;
+      console.log('🔑 Enviando requisição com token de autenticação');
     } else {
-      // Tentar buscar token do localStorage se não estiver carregado
-      const storedToken = localStorage.getItem('fluyt_auth_token');
-      if (storedToken) {
-        this.authToken = storedToken;
-        headers.Authorization = `Bearer ${storedToken}`;
-        console.log('🔑 Token recuperado do localStorage para requisição');
-      }
+      console.warn('⚠️ Nenhum token de autenticação disponível');
     }
     
     return headers;
@@ -139,6 +158,8 @@ class ApiClient {
     options: RequestInit = {},
     isRetry = false
   ): Promise<ApiResponse<T>> {
+
+    
     const url = `${this.baseURL}${endpoint}`;
     const requestOptions: RequestInit = {
       ...options,
@@ -167,11 +188,11 @@ class ApiClient {
         console.log(`❌ ${response.status} ${response.statusText} - ${endpoint}`);
       }
       
-      // Se for 401 e não for retry, tentar renovar token
-      if (response.status === 401 && !isRetry && this.authToken) {
-        if (FRONTEND_CONFIG.FEATURES.DEBUG_API) {
-          console.log('🔄 Token expirado, tentando renovar...');
-        }
+              // Se for 401 e não for retry, tentar renovar token
+        if (response.status === 401 && !isRetry && this.authToken) {
+          if (FRONTEND_CONFIG.FEATURES.DEBUG_API) {
+            console.log('🔄 Token expirado, tentando renovar...');
+          }
         
         const refreshed = await this.refreshToken();
         
@@ -244,9 +265,23 @@ class ApiClient {
         console.error(`❌ Erro em ${endpoint}:`, error.message);
       }
       
+      // Tratamento específico de erros de rede
+      let errorMessage = 'Erro desconhecido';
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage = 'Timeout: Servidor demorou muito para responder';
+        } else if (error.message.includes('Failed to fetch')) {
+          errorMessage = 'Failed to fetch';
+        } else if (error.message.includes('NetworkError')) {
+          errorMessage = 'NetworkError';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        error: errorMessage,
         timestamp: new Date().toISOString(),
       };
     }
@@ -303,10 +338,27 @@ class ApiClient {
 
   // Buscar procedências
   async buscarProcedencias(): Promise<ApiResponse<Array<{ id: string; nome: string; ativo: boolean }>>> {
-    const endpoint = `${API_CONFIG.ENDPOINTS.CLIENTES}/procedencias`;
+    const endpoint = `/api/v1/procedencias/public`;
     return this.request<Array<{ id: string; nome: string; ativo: boolean }>>(endpoint, {
       method: 'GET',
     });
+  }
+
+  // Verificar CPF/CNPJ de cliente
+  async verificarCpfCnpjCliente(cpfCnpj: string, clienteId?: string): Promise<ApiResponse<{ disponivel: boolean; cpf_cnpj: string }>> {
+    let endpoint = `${API_CONFIG.ENDPOINTS.CLIENTES}/verificar-cpf-cnpj/${encodeURIComponent(cpfCnpj)}`;
+    
+    if (clienteId) {
+      endpoint += `?cliente_id=${clienteId}`;
+    }
+
+    return this.request<{ disponivel: boolean; cpf_cnpj: string }>(endpoint);
+  }
+
+  // Teste público de clientes
+  async testePublicoClientes(): Promise<ApiResponse<any>> {
+    const endpoint = `${API_CONFIG.ENDPOINTS.CLIENTES}/test/public`;
+    return this.request<any>(endpoint);
   }
 
   // ============= MÉTODOS ESPECÍFICOS PARA EMPRESAS =============
@@ -861,6 +913,55 @@ class ApiClient {
     }
   }
 
+  // ============= MÉTODOS ESPECÍFICOS PARA PROCEDÊNCIAS =============
+
+  // Listar procedências
+  async listarProcedencias(apenasAtivas = true): Promise<ApiResponse<any>> {
+    const params = new URLSearchParams();
+    params.append('apenas_ativas', apenasAtivas.toString());
+    
+    const endpoint = `/api/v1/procedencias?${params.toString()}`;
+    return this.request<any>(endpoint);
+  }
+
+  // Buscar procedência por ID
+  async buscarProcedenciaPorId(id: string): Promise<ApiResponse<any>> {
+    const endpoint = `/api/v1/procedencias/${id}`;
+    return this.request<any>(endpoint);
+  }
+
+  // Criar procedência
+  async criarProcedencia(dados: any): Promise<ApiResponse<any>> {
+    const endpoint = `/api/v1/procedencias`;
+    return this.request<any>(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(dados),
+    });
+  }
+
+  // Atualizar procedência
+  async atualizarProcedencia(id: string, dados: any): Promise<ApiResponse<any>> {
+    const endpoint = `/api/v1/procedencias/${id}`;
+    return this.request<any>(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(dados),
+    });
+  }
+
+  // Excluir procedência (soft delete)
+  async excluirProcedencia(id: string): Promise<ApiResponse<void>> {
+    const endpoint = `/api/v1/procedencias/${id}`;
+    return this.request<void>(endpoint, {
+      method: 'DELETE',
+    });
+  }
+
+  // Buscar procedências por nome
+  async buscarProcedenciasPorNome(termo: string): Promise<ApiResponse<any>> {
+    const endpoint = `/api/v1/procedencias/buscar/${encodeURIComponent(termo)}`;
+    return this.request<any>(endpoint);
+  }
+
   // ============= MÉTODOS ESPECÍFICOS PARA STATUS ORÇAMENTO =============
 
   // Listar status de orçamento
@@ -945,9 +1046,10 @@ export function converterClienteBackendParaFrontend(clienteBackend: ClienteBacke
     procedencia_id: clienteBackend.procedencia_id,
     vendedor_id: clienteBackend.vendedor_id,
     loja_id: clienteBackend.loja_id,
-    procedencia: clienteBackend.procedencia,
+    procedencia: clienteBackend.procedencia?.nome || null,
     vendedor_nome: clienteBackend.vendedor_nome || null,
     observacoes: clienteBackend.observacoes,
+    status_id: null, // Campo será definido pelos hooks
     created_at: clienteBackend.created_at,
     updated_at: clienteBackend.updated_at,
   };
@@ -955,28 +1057,33 @@ export function converterClienteBackendParaFrontend(clienteBackend: ClienteBacke
 
 // Converter dados do formulário para payload do backend
 export function converterFormDataParaPayload(formData: ClienteFormData): ClienteCreatePayload {
-  // Filtrar IDs temporários (não são UUIDs válidos)
-  const procedencia_id = formData.procedencia_id?.startsWith('temp-') ? undefined : formData.procedencia_id;
-  const vendedor_id = formData.vendedor_id?.startsWith('v') ? undefined : formData.vendedor_id;
+  // Filtrar IDs temporários (não são UUIDs válidos) e valores vazios
+  const procedencia_id = formData.procedencia_id?.startsWith('temp-') ? undefined : (formData.procedencia_id || undefined);
+  const vendedor_id = formData.vendedor_id?.startsWith('v') ? undefined : (formData.vendedor_id || undefined);
   
-  return {
+  // Criar payload base apenas com campos obrigatórios
+  const payload: ClienteCreatePayload = {
     nome: formData.nome,
-    cpf_cnpj: formData.cpf_cnpj || undefined,
-    rg_ie: formData.rg_ie || undefined,
-    email: formData.email || undefined,
-    telefone: formData.telefone || undefined,
     tipo_venda: formData.tipo_venda,
-    logradouro: formData.logradouro || undefined,
-    numero: formData.numero || undefined,
-    complemento: formData.complemento || undefined,
-    bairro: formData.bairro || undefined,
-    cidade: formData.cidade || undefined,
-    uf: formData.uf || undefined,
-    cep: formData.cep || undefined,
-    procedencia_id: procedencia_id || undefined,
-    vendedor_id: vendedor_id || undefined,
-    observacoes: formData.observacoes || undefined,
   };
+
+  // Adicionar campos opcionais apenas se tiverem valor
+  if (formData.cpf_cnpj && formData.cpf_cnpj.trim()) payload.cpf_cnpj = formData.cpf_cnpj;
+  if (formData.rg_ie && formData.rg_ie.trim()) payload.rg_ie = formData.rg_ie;
+  if (formData.email && formData.email.trim()) payload.email = formData.email;
+  if (formData.telefone && formData.telefone.trim()) payload.telefone = formData.telefone;
+  if (formData.logradouro && formData.logradouro.trim()) payload.logradouro = formData.logradouro;
+  if (formData.numero && formData.numero.trim()) payload.numero = formData.numero;
+  if (formData.complemento && formData.complemento.trim()) payload.complemento = formData.complemento;
+  if (formData.bairro && formData.bairro.trim()) payload.bairro = formData.bairro;
+  if (formData.cidade && formData.cidade.trim()) payload.cidade = formData.cidade;
+  if (formData.uf && formData.uf.trim()) payload.uf = formData.uf;
+  if (formData.cep && formData.cep.trim()) payload.cep = formData.cep;
+  if (procedencia_id && procedencia_id.trim()) payload.procedencia_id = procedencia_id;
+  if (vendedor_id && vendedor_id.trim()) payload.vendedor_id = vendedor_id;
+  if (formData.observacoes && formData.observacoes.trim()) payload.observacoes = formData.observacoes;
+
+  return payload;
 }
 
 // ============= INSTÂNCIA SINGLETON =============

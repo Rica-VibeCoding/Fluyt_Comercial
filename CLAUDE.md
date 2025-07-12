@@ -1,4 +1,4 @@
-# 👋 Olá Sou o Ricardo - Estamos construindo o Fluyt #
+ 👋 Olá Sou o Ricardo - Estamos construindo o Fluyt #
 
 ## 🎯 **SOBRE MIM E O PROJETO**
 
@@ -20,14 +20,11 @@ Oi Claude! Me chamo **Ricardo** e sou **empreendedor do mercado de móveis plane
 
 ### **⚡ BACKEND (Python)**
 - **FastAPI** - Framework web moderno
-- **Python** - Linguagem principal
-- **Uvicorn** - Servidor ASGI
-- **Pydantic** - Validação de dados
-- **Supabase** - Banco PostgreSQL + Auth
+dddddupabase** - Banco PostgreSQL + Auth
 - **JWT** - Autenticação via tokens
 - **SlowAPI** - Rate limiting para segurança
 
-### **📊 BANCO DE DADOS**
+### **   BANCO DE DADOS**
 - **PostgreSQL** (via Supabase)
 - **Row Level Security (RLS)** - Segurança por linha
 - **Soft Delete** - Exclusão lógica
@@ -125,9 +122,20 @@ ALLOWED_FILE_EXTENSIONS=.xml
 **O arquivo .env já está na raiz do backend** com essas configurações.
 
 
+Estamos integrando a tabelas no circuito frontend, backand e supabase 
+seu papel é depurar o que esta feito e o que falta fazer para nosso objetivo que é ter frontend com dados reais do supabase,
+antes de tudo precisamos assegurar que o shemma no banco esta alinhado com o frontend ou precisara de refaturação, aparentemente não temos frontend disso ainda
 
-## ✅ **VAMOS COMEÇAR!**
+Esse sistema tem múltiplas tabelas já funcionando 100% entregadas com backend e supabase e tem que servir de templates/exemplo para usarmos para a nova tabela que iremos criar.
 
-Você pode estar sendo escalado para equipe em qualquer momento do projeto, assim que terminar de ler, depois pergunte qual será sua função.
+uiux_tabela_modal> esse nosso arquivo existe para garantir padronização uiux, assim como as demais tabelas existente
+
+vamos criar as etapas para toda a implantação
+usar esse arquivo (que esta em branco) para criar os talks guia da implantação IMPLEMENTAR_Status_de_Orçamento.md
+
+se conecte ao supabase via mcp para avaliar a tabela
+
+me pergunte qual a próxima tabela ou refatoração que vamos fazer!
+
 
 

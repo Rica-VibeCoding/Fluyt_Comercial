@@ -100,8 +100,13 @@ export function useSessaoSimples() {
     // 🔒 PROTEÇÃO: Só executar se hook foi inicializado
     if (!inicializadoRef.current) {
       console.log('⚠️ [URL LOAD] Hook não inicializado, aguardando...');
-      // Tentar novamente após inicialização
-      setTimeout(() => carregarClienteDaURL(clienteId, clienteNome), 100);
+      // Limite de tentativas para evitar loop infinito
+      const tentativasKey = `tentativas_${clienteId}`;
+      const tentativas = (window as any)[tentativasKey] || 0;
+      if (tentativas < 10) {
+        (window as any)[tentativasKey] = tentativas + 1;
+        setTimeout(() => carregarClienteDaURL(clienteId, clienteNome), 100);
+      }
       return;
     }
     

@@ -22,6 +22,7 @@ export interface Cliente {
   procedencia_id?: string;
   vendedor_id?: string;
   loja_id?: string;
+  status_id?: string; // Novo campo para status evolutivo
   procedencia?: string; // Vem de JOIN no backend
   vendedor_nome?: string; // Vem de JOIN no backend
   observacoes?: string;
@@ -50,6 +51,7 @@ export interface ClienteFormData {
   cep?: string;
   procedencia_id?: string;
   vendedor_id?: string;
+  status_id?: string;
   observacoes?: string;
 }
 
@@ -74,12 +76,8 @@ export interface Vendedor {
   perfil: 'VENDEDOR' | 'GERENTE' | 'MEDIDOR' | 'ADMIN_MASTER';
 }
 
-export interface Procedencia {
-  id: string;
-  nome: string;
-  descricao?: string;
-  ativo: boolean;
-}
+// Importar Procedencia de types/sistema.ts para evitar duplicação
+export type { Procedencia } from './sistema';
 
 export const PROCEDENCIAS_PADRAO = [
   'Indicação Amigo',
@@ -96,3 +94,46 @@ export const ESTADOS_BRASIL = [
   'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 
   'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
 ] as const;
+
+// ============= TIPOS CONSOLIDADOS =============
+
+// Cliente básico usado no orçamento
+export interface ClienteBasico {
+  id: string;
+  nome: string;
+}
+
+// Cliente completo (união de todos os campos)
+export interface ClienteCompleto extends Cliente {
+  temDadosCompletos?: boolean;
+}
+
+// Helper para verificar se cliente tem dados completos
+export function temDadosCompletos(cliente: Cliente): boolean {
+  return !!(
+    cliente?.cpf_cnpj && 
+    cliente?.telefone && 
+    cliente?.email &&
+    cliente?.logradouro &&
+    cliente?.cidade &&
+    cliente?.uf &&
+    !cliente.cpf_cnpj.includes('não informado')
+  );
+}
+
+// Helper para formatar endereço
+export function formatarEnderecoCliente(cliente: Cliente): string {
+  if (!cliente.logradouro) return 'Endereço não informado';
+  
+  const endereco = [
+    cliente.logradouro,
+    cliente.numero,
+    cliente.complemento,
+    cliente.bairro,
+    cliente.cidade,
+    cliente.uf,
+    cliente.cep
+  ].filter(Boolean).join(', ');
+  
+  return endereco || 'Endereço não informado';
+}

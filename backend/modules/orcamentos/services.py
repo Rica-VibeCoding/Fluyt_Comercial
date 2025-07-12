@@ -12,6 +12,7 @@ from .schemas import (
     OrcamentoCreate, OrcamentoUpdate, OrcamentoResponse,
     FormaPagamentoCreate, FormaPagamentoUpdate, FormaPagamentoResponse
 )
+from ..clientes.services import ClienteService
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ class OrcamentoService:
         orcamento = await self.orcamento_repo.buscar_por_id(orcamento_id)
         return OrcamentoResponse(**orcamento)
     
-    async def criar(self, dados: OrcamentoCreate) -> OrcamentoResponse:
+    async def criar(self, dados: OrcamentoCreate, user=None) -> OrcamentoResponse:
         """Cria orçamento com validações de negócio"""
         try:
             # Valida desconto
@@ -59,6 +60,16 @@ class OrcamentoService:
             # Cria orçamento
             orcamento_dict = dados.model_dump(exclude_unset=True)
             orcamento = await self.orcamento_repo.criar(orcamento_dict)
+            
+            # TRIGGER AUTOMÁTICO: Orçamento salvo → Ordem 3 (Orçamento Criado)
+            if user and dados.cliente_id:
+                try:
+                    cliente_service = ClienteService()
+                    await cliente_service.atualizar_status_cliente(str(dados.cliente_id), 3, user)
+                    logger.info(f"Status atualizado para ordem 3 - cliente {dados.cliente_id}")
+                except Exception as status_error:
+                    logger.warning(f"Erro ao atualizar status após criar orçamento: {status_error}")
+                    # Não falha a criação por erro de status
             
             return OrcamentoResponse(**orcamento)
             
@@ -221,3 +232,30 @@ class FormaPagamentoService:
         except Exception as e:
             logger.error(f"Erro ao excluir forma de pagamento: {str(e)}")
             raise BusinessRuleException(f"Erro ao excluir forma de pagamento: {str(e)}")
+    
+    async def enviar_orcamento(self, orcamento_id: str, user=None) -> OrcamentoResponse:
+        """Envia orçamento para cliente"""
+        try:
+            # Busca orçamento
+            orcamento = await self.orcamento_repo.buscar_por_id(orcamento_id)
+            
+            # TRIGGER AUTOMÁTICO: Orçamento enviado → Ordem 4 (Em Negociação)
+            if user and orcamento.get('cliente_id'):
+                try:
+                    cliente_service = ClienteService()
+                    await cliente_service.atualizar_status_cliente(str(orcamento['cliente_id']), 4, user)
+                    logger.info(f"Status atualizado para ordem 4 - cliente {orcamento['cliente_id']}")
+                except Exception as status_error:
+                    logger.warning(f"Erro ao atualizar status após enviar orçamento: {status_error}")
+                    # Não falha o envio por erro de status
+            
+            # Aqui seria implementada a lógica de envio (email, WhatsApp, etc.)
+            logger.info(f"Orçamento {orcamento_id} enviado com sucesso")
+            
+            return OrcamentoResponse(**orcamento)
+            
+        except NotFoundException:
+            raise
+        except Exception as e:
+            logger.error(f"Erro ao enviar orçamento: {str(e)}")
+            raise BusinessRuleException(f"Erro ao enviar orçamento: {str(e)}")

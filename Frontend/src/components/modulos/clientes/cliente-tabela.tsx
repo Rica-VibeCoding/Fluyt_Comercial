@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, memo, useCallback } from 'react';
 import {
   Table,
   TableBody,
@@ -15,6 +15,7 @@ import { Edit, Phone, Mail, MapPin, Users, FileText, ChevronDown, ChevronRight }
 import { Cliente } from '../../../types/cliente';
 import { ClienteActionsMenu } from './cliente-actions-menu';
 import { SkeletonTable } from '../../ui/skeleton-table';
+import { useStatusOrcamento } from '../../../hooks/modulos/sistema/use-status-orcamento';
 
 interface ClienteTabelaProps {
   clientes: Cliente[];
@@ -23,23 +24,89 @@ interface ClienteTabelaProps {
   onRemoverCliente: (id: string) => void;
 }
 
-export function ClienteTabela({ 
+// Mapeamento dos status_id para nomes e cores (movido para fora para otimização)
+const STATUS_MAP: Record<string, { nome: string; cor: string; bgColor: string; borderColor: string }> = {
+    'dd03cda8-35a9-42fa-b783-8d9c9875e687': { 
+      nome: 'Cadastrado', 
+      cor: 'text-blue-600', 
+      bgColor: 'bg-blue-50', 
+      borderColor: 'border-blue-300' 
+    },
+    'ec43d8ce-17ac-41df-bb05-d60afff16d0f': { 
+      nome: 'Ambiente Importado', 
+      cor: 'text-purple-600', 
+      bgColor: 'bg-purple-50', 
+      borderColor: 'border-purple-300' 
+    },
+    '66941429-9249-407a-bb01-909a220c6029': { 
+      nome: 'Orçamento', 
+      cor: 'text-orange-600', 
+      bgColor: 'bg-orange-50', 
+      borderColor: 'border-orange-300' 
+    },
+    '99402de7-10b5-46c6-ab1e-cae86950f5cf': { 
+      nome: 'Negociação', 
+      cor: 'text-yellow-600', 
+      bgColor: 'bg-yellow-50', 
+      borderColor: 'border-yellow-300' 
+    },
+    'ecc16853-fd4f-42d9-b957-d3f176fe23a5': { 
+      nome: 'Fechado', 
+      cor: 'text-green-600', 
+      bgColor: 'bg-green-50', 
+      borderColor: 'border-green-300' 
+    }
+};
+
+// Função para obter nome do status baseado no status_id (dinâmica)
+const getStatusDisplay = (cliente: Cliente, statusList: any[]) => {
+  // Buscar status dinâmico da API
+  if (cliente.status_id && statusList.length > 0) {
+    const statusDinamico = statusList.find(s => s.id === cliente.status_id);
+    if (statusDinamico) {
+      return {
+        nome: statusDinamico.nome,
+        cor: `text-[${statusDinamico.cor}]`,
+        bgColor: `bg-[${statusDinamico.cor}]/10`,
+        borderColor: `border-[${statusDinamico.cor}]/30`
+      };
+    }
+  }
+
+  // Fallback para compatibilidade usando mapeamento fixo
+  if (cliente.status_id && STATUS_MAP[cliente.status_id]) {
+    return STATUS_MAP[cliente.status_id];
+  }
+
+  // Fallback final
+  return {
+    nome: 'Cadastrado',
+    cor: 'text-blue-600',
+    bgColor: 'bg-blue-50',
+    borderColor: 'border-blue-300'
+  };
+};
+
+function ClienteTabelaComponent({ 
   clientes, 
   isLoading, 
   onEditarCliente, 
   onRemoverCliente 
 }: ClienteTabelaProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const { statusList, loading: loadingStatus } = useStatusOrcamento();
 
-  const toggleRowExpansion = (clienteId: string) => {
-    const newExpandedRows = new Set(expandedRows);
-    if (newExpandedRows.has(clienteId)) {
-      newExpandedRows.delete(clienteId);
-    } else {
-      newExpandedRows.add(clienteId);
-    }
-    setExpandedRows(newExpandedRows);
-  };
+  const toggleRowExpansion = useCallback((clienteId: string) => {
+    setExpandedRows(prev => {
+      const newExpandedRows = new Set(prev);
+      if (newExpandedRows.has(clienteId)) {
+        newExpandedRows.delete(clienteId);
+      } else {
+        newExpandedRows.add(clienteId);
+      }
+      return newExpandedRows;
+    });
+  }, []);
 
   const getClienteNumero = (index: number) => {
     return String(index + 1).padStart(3, '0');
@@ -51,7 +118,7 @@ export function ClienteTabela({
   };
 
   // ✨ LOADING STATE COM SKELETON - Imita visualmente a tabela real
-  if (isLoading) {
+  if (isLoading || loadingStatus) {
     return (
       <SkeletonTable 
         columns={['', 'Pedido', 'Cliente', 'Contato', 'Tipo', 'Vendedor', 'Data de Cadastro', 'Status', 'Ações']}
@@ -91,7 +158,7 @@ export function ClienteTabela({
         </TableHeader>
         <TableBody>
           {clientes.map((cliente, index) => (
-            <React.Fragment key={cliente.id}>
+            <React.Fragment key={`cliente-${cliente.id}-${index}`}>
               <TableRow 
                 className="h-12 bg-white hover:bg-blue-50/50 cursor-pointer transition-colors"
                 onClick={() => toggleRowExpansion(cliente.id)}
@@ -146,9 +213,17 @@ export function ClienteTabela({
 
                 {/* Status */}
                 <TableCell className="py-2">
-                  <Badge variant="outline" className="border-green-300 text-green-600 bg-green-50">
-                    Ativo
-                  </Badge>
+                  {(() => {
+                    const status = getStatusDisplay(cliente, statusList);
+                    return (
+                      <Badge 
+                        variant="outline" 
+                        className={`${status.borderColor} ${status.cor} ${status.bgColor}`}
+                      >
+                        {status.nome}
+                      </Badge>
+                    );
+                  })()}
                 </TableCell>
 
                 {/* Ações */}
@@ -174,7 +249,7 @@ export function ClienteTabela({
 
               {/* LINHA EXPANDIDA COM TODOS OS DADOS ADICIONAIS */}
               {expandedRows.has(cliente.id) && (
-                <TableRow key={`${cliente.id}-expanded`} className="bg-blue-50/20 hover:bg-blue-50/30">
+                <TableRow key={`expanded-${cliente.id}-${index}`} className="bg-blue-50/20 hover:bg-blue-50/30">
                   <TableCell colSpan={9} className="py-4">
                     <div className="pl-4">
                       {/* Layout Grid Responsivo */}
@@ -275,3 +350,5 @@ export function ClienteTabela({
     </div>
   );
 }
+
+export const ClienteTabela = memo(ClienteTabelaComponent);

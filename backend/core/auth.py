@@ -15,7 +15,7 @@ from .database import get_supabase
 logger = logging.getLogger(__name__)
 
 # Security scheme
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 class TokenData(BaseModel):
@@ -154,6 +154,13 @@ async def get_current_user(
         return current_user
     ```
     """
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token de acesso requerido",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    
     token = credentials.credentials
     token_data = verify_token(token)
     
@@ -193,10 +200,8 @@ async def get_current_user(
         
         return user
     
-    except HTTPException:
-        raise
     except Exception as e:
-        logger.error(f"Erro ao buscar usuário: {str(e)}")
+        logger.error(f"Erro ao buscar dados do usuário: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro ao buscar dados do usuário"

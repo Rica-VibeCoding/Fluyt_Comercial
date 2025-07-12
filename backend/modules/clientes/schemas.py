@@ -2,7 +2,7 @@
 Schemas (estruturas de dados) para o módulo de clientes
 Define como os dados de cliente devem ser enviados e recebidos pela API
 """
-from typing import Optional, Literal
+from typing import Optional, Literal, Dict, Any
 from datetime import datetime
 from uuid import UUID
 from pydantic import BaseModel, EmailStr, field_validator
@@ -16,6 +16,15 @@ class ClienteBase(BaseModel):
     """
     # Dados principais - APENAS NOME OBRIGATÓRIO
     nome: str
+    
+    @field_validator('nome')
+    def validar_nome(cls, v):
+        """
+        Valida se o nome não está vazio
+        """
+        if not v or not v.strip():
+            raise ValueError('Nome do cliente é obrigatório')
+        return v.strip()
     cpf_cnpj: Optional[str] = None
     rg_ie: Optional[str] = None
     email: Optional[EmailStr] = None
@@ -33,9 +42,20 @@ class ClienteBase(BaseModel):
     cep: Optional[str] = None
     
     # Informações comerciais - todos opcionais
-    procedencia_id: Optional[UUID] = None
+    procedencia_id: Optional[str] = None
     vendedor_id: Optional[str] = None
+    status_id: Optional[str] = None
     observacoes: Optional[str] = None
+
+    @field_validator('procedencia_id', 'vendedor_id', 'status_id', mode='before')
+    def anular_campos_uuid_vazios(cls, v):
+        """
+        Converte strings vazias para None para campos que são chaves estrangeiras (UUIDs).
+        Isso evita erros no banco de dados ao tentar inserir um UUID inválido.
+        """
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
     
     @field_validator('cpf_cnpj')
     def validar_cpf_cnpj(cls, v):
@@ -151,9 +171,20 @@ class ClienteUpdate(BaseModel):
     cep: Optional[str] = None
     
     # Informações comerciais
-    procedencia_id: Optional[UUID] = None
+    procedencia_id: Optional[str] = None
     vendedor_id: Optional[str] = None
+    status_id: Optional[str] = None
     observacoes: Optional[str] = None
+
+    @field_validator('procedencia_id', 'vendedor_id', 'status_id', mode='before')
+    def anular_campos_uuid_vazios_update(cls, v):
+        """
+        Converte strings vazias para None para campos que são chaves estrangeiras (UUIDs).
+        Isso evita erros no banco de dados ao tentar inserir um UUID inválido.
+        """
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
 
 
 class ClienteResponse(ClienteBase):
@@ -161,11 +192,15 @@ class ClienteResponse(ClienteBase):
     Dados retornados quando consultamos um cliente
     """
     id: str
-    loja_id: str
+    loja_id: Optional[str] = None
+    status_id: Optional[str] = None
     
     # Dados relacionados (vem de JOINs)
     vendedor_nome: Optional[str] = None
     procedencia: Optional[str] = None
+    
+    # Dados do status (quando incluído)
+    status: Optional[Dict[str, Any]] = None
     
     # Controle do sistema
     created_at: datetime
@@ -192,7 +227,7 @@ class FiltrosCliente(BaseModel):
     """
     busca: Optional[str] = None  # Busca por nome, CPF/CNPJ, telefone
     tipo_venda: Optional[Literal['NORMAL', 'FUTURA']] = None
-    procedencia_id: Optional[UUID] = None
+    procedencia_id: Optional[str] = None
     vendedor_id: Optional[str] = None
     data_inicio: Optional[datetime] = None
     data_fim: Optional[datetime] = None

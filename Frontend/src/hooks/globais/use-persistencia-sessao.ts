@@ -76,7 +76,7 @@ export function usePersistenciaSessao(options: UsePersistenciaSessaoOptions = {}
         clearInterval(timerPersistencia.current);
       }
     };
-  }, [autoSave, cliente?.id, intervaloPersistencia, salvarSessaoAtual, debugMode]);
+  }, [autoSave, cliente?.id, intervaloPersistencia, debugMode]); // Removido salvarSessaoAtual das dependências
 
   // Salvar imediatamente em mudanças críticas
   useEffect(() => {

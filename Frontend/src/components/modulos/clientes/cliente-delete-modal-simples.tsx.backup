@@ -1,0 +1,68 @@
+import React from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../ui/dialog';
+import { Button } from '../../ui/button';
+import { AlertTriangle } from 'lucide-react';
+import { Cliente } from '../../../types/cliente';
+
+interface ClienteDeleteModalSimplesProps {
+  aberto: boolean;
+  onFechar: () => void;
+  cliente: Cliente | null;
+  onConfirmar: (clienteId: string) => Promise<boolean>;
+  isLoading: boolean;
+}
+
+export function ClienteDeleteModalSimples({
+  aberto,
+  onFechar,
+  cliente,
+  onConfirmar,
+  isLoading
+}: ClienteDeleteModalSimplesProps) {
+  
+  const handleConfirmar = async () => {
+    if (!cliente) return;
+    
+    try {
+      const sucesso = await onConfirmar(cliente.id);
+      if (sucesso) {
+        onFechar();
+      }
+    } catch (error) {
+      console.error('Erro ao excluir:', error);
+    }
+  };
+
+  return (
+    <Dialog open={aberto} onOpenChange={onFechar}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-red-600">
+            <AlertTriangle className="h-5 w-5" />
+            Confirmar Exclusão
+          </DialogTitle>
+          <DialogDescription>
+            Tem certeza que deseja excluir o cliente <strong>{cliente?.nome}</strong>?
+          </DialogDescription>
+        </DialogHeader>
+
+        <DialogFooter className="gap-2">
+          <Button 
+            variant="outline" 
+            onClick={onFechar}
+            disabled={isLoading}
+          >
+            Cancelar
+          </Button>
+          <Button 
+            variant="destructive"
+            onClick={handleConfirmar}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Excluindo...' : 'Excluir'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

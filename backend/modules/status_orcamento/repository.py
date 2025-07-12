@@ -113,6 +113,20 @@ class StatusOrcamentoRepository:
             logger.error(f"Erro ao atualizar status {status_id}: {str(e)}")
             raise DatabaseException(f"Erro ao atualizar status: {str(e)}")
     
+    async def buscar_por_ordem(self, ordem: int) -> Optional[Dict[str, Any]]:
+        """Busca status por ordem"""
+        try:
+            result = self.db.table(self.table).select('*').eq('ordem', ordem).eq('ativo', True).execute()
+            
+            if result.data:
+                return result.data[0]
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Erro ao buscar status por ordem {ordem}: {str(e)}")
+            raise DatabaseException(f"Erro ao buscar status: {str(e)}")
+    
     async def excluir(self, status_id: str) -> bool:
         """Marca status como inativo (soft delete)"""
         try:

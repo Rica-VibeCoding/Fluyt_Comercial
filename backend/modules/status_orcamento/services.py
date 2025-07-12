@@ -70,6 +70,21 @@ class StatusOrcamentoService:
             logger.error(f"Erro ao atualizar status: {str(e)}")
             raise BusinessRuleException(f"Erro ao atualizar status: {str(e)}")
     
+    async def buscar_por_ordem(self, ordem: int) -> StatusOrcamentoResponse:
+        """Busca status por ordem"""
+        try:
+            status = await self.repository.buscar_por_ordem(ordem)
+            if not status:
+                raise NotFoundException(f"Status com ordem {ordem} não encontrado")
+            
+            return StatusOrcamentoResponse(**status)
+            
+        except NotFoundException:
+            raise
+        except Exception as e:
+            logger.error(f"Erro ao buscar status por ordem {ordem}: {str(e)}")
+            raise BusinessRuleException(f"Erro ao buscar status: {str(e)}")
+    
     async def excluir(self, status_id: str) -> bool:
         """Exclui (desativa) status"""
         try:
