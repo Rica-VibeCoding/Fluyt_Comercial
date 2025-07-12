@@ -251,10 +251,11 @@ export function useClientesApi() {
       const response = await clienteService.criar(dadosFormulario);
       
       if (response.success && response.data) {
-        // Recarregar lista
-        await carregarClientes();
-        
+        // Em vez de recarregar a lista inteira, o que é lento,
+        // adicionamos o cliente retornado pela API (com o ID correto)
+        // diretamente no topo da lista local.
         const clienteConvertido = converterClienteAPIParaFrontend(response.data);
+        setClientes(prevClientes => [clienteConvertido, ...prevClientes]);
         
         toast.success(`Cliente ${response.data.nome} foi adicionado.`);
         
@@ -313,14 +314,22 @@ export function useClientesApi() {
       const response = await clienteService.atualizar(id, dadosAtualizados);
       
       if (response.success && response.data) {
-        // Recarregar lista
-        await carregarClientes();
-        
         const clienteConvertido = converterClienteAPIParaFrontend(response.data);
+
+        setClientes(prevClientes =>
+          prevClientes.map(c => {
+            if (c.id === id) {
+              // ✨ FIX: Mescla inteligente para não perder dados de JOIN (como `procedencia` e `vendedor_nome`)
+              // A resposta da API de atualização não contém os nomes, apenas os IDs.
+              // Mantemos os nomes do estado anterior e atualizamos o resto.
+              return { ...c, ...clienteConvertido };
+            }
+            return c;
+          })
+        );
         
-        toast.success("Cliente atualizado com sucesso!");
-        
-        logConfig('useClientesApi: Cliente atualizado com sucesso', { id });
+        toast.success(`Cliente "${clienteConvertido.nome}" atualizado com sucesso!`);
+        logConfig('useClientesApi: Cliente atualizado', { id });
         
         return clienteConvertido;
       } else {

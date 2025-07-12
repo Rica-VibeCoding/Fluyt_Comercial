@@ -32,7 +32,8 @@ class ClienteRepository:
         loja_id: Optional[str],
         filtros: Dict[str, Any] = None,
         page: int = 1,
-        limit: int = 20
+        limit: int = 20,
+        incluir_inativos: bool = False
     ) -> Dict[str, Any]:
         """
         Lista clientes com filtros e paginação
@@ -42,6 +43,7 @@ class ClienteRepository:
             filtros: Dicionário com filtros opcionais
             page: Página atual
             limit: Itens por página
+            incluir_inativos: Se True, inclui clientes com ativo=False
             
         Returns:
             Dicionário com items e informações de paginação
@@ -49,6 +51,10 @@ class ClienteRepository:
         try:
             # Inicia a query base
             query = self.db.table(self.table).select("*")
+
+            # Filtra por ativos por padrão
+            if not incluir_inativos:
+                query = query.eq('ativo', True)
             
             # Aplica filtro de loja apenas se fornecido (RLS)
             # Se loja_id é None, não filtra (SUPER_ADMIN)
@@ -87,6 +93,8 @@ class ClienteRepository:
             
             # Conta total de registros (sem paginação)
             count_query = self.db.table(self.table).select('id', count='exact')
+            if not incluir_inativos:
+                count_query = count_query.eq('ativo', True)
             if loja_id is not None:
                 count_query = count_query.eq('loja_id', loja_id)
             count_result = count_query.execute()
@@ -142,7 +150,7 @@ class ClienteRepository:
     
     async def buscar_por_id(self, cliente_id: str, loja_id: Optional[str]) -> Dict[str, Any]:
         """
-        Busca um cliente específico pelo ID
+        Busca um cliente específico pelo ID, apenas se estiver ativo.
         
         Args:
             cliente_id: ID do cliente
@@ -152,7 +160,7 @@ class ClienteRepository:
             Dados completos do cliente
             
         Raises:
-            NotFoundException: Se o cliente não for encontrado
+            NotFoundException: Se o cliente não for encontrado ou estiver inativo
         """
         try:
             query = self.db.table(self.table).select(
@@ -161,7 +169,7 @@ class ClienteRepository:
                 vendedor:cad_equipe!vendedor_id(id, nome),
                 procedencia:c_procedencias!procedencia_id(id, nome)
                 """
-            ).eq('id', cliente_id)
+            ).eq('id', cliente_id).eq('ativo', True) # Garante que só retorne ativos
             
             # Aplica filtro de loja apenas se fornecido
             if loja_id is not None:
@@ -170,7 +178,7 @@ class ClienteRepository:
             result = query.execute()
             
             if not result.data:
-                raise NotFoundException(f"Cliente não encontrado: {cliente_id}")
+                raise NotFoundException(f"Cliente não encontrado ou inativo: {cliente_id}")
             
             cliente = result.data[0]
             
@@ -192,7 +200,7 @@ class ClienteRepository:
     
     async def buscar_por_cpf_cnpj(self, cpf_cnpj: str, loja_id: Optional[str]) -> Optional[Dict[str, Any]]:
         """
-        Busca cliente pelo CPF ou CNPJ
+        Busca cliente pelo CPF ou CNPJ, apenas se estiver ativo.
         
         Args:
             cpf_cnpj: CPF ou CNPJ do cliente
@@ -202,7 +210,7 @@ class ClienteRepository:
             Dados do cliente ou None se não encontrado
         """
         try:
-            query = self.db.table(self.table).select('*').eq('cpf_cnpj', cpf_cnpj)
+            query = self.db.table(self.table).select('*').eq('cpf_cnpj', cpf_cnpj).eq('ativo', True)
             
             # Aplica filtro de loja apenas se fornecido
             if loja_id is not None:
@@ -221,7 +229,7 @@ class ClienteRepository:
     
     async def buscar_por_nome(self, nome: str, loja_id: Optional[str]) -> Optional[Dict[str, Any]]:
         """
-        Busca cliente pelo nome exato
+        Busca cliente pelo nome exato, apenas se estiver ativo.
         
         Args:
             nome: Nome do cliente
@@ -231,7 +239,7 @@ class ClienteRepository:
             Dados do cliente ou None se não encontrado
         """
         try:
-            query = self.db.table(self.table).select('*').eq('nome', nome)
+            query = self.db.table(self.table).select('*').eq('nome', nome).eq('ativo', True)
             
             # Aplica filtro de loja apenas se fornecido
             if loja_id is not None:
@@ -276,8 +284,9 @@ class ClienteRepository:
                 if existe:
                     logger.info(f"INFO: CPF/CNPJ '{dados['cpf_cnpj']}' já existe em outro cliente - permitido")
             
-            # Adiciona loja_id aos dados
+            # Adiciona loja_id e garante que o cliente seja criado como ativo
             dados['loja_id'] = loja_id
+            dados['ativo'] = True
             
             # Cria o cliente
             result = self.db.table(self.table).insert(dados).execute()
@@ -357,24 +366,24 @@ class ClienteRepository:
     
     async def excluir(self, cliente_id: str, loja_id: Optional[str]) -> bool:
         """
-        Exclui um cliente permanentemente (hard delete).
+        Inativa um cliente (soft delete) mudando o campo 'ativo' para False.
         
         Args:
             cliente_id: ID do cliente
             loja_id: ID da loja (para RLS)
             
         Returns:
-            True se excluído com sucesso
+            True se inativado com sucesso
             
         Raises:
             NotFoundException: Se cliente não encontrado
         """
         try:
-            # Verifica se o cliente existe antes de tentar deletar
+            # Verifica se o cliente existe antes de tentar inativar
             await self.buscar_por_id(cliente_id, loja_id)
             
-            # Deleta fisicamente o registro do banco
-            query = self.db.table(self.table).delete().eq('id', cliente_id)
+            # Inativa o cliente (soft delete)
+            query = self.db.table(self.table).update({'ativo': False}).eq('id', cliente_id)
             
             # Aplica filtro de loja apenas se fornecido (camada extra de segurança RLS)
             if loja_id is not None:
@@ -382,14 +391,14 @@ class ClienteRepository:
                 
             result = query.execute()
             
-            # A API de delete retorna os dados deletados. Se a lista não estiver vazia, foi sucesso.
+            # A API de update retorna os dados atualizados. Se a lista não estiver vazia, foi sucesso.
             return bool(result.data)
         
         except NotFoundException:
             raise
         except Exception as e:
-            logger.error(f"Erro ao excluir cliente {cliente_id}: {str(e)}")
-            raise DatabaseException(f"Erro ao excluir cliente: {str(e)}")
+            logger.error(f"Erro ao inativar cliente {cliente_id}: {str(e)}")
+            raise DatabaseException(f"Erro ao inativar cliente: {str(e)}")
     
     async def contar_total_publico(self) -> int:
         """
@@ -429,7 +438,7 @@ class ClienteRepository:
             Número de clientes que atendem aos critérios
         """
         try:
-            query = self.db.table(self.table).select('id', count='exact')
+            query = self.db.table(self.table).select('id', count='exact').eq('ativo', True)
             
             # Aplica filtro de loja apenas se fornecido
             if loja_id is not None:

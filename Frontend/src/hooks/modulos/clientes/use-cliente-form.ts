@@ -1,10 +1,10 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useEffect, useMemo } from 'react';
-import { Cliente, Vendedor, PROCEDENCIAS_PADRAO, ESTADOS_BRASIL } from '../../../types/cliente';
+import { useMemo } from 'react';
+import { ESTADOS_BRASIL } from '../../../types/cliente';
 
-// Schema ajustado: APENAS NOME OBRIGATÓRIO
+// Schema foi mantido como estava, validando a estrutura dos dados
 const clienteSchema = z.object({
   nome: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
   cpf_cnpj: z.string().optional(),
@@ -27,83 +27,35 @@ const clienteSchema = z.object({
 type ClienteFormData = z.infer<typeof clienteSchema>;
 
 interface UseClienteFormProps {
-  cliente?: Cliente | null;
-  vendedores: Vendedor[];
+  // O hook agora recebe os valores iniciais diretamente
+  valoresIniciais: Partial<ClienteFormData>;
   onSalvar: (dados: any) => Promise<void>;
-  onFechar: () => void;
 }
 
-export function useClienteForm({ cliente, vendedores, onSalvar, onFechar }: UseClienteFormProps) {
+export function useClienteForm({ valoresIniciais, onSalvar }: UseClienteFormProps) {
   const form = useForm<ClienteFormData>({
     resolver: zodResolver(clienteSchema),
-    defaultValues: {
-      nome: '',
-      cpf_cnpj: '',
-      rg_ie: '',
-      email: '',
-      telefone: '',
-      tipo_venda: 'NORMAL',
-      cep: '',
-      logradouro: '',
-      numero: '',
-      complemento: '',
-      bairro: '',
-      cidade: '',
-      uf: '',
-      procedencia_id: '',
-      vendedor_id: '',
-      observacoes: ''
-    }
+    // O formulário é inicializado com os valores recebidos
+    defaultValues: valoresIniciais
   });
 
-  // Preencher form ao editar ou limpar para criar
-  useEffect(() => {
-    if (cliente) {
-      // Modo de edição: preenche o formulário com os dados do cliente
-      form.reset({
-        nome: cliente.nome,
-        cpf_cnpj: cliente.cpf_cnpj || '',
-        rg_ie: cliente.rg_ie || '',
-        email: cliente.email || '',
-        telefone: cliente.telefone || '',
-        tipo_venda: cliente.tipo_venda,
-        cep: cliente.cep || '',
-        logradouro: cliente.logradouro || '',
-        numero: cliente.numero || '',
-        complemento: cliente.complemento || '',
-        bairro: cliente.bairro || '',
-        cidade: cliente.cidade || '',
-        uf: (cliente.uf || '') as any,
-        procedencia_id: cliente.procedencia_id || '',
-        vendedor_id: cliente.vendedor_id || '',
-        observacoes: cliente.observacoes || ''
-      });
-    } else {
-      // Modo de criação: limpa o formulário para os valores padrão
-      form.reset();
-    }
-  }, [cliente, form.reset]);
+  // A lógica complexa de useEffect foi REMOVIDA.
+  // A responsabilidade de fornecer os valores corretos agora é do componente pai.
 
-  // Calcular abas preenchidas - agora com critérios mais flexíveis
+  // O cálculo das abas preenchidas foi mantido como estava
   const abasPreenchidas = useMemo(() => {
     const values = form.watch();
     let preenchidas = 0;
 
-    // Aba Essencial - apenas nome obrigatório
     if (values.nome) {
       preenchidas++;
     }
-
-    // Aba Endereço - considera preenchida se tem pelo menos cidade
     if (values.cidade || values.cep || values.logradouro) {
       preenchidas++;
     }
-
-    // Aba Config - considera preenchida se tem procedência ou vendedor
     if (values.procedencia_id || values.vendedor_id) {
       preenchidas++;
     }
-
     return preenchidas;
   }, [form.watch()]);
 

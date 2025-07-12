@@ -6,37 +6,40 @@ import { ClienteFormEssencial } from './cliente-form-essencial';
 import { ClienteFormEndereco } from './cliente-form-endereco';
 import { ClienteFormConfig } from './cliente-form-config';
 import { useClienteForm } from '../../../hooks/modulos/clientes/use-cliente-form';
-import { Cliente, Vendedor } from '../../../types/cliente';
+import { Vendedor } from '../../../types/cliente';
 import { User, MapPin, Settings, CheckCircle } from 'lucide-react';
 
 interface ClienteModalProps {
   aberto: boolean;
   onFechar: () => void;
-  cliente?: Cliente | null;
+  // Recebe os valores iniciais prontos
+  valoresIniciais: any; 
   vendedores: Vendedor[];
   onSalvar: (dados: any) => Promise<void>;
   isLoading: boolean;
+  // Identifica se é modo de edição para ajustar o título
+  isEditMode: boolean;
 }
 
 export function ClienteModal({
   aberto,
   onFechar,
-  cliente,
+  valoresIniciais,
   vendedores,
   onSalvar,
-  isLoading
+  isLoading,
+  isEditMode
 }: ClienteModalProps) {
   const [abaAtiva, setAbaAtiva] = useState('essencial');
 
+  // O hook agora é mais simples
   const {
     form,
     onSubmit,
     abasPreenchidas
   } = useClienteForm({
-    cliente,
-    vendedores,
-    onSalvar,
-    onFechar
+    valoresIniciais,
+    onSalvar
   });
 
   const handleTabChange = (value: string) => {
@@ -67,7 +70,7 @@ export function ClienteModal({
             </div>
             <div className="flex-1">
               <DialogTitle className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                {cliente ? 'Editar Cliente' : 'Cadastrar Novo Cliente'}
+                {isEditMode ? 'Editar Cliente' : 'Cadastrar Novo Cliente'}
               </DialogTitle>
             </div>
           </div>
@@ -102,7 +105,8 @@ export function ClienteModal({
                 <Tabs value={abaAtiva} className="h-full">
                   <TabsContent value="essencial" className="h-full p-2 mt-0">
                     <div className="h-full">
-                      <ClienteFormEssencial form={form} cliente={cliente} />
+                       {/* O form essencial não precisa mais do cliente, só do form */}
+                      <ClienteFormEssencial form={form} />
                     </div>
                   </TabsContent>
 
@@ -140,7 +144,7 @@ export function ClienteModal({
                         <div className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin"></div>
                         Salvando...
                       </div>
-                    ) : cliente ? 'Atualizar Cliente' : 'Salvar Cliente'}
+                    ) : isEditMode ? 'Atualizar Cliente' : 'Salvar Cliente'}
                   </button>
                 </div>
               </div>

@@ -20,6 +20,14 @@ interface ClienteActionsMenuProps {
 export function ClienteActionsMenu({ cliente, onEditar, onRemover }: ClienteActionsMenuProps) {
   const router = useRouter();
 
+  const handleEditClick = () => {
+    // Adiciona um pequeno delay para permitir que o menu feche antes de abrir o modal.
+    // Isso evita conflitos de estado e renderização com o DropdownMenu.
+    setTimeout(() => {
+      onEditar(cliente);
+    }, 50); // 50ms é um delay seguro e imperceptível.
+  };
+
   const handleCriarAmbientes = () => {
     // Adicionar parâmetro de intenção para forçar troca de cliente
     router.push(`/painel/ambientes?clienteId=${cliente.id}&clienteNome=${encodeURIComponent(cliente.nome)}&forcar=true`);
@@ -40,7 +48,7 @@ export function ClienteActionsMenu({ cliente, onEditar, onRemover }: ClienteActi
           Criar Ambientes
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => onEditar(cliente)}>
+        <DropdownMenuItem onClick={handleEditClick}>
           <Edit className="mr-2 h-4 w-4" />
           Editar
         </DropdownMenuItem>

@@ -1,15 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card } from '../../ui/card';
 import { Badge } from '../../ui/badge';
 import { ClienteHeader } from './cliente-header';
 import { ClienteFiltrosModerno } from './cliente-filtros-moderno';
 import { ClienteTabela } from './cliente-tabela';
 import { ClienteModal } from './cliente-modal';
-// import { ClienteDeleteModal } from './cliente-delete-modal'; // REMOVIDO - usando hard delete simples
 import { useClientesApi } from '../../../hooks/modulos/clientes/use-clientes-api';
 import { useStatusOrcamento } from '../../../hooks/modulos/sistema/use-status-orcamento';
 import { Cliente } from '../../../types/cliente';
-import { Wifi, WifiOff } from 'lucide-react';
+import { Wifi } from 'lucide-react';
+
+// Valores iniciais para um novo cliente (formulário limpo)
+const VALORES_INICIAIS_NOVO_CLIENTE = {
+  nome: '',
+  cpf_cnpj: '',
+  rg_ie: '',
+  email: '',
+  telefone: '',
+  tipo_venda: 'NORMAL' as const,
+  cep: '',
+  logradouro: '',
+  numero: '',
+  complemento: '',
+  bairro: '',
+  cidade: '',
+  uf: '' as const,
+  procedencia_id: '',
+  vendedor_id: '',
+  observacoes: '',
+};
 
 export function ClientePage() {
   const {
@@ -23,7 +42,7 @@ export function ClientePage() {
     removerCliente,
     totalClientes,
     isInitialized,
-    carregarClientes, // Adicionado carregarClientes do hook
+    carregarClientes,
     erro
   } = useClientesApi();
   
@@ -31,128 +50,90 @@ export function ClientePage() {
   
   const [modalAberto, setModalAberto] = useState(false);
   const [clienteEditando, setClienteEditando] = useState<Cliente | null>(null);
-  const [isSaving, setIsSaving] = useState(false); // Estado de salvamento local
-
-
-  // ============= SISTEMA DE DEBUG MELHORADO =============
-  const debugLog = (acao: string, dados?: any) => {
-    const timestamp = new Date().toLocaleTimeString();
-    console.log(`🏠 [ClientePage] ${timestamp} - ${acao}`, dados ? dados : '');
-  };
-
-  // Log de mudanças de estado críticas
-  React.useEffect(() => {
-    debugLog('Estado atualizado', {
-      isLoading,
-      isInitialized,
-      totalClientes: clientes.length,
-      hasCarregarClientes: !!carregarClientes
-    });
-  }, [isLoading, clientes.length, isInitialized, carregarClientes]);
-
-  // Debug inicial
-  React.useEffect(() => {
-    debugLog('ClientePage montado', {
-      hookFunctions: {
-        adicionarCliente: !!adicionarCliente,
-        atualizarCliente: !!atualizarCliente,
-        removerCliente: !!removerCliente,
-        carregarClientes: !!carregarClientes
-      }
-    });
-  }, []);
-
-  // ============= REMOVIDO LISTENER GLOBAL PROBLEMÁTICO =============
-  // O listener global de cliques estava causando duplicação de eventos
-  // e travamento do frontend. Debug suficiente pelos componentes individuais.
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleNovoCliente = () => {
-    debugLog('➕ handleNovoCliente chamado');
     setClienteEditando(null);
     setModalAberto(true);
-    debugLog('➕ Modal de novo cliente aberto');
   };
 
   const handleEditarCliente = (cliente: Cliente) => {
-    debugLog('✏️ handleEditarCliente chamado', { clienteId: cliente.id });
     setClienteEditando(cliente);
     setModalAberto(true);
-    debugLog('✏️ Modal de edição aberto');
+  };
+
+  const handleFecharModal = () => {
+    setModalAberto(false);
+    // Um pequeno delay para a animação do modal terminar antes de limpar o estado
+    setTimeout(() => {
+      setClienteEditando(null);
+    }, 150);
   };
 
   const handleSalvarCliente = async (dados: any) => {
-    debugLog('💾 handleSalvarCliente chamado', { editando: !!clienteEditando });
-    setIsSaving(true); // Ativa o estado de salvamento
+    setIsSaving(true);
     try {
       if (clienteEditando) {
         await atualizarCliente(clienteEditando.id, dados);
-        debugLog('✅ Cliente atualizado com sucesso');
       } else {
-        const vendedor = vendedores.find(v => v.id === dados.vendedor_id);
-        await adicionarCliente({
-          ...dados,
-          vendedor_nome: vendedor?.nome || ''
-        }, statusList);
-        debugLog('✅ Cliente adicionado com sucesso');
+        await adicionarCliente(dados, statusList);
       }
-      setModalAberto(false);
-      setClienteEditando(null);
+      handleFecharModal();
     } catch (error) {
-      debugLog('❌ Erro ao salvar cliente', error);
+      console.error('Erro ao salvar cliente', error);
     } finally {
-      setIsSaving(false); // Garante que o estado de salvamento seja desativado
+      setIsSaving(false);
     }
   };
 
-  // ============= EXCLUSÃO SIMPLES SEM MODAL =============
   const handleExclusaoSimples = async (clienteId: string) => {
     const cliente = clientes.find(c => c.id === clienteId);
-    if (!cliente) {
-      debugLog('❌ Cliente não encontrado para exclusão', { clienteId });
-      return;
-    }
+    if (!cliente) return;
 
-    // Confirmação simples do navegador
-    const confirmacao = window.confirm(`Tem certeza que deseja excluir o cliente "${cliente.nome}"?\n\nEsta ação não pode ser desfeita.`);
+    const confirmacao = window.confirm(`Tem certeza que deseja excluir o cliente "${cliente.nome}"?`);
     
     if (confirmacao) {
-      debugLog('🔥 Excluindo cliente diretamente', { clienteId, nome: cliente.nome });
       try {
-        const sucesso = await removerCliente(clienteId);
-        
-        if (sucesso) {
-          debugLog('✅ Cliente excluído com sucesso, recarregando lista');
-          // Recarregar lista para atualizar interface se função existir
-          if (carregarClientes) {
-            await carregarClientes();
-          }
-        } else {
-          debugLog('❌ Falha na exclusão do cliente');
-        }
+        await removerCliente(clienteId);
       } catch (error) {
-        debugLog('❌ Erro durante exclusão', error);
+        console.error('Erro durante exclusão', error);
       }
     }
   };
 
-  // Debug de renderização
-  debugLog('Renderizando ClientePage', {
-    clientesCount: clientes.length,
-    isLoading,
-    isInitialized,
-    modalAberto
-  });
+  // Prepara os valores para o modal.
+  // Isso é recalculado sempre que o cliente para edição muda.
+  const valoresIniciaisModal = useMemo(() => {
+    if (!clienteEditando) {
+      return VALORES_INICIAIS_NOVO_CLIENTE;
+    }
+    // Mapeia o objeto cliente para os campos do formulário
+    return {
+      nome: clienteEditando.nome,
+      cpf_cnpj: clienteEditando.cpf_cnpj || '',
+      rg_ie: clienteEditando.rg_ie || '',
+      email: clienteEditando.email || '',
+      telefone: clienteEditando.telefone || '',
+      tipo_venda: clienteEditando.tipo_venda,
+      cep: clienteEditando.cep || '',
+      logradouro: clienteEditando.logradouro || '',
+      numero: clienteEditando.numero || '',
+      complemento: clienteEditando.complemento || '',
+      bairro: clienteEditando.bairro || '',
+      cidade: clienteEditando.cidade || '',
+      uf: clienteEditando.uf || '',
+      procedencia_id: clienteEditando.procedencia_id || '',
+      vendedor_id: clienteEditando.vendedor_id || '',
+      observacoes: clienteEditando.observacoes || '',
+    };
+  }, [clienteEditando]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
       <div className="max-w-7xl mx-auto space-y-4">
-        {/* Indicador de Conectividade */}
         {isInitialized && (
           <div className="flex justify-end">
-            <Badge 
-              variant="default"
-              className="flex items-center gap-1"
-            >
+            <Badge variant="default" className="flex items-center gap-1">
               <Wifi className="h-3 w-3" />
               Sistema Carregado
             </Badge>
@@ -161,18 +142,12 @@ export function ClientePage() {
         
         <ClienteHeader 
           totalClientes={totalClientes}
-          onNovoCliente={() => {
-            debugLog('🎯 Botão Novo Cliente clicado no header');
-            handleNovoCliente();
-          }}
+          onNovoCliente={handleNovoCliente}
         />
         
         <ClienteFiltrosModerno 
           filtros={filtros}
-          onFiltrosChange={(novosFiltros) => {
-            debugLog('🔍 Filtros alterados', novosFiltros);
-            setFiltros(novosFiltros);
-          }}
+          onFiltrosChange={setFiltros}
           vendedores={vendedores}
         />
         
@@ -185,21 +160,25 @@ export function ClientePage() {
           />
         </Card>
 
-        <ClienteModal
-          aberto={modalAberto}
-          onFechar={() => {
-            debugLog('❌ Modal fechado');
-            setModalAberto(false);
-            setClienteEditando(null);
-            setIsSaving(false); // Garante que o estado de salvamento seja resetado ao fechar
-          }}
-          cliente={clienteEditando}
-          vendedores={vendedores}
-          onSalvar={handleSalvarCliente}
-          isLoading={isSaving} // Usa o estado de salvamento local
-        />
-
-        {/* Modal de exclusão removido - usando hard delete simples */}
+        {/* 
+          O modal só é renderizado se estiver aberto.
+          A propriedade "key" é a MUDANÇA CRUCIAL. 
+          Quando a key muda (de um ID de cliente para outro, ou para "novo"),
+          o React DESTRÓI o componente antigo e CRIA UM NOVO do zero.
+          Isso garante que não haja estado "preso" entre aberturas.
+        */}
+        {modalAberto && (
+          <ClienteModal
+            key={clienteEditando?.id || 'novo'}
+            aberto={modalAberto}
+            onFechar={handleFecharModal}
+            valoresIniciais={valoresIniciaisModal}
+            vendedores={vendedores}
+            onSalvar={handleSalvarCliente}
+            isLoading={isSaving}
+            isEditMode={!!clienteEditando}
+          />
+        )}
       </div>
     </div>
   );

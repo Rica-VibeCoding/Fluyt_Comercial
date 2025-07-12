@@ -299,6 +299,9 @@ class ClienteService:
             # Converte dados para dicionário (apenas campos não None)
             dados_atualizacao = dados.model_dump(exclude_unset=True, exclude_none=True)
             
+            # Garante que o loja_id não possa ser alterado em uma atualização
+            dados_atualizacao.pop('loja_id', None)
+
             if not dados_atualizacao:
                 raise ValidationException("Nenhum dado fornecido para atualização")
             
