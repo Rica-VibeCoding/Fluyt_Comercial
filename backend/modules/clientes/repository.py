@@ -36,104 +36,84 @@ class ClienteRepository:
         incluir_inativos: bool = False
     ) -> Dict[str, Any]:
         """
-        Lista clientes com filtros e paginação
-        
-        Args:
-            loja_id: ID da loja (para RLS)
-            filtros: Dicionário com filtros opcionais
-            page: Página atual
-            limit: Itens por página
-            incluir_inativos: Se True, inclui clientes com ativo=False
-            
-        Returns:
-            Dicionário com items e informações de paginação
+        Lista clientes com filtros e paginação, usando JOINs para dados relacionados.
         """
         try:
-            # Inicia a query base
-            query = self.db.table(self.table).select("*")
+            # ✨ FIX: Unificar a query para usar JOINs, garantindo consistência
+            # e incluindo os nomes de vendedor e procedência em uma única chamada.
+            query = self.db.table(self.table).select(
+                """
+                *,
+                vendedor:cad_equipe!vendedor_id(id, nome),
+                procedencia:c_procedencias!procedencia_id(id, nome)
+                """
+            )
 
             # Filtra por ativos por padrão
             if not incluir_inativos:
                 query = query.eq('ativo', True)
             
             # Aplica filtro de loja apenas se fornecido (RLS)
-            # Se loja_id é None, não filtra (SUPER_ADMIN)
             if loja_id is not None:
                 query = query.eq('loja_id', loja_id)
-            
-            # Aplica filtros opcionais
-            if filtros:
-                # Busca textual (nome, CPF/CNPJ, telefone)
-                if filtros.get('busca'):
-                    busca = f"%{filtros['busca']}%"
-                    query = query.or_(
-                        f"nome.ilike.{busca},"
-                        f"cpf_cnpj.ilike.{busca},"
-                        f"telefone.ilike.{busca}"
-                    )
-                
-                # Tipo de venda
-                if filtros.get('tipo_venda'):
-                    query = query.eq('tipo_venda', filtros['tipo_venda'])
-                
-                # Vendedor
-                if filtros.get('vendedor_id'):
-                    query = query.eq('vendedor_id', filtros['vendedor_id'])
-                
-                # Procedência
-                if filtros.get('procedencia_id'):
-                    query = query.eq('procedencia_id', filtros['procedencia_id'])
-                
-                # Período de cadastro
-                if filtros.get('data_inicio'):
-                    query = query.gte('created_at', filtros['data_inicio'].isoformat())
-                
-                if filtros.get('data_fim'):
-                    query = query.lte('created_at', filtros['data_fim'].isoformat())
-            
-            # Conta total de registros (sem paginação)
+
+            # Prepara a query de contagem com os mesmos filtros de RLS
             count_query = self.db.table(self.table).select('id', count='exact')
             if not incluir_inativos:
                 count_query = count_query.eq('ativo', True)
             if loja_id is not None:
                 count_query = count_query.eq('loja_id', loja_id)
-            count_result = count_query.execute()
             
+            # Aplica filtros opcionais na query principal e na de contagem
+            if filtros:
+                if filtros.get('busca'):
+                    busca = f"%{filtros['busca']}%"
+                    or_filter = f"nome.ilike.{busca},cpf_cnpj.ilike.{busca},telefone.ilike.{busca}"
+                    query = query.or_(or_filter)
+                    count_query = count_query.or_(or_filter)
+                if filtros.get('tipo_venda'):
+                    query = query.eq('tipo_venda', filtros['tipo_venda'])
+                    count_query = count_query.eq('tipo_venda', filtros['tipo_venda'])
+                if filtros.get('vendedor_id'):
+                    query = query.eq('vendedor_id', filtros['vendedor_id'])
+                    count_query = count_query.eq('vendedor_id', filtros['vendedor_id'])
+                if filtros.get('procedencia_id'):
+                    query = query.eq('procedencia_id', filtros['procedencia_id'])
+                    count_query = count_query.eq('procedencia_id', filtros['procedencia_id'])
+                if filtros.get('data_inicio'):
+                    query = query.gte('created_at', filtros['data_inicio'].isoformat())
+                    count_query = count_query.gte('created_at', filtros['data_inicio'].isoformat())
+                if filtros.get('data_fim'):
+                    query = query.lte('created_at', filtros['data_fim'].isoformat())
+                    count_query = count_query.lte('created_at', filtros['data_fim'].isoformat())
+
+            # Executa a query de contagem
+            count_result = count_query.execute()
             total = count_result.count or 0
             
-            # Aplica ordenação (mais recentes primeiro)
+            # Aplica ordenação e paginação na query principal
             query = query.order('created_at', desc=True)
-            
-            # Aplica paginação
             offset = (page - 1) * limit
             query = query.limit(limit).offset(offset)
             
-            # Executa a query
+            # Executa a query principal
             result = query.execute()
             
-            # Processa os dados retornados e busca vendedores manualmente
+            # Processa os dados para extrair os nomes dos campos aninhados
             items = []
-            vendedor_ids = []
-            
-            # Coleta IDs únicos de vendedores
             for item in result.data:
-                if item.get('vendedor_id'):
-                    vendedor_ids.append(item['vendedor_id'])
-            
-            # Busca vendedores em lote
-            vendedores_map = {}
-            if vendedor_ids:
-                vendedores_result = self.db.table('cad_equipe').select('id, nome').in_('id', list(set(vendedor_ids))).execute()
-                vendedores_map = {v['id']: v['nome'] for v in vendedores_result.data}
-            
-            # Processa cada cliente adicionando nome do vendedor
-            for item in result.data:
-                # Adiciona nome do vendedor
-                if item.get('vendedor_id') and item['vendedor_id'] in vendedores_map:
-                    item['vendedor_nome'] = vendedores_map[item['vendedor_id']]
-                else:
-                    item['vendedor_nome'] = None
+                # Extrai nome do vendedor do objeto aninhado
+                if item.get('vendedor'):
+                    item['vendedor_nome'] = item['vendedor'].get('nome')
                 
+                # Extrai nome da procedência do objeto aninhado
+                if item.get('procedencia'):
+                    item['procedencia'] = item['procedencia'].get('nome') # Substitui o objeto pelo nome
+                
+                # Remove os objetos aninhados para limpar a resposta, evitando redundância
+                if 'vendedor' in item:
+                    del item['vendedor']
+
                 items.append(item)
             
             return {
@@ -141,7 +121,7 @@ class ClienteRepository:
                 'total': total,
                 'page': page,
                 'limit': limit,
-                'pages': (total + limit - 1) // limit
+                'pages': (total + limit - 1) // limit if limit > 0 else 0
             }
         
         except Exception as e:

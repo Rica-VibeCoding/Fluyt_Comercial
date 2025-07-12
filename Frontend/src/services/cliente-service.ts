@@ -102,14 +102,15 @@ class ClienteService {
     try {
       logConfig('📡 Listando clientes via API...', { filtros });
       
-      // Garantir que o token mais recente seja usado
+      // Garante que o token de autenticação está atualizado antes da chamada
       apiClient.refreshAuthFromStorage();
       
-      const response = await apiClient.listarClientes(filtros);
-
+      // ✨ FIX: Adiciona { cache: 'no-store' } para desativar o cache do navegador.
+      const response = await apiClient.listarClientes(filtros, { cache: 'no-store' });
+      
       if (response.success && response.data) {
-        logConfig('✅ Clientes carregados via API');
-        return this.convertApiResponse<ClienteListResponse>(response);
+        logConfig('✅ Clientes listados com sucesso:', { count: response.data.items.length });
+        return { success: true, data: response.data };
       } else {
         throw new Error(response.error || 'Erro ao carregar clientes');
       }

@@ -37,3 +37,34 @@ const handleEditClick = () => {
   Editar
 </DropdownMenuItem>
 ``` 
+
+---
+
+## 2. Campo "Procedência" Ausente ou Inconsistente na Tabela
+
+- **Data da Resolução:** 31/07/2024
+- **Arquivos Afetados:** `backend/modules/clientes/repository.py`
+
+### Problema
+O campo "Procedência" não era exibido de forma consistente na tabela de clientes. Ele aparecia ausente no carregamento inicial da página (ou após um F5), mas podia aparecer "magicamente" após certas ações, como editar um cliente.
+
+### Análise e Diagnóstico
+A depuração profunda revelou uma inconsistência crítica na camada de acesso a dados do backend (`repository.py`):
+
+- **Listagem de Clientes (`listar`):** A função que buscava a lista completa de clientes fazia um `SELECT` simples na tabela `c_clientes` e **não incluía os dados da tabela de procedências** (`c_procedencias`). Ela retornava apenas o `procedencia_id`.
+- **Busca de Cliente Único (`buscar_por_id`):** A função que buscava um cliente específico por seu ID utilizava a sintaxe de `JOIN` do Supabase e **incluía o nome da procedência**.
+
+Essa diferença criava o comportamento errático: a tabela era populada com dados incompletos (sem o nome da procedência), mas ações que disparavam a busca de um cliente único podiam temporariamente "corrigir" a exibição para aquele item específico.
+
+### Solução
+A solução definitiva foi refatorar a função `listar` no `ClienteRepository` para que ela use a mesma lógica de `JOIN` da função `buscar_por_id`. A nova implementação unificada utiliza a seguinte consulta:
+
+```sql
+SELECT 
+  *,
+  vendedor:cad_equipe!vendedor_id(id, nome),
+  procedencia:c_procedencias!procedencia_id(id, nome)
+FROM c_clientes;
+```
+
+Isso garante que a API sempre retorne os dados da procedência junto com os dados do cliente, em uma única consulta eficiente. A correção eliminou a inconsistência, resolveu o problema de exibição no frontend e ainda otimizou o acesso ao banco de dados, removendo a necessidade de consultas separadas. 

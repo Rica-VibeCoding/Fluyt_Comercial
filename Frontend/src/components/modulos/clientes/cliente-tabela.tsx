@@ -22,6 +22,7 @@ interface ClienteTabelaProps {
   isLoading: boolean;
   onEditarCliente: (cliente: Cliente) => void;
   onRemoverCliente: (id: string) => void;
+  removendoClienteId: string | null;
 }
 
 // Mapeamento dos status_id para nomes e cores (movido para fora para otimização)
@@ -91,7 +92,8 @@ function ClienteTabelaComponent({
   clientes, 
   isLoading, 
   onEditarCliente, 
-  onRemoverCliente 
+  onRemoverCliente, 
+  removendoClienteId
 }: ClienteTabelaProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const { statusList, loading: loadingStatus } = useStatusOrcamento();
@@ -158,7 +160,7 @@ function ClienteTabelaComponent({
         </TableHeader>
         <TableBody>
           {clientes.map((cliente, index) => (
-            <React.Fragment key={`cliente-${cliente.id}-${index}`}>
+            <React.Fragment key={cliente.id}>
               <TableRow 
                 className="h-12 bg-white hover:bg-blue-50/50 cursor-pointer transition-colors"
                 onClick={() => toggleRowExpansion(cliente.id)}
@@ -242,6 +244,7 @@ function ClienteTabelaComponent({
                       cliente={cliente}
                       onEditar={onEditarCliente}
                       onRemover={onRemoverCliente}
+                      isRemoving={removendoClienteId === cliente.id}
                     />
                   </div>
                 </TableCell>

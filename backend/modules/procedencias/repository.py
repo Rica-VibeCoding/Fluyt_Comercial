@@ -17,9 +17,12 @@ class ProcedenciaRepository:
         self.table_name = "c_procedencias"
     
     async def listar_todas(self, apenas_ativas: bool = False) -> List[Dict[str, Any]]:
-        """Lista todas as procedências"""
+        """Lista todas as procedências - otimizado para buscar apenas os campos essenciais"""
         try:
-            query = self.db.table(self.table_name).select("*")
+            # ✨ Otimização: Selecionar apenas as colunas necessárias para o frontend.
+            # Adicionado 'created_at' para cumprir o schema de resposta da API (ProcedenciaResponse)
+            # e evitar que a chamada falhe, o que acionava o fallback no frontend.
+            query = self.db.table(self.table_name).select("id, nome, ativo, created_at")
             
             if apenas_ativas:
                 query = query.eq("ativo", True)

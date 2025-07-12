@@ -51,6 +51,7 @@ export function ClientePage() {
   const [modalAberto, setModalAberto] = useState(false);
   const [clienteEditando, setClienteEditando] = useState<Cliente | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [removendoClienteId, setRemovendoClienteId] = useState<string | null>(null);
 
   const handleNovoCliente = () => {
     setClienteEditando(null);
@@ -64,7 +65,6 @@ export function ClientePage() {
 
   const handleFecharModal = () => {
     setModalAberto(false);
-    // Um pequeno delay para a animação do modal terminar antes de limpar o estado
     setTimeout(() => {
       setClienteEditando(null);
     }, 150);
@@ -90,13 +90,16 @@ export function ClientePage() {
     const cliente = clientes.find(c => c.id === clienteId);
     if (!cliente) return;
 
-    const confirmacao = window.confirm(`Tem certeza que deseja excluir o cliente "${cliente.nome}"?`);
+    const confirmacao = window.confirm(`Tem certeza que deseja inativar o cliente "${cliente.nome}"?`);
     
     if (confirmacao) {
+      setRemovendoClienteId(clienteId);
       try {
         await removerCliente(clienteId);
       } catch (error) {
-        console.error('Erro durante exclusão', error);
+        console.error('Erro durante inativação', error);
+      } finally {
+        setRemovendoClienteId(null);
       }
     }
   };
@@ -157,6 +160,7 @@ export function ClientePage() {
             isLoading={isLoading}
             onEditarCliente={handleEditarCliente}
             onRemoverCliente={handleExclusaoSimples}
+            removendoClienteId={removendoClienteId}
           />
         </Card>
 

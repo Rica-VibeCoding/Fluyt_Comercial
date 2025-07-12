@@ -161,8 +161,13 @@ class ApiClient {
 
     
     const url = `${this.baseURL}${endpoint}`;
+
+    // Define o método padrão como GET se não for especificado
+    const method = options.method || 'GET';
+
     const requestOptions: RequestInit = {
       ...options,
+      method: method,
       headers: {
         ...this.getHeaders(),
         ...options.headers,
@@ -170,8 +175,13 @@ class ApiClient {
       signal: AbortSignal.timeout(this.timeout),
     };
 
+    // ✨ FIX: Desativa o cache para todas as requisições GET para garantir dados frescos.
+    if (method === 'GET') {
+      requestOptions.cache = 'no-store';
+    }
+
     // 🔧 CORREÇÃO: Não enviar body em requisições GET
-    if (options.method === 'GET' || !options.method) {
+    if (method === 'GET') {
       delete requestOptions.body;
     }
 
@@ -290,18 +300,20 @@ class ApiClient {
   // ============= MÉTODOS ESPECÍFICOS PARA CLIENTES =============
 
   // Listar clientes com filtros
-  async listarClientes(filtros?: FiltrosCliente): Promise<ApiResponse<ApiListResponse<ClienteBackend>>> {
+  async listarClientes(
+    filtros?: FiltrosCliente,
+    options?: RequestInit // Adiciona a opção para passar configurações de fetch
+  ): Promise<ApiResponse<ApiListResponse<ClienteBackend>>> {
     const params = new URLSearchParams();
-    
-    if (filtros?.busca) params.append('busca', filtros.busca);
-    if (filtros?.tipo_venda) params.append('tipo_venda', filtros.tipo_venda);
-    if (filtros?.procedencia_id) params.append('procedencia_id', filtros.procedencia_id);
-    if (filtros?.vendedor_id) params.append('vendedor_id', filtros.vendedor_id);
-    if (filtros?.data_inicio) params.append('data_inicio', filtros.data_inicio);
-    if (filtros?.data_fim) params.append('data_fim', filtros.data_fim);
-
+    if (filtros) {
+      Object.entries(filtros).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, String(value));
+        }
+      });
+    }
     const endpoint = `${API_CONFIG.ENDPOINTS.CLIENTES}?${params.toString()}`;
-    return this.request<ApiListResponse<ClienteBackend>>(endpoint);
+    return this.request(endpoint, { method: 'GET', ...options }); // Passa as opções para o request base
   }
 
   // Buscar cliente por ID

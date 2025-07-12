@@ -1,4 +1,4 @@
-import { MoreHorizontal, Edit, Trash2, Home } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Home, Loader2 } from 'lucide-react';
 import { Button } from '../../ui/button';
 import {
   DropdownMenu,
@@ -15,9 +15,10 @@ interface ClienteActionsMenuProps {
   cliente: Cliente;
   onEditar: (cliente: Cliente) => void;
   onRemover: (id: string) => void;
+  isRemoving: boolean;
 }
 
-export function ClienteActionsMenu({ cliente, onEditar, onRemover }: ClienteActionsMenuProps) {
+export function ClienteActionsMenu({ cliente, onEditar, onRemover, isRemoving }: ClienteActionsMenuProps) {
   const router = useRouter();
 
   const handleEditClick = () => {
@@ -55,9 +56,13 @@ export function ClienteActionsMenu({ cliente, onEditar, onRemover }: ClienteActi
         <DropdownMenuItem 
           className="text-red-600" 
           onClick={() => onRemover(cliente.id)}
+          disabled={isRemoving}
         >
-          <Trash2 className="mr-2 h-4 w-4" />
-          Remover
+          {isRemoving ? (
+            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Inativando...</>
+          ) : (
+            <><Trash2 className="mr-2 h-4 w-4" /> Remover</>
+          )}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

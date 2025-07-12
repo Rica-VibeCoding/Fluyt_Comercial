@@ -60,7 +60,7 @@ export function ClienteFormConfig({ form, vendedores }: ClienteFormConfigProps) 
               <FormLabel className="text-xs font-medium text-slate-700">Procedência</FormLabel>
               <Select 
                 onValueChange={field.onChange} 
-                defaultValue={field.value}
+                value={field.value}
                 disabled={loadingProcedencias}
               >
                 <FormControl>

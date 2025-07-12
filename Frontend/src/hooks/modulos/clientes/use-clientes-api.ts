@@ -369,54 +369,31 @@ export function useClientesApi() {
 
   // ============= REMOVER CLIENTE =============
   const removerCliente = useCallback(async (id: string): Promise<boolean> => {
-    setIsLoading(true);
-    logConfig('useClientesApi: Removendo cliente...', { id });
-    
+    logConfig('useClientesApi: Inativando cliente...', { id });
+
     try {
       const response = await clienteService.excluir(id);
-      
+
       if (response.success) {
-        // Recarregar lista
-        await carregarClientes();
-        
-        toast.success("Cliente removido com sucesso!");
-        
-        logConfig('useClientesApi: Cliente removido com sucesso', { id });
-        
-        return true;
+        toast.success('Cliente inativado com sucesso!');
       } else {
-        throw new Error(response.error || 'Erro ao remover cliente');
+        // Mesmo que a API retorne um erro (ex: 404), tratamos como um cenário
+        // que exige sincronização da UI. O erro já foi logado no service.
+        toast.error(response.error || 'Ocorreu um erro.');
       }
     } catch (error) {
-      console.error('❌ useClientesApi: Erro ao remover cliente:', error);
-      
-      // Tratamento específico de erros
-      let mensagemErro = "Tente novamente em alguns instantes.";
-      if (error instanceof Error) {
-        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-          mensagemErro = "Erro de conexão com o servidor. Verifique se o backend está rodando.";
-        } else if (error.message.includes('403') || error.message.includes('Not authenticated')) {
-          mensagemErro = "Sessão expirada. Faça login novamente.";
-          // Limpar dados de autenticação inválidos
-          localStorage.removeItem('fluyt_auth_token');
-          localStorage.removeItem('fluyt_refresh_token');
-          localStorage.removeItem('fluyt_user');
-          
-          // Redirecionar para login se não estiver na página de login
-          if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-            window.location.href = '/login';
-            return false;
-          }
-        } else {
-          mensagemErro = error.message;
-        }
-      }
-      
-      toast.error(`Erro ao remover cliente: ${mensagemErro}`);
-      return false;
+      // Captura erros de rede ou exceções inesperadas
+      toast.error('Falha na comunicação com o servidor.');
+      console.error('❌ useClientesApi: Falha crítica ao inativar cliente:', error);
     } finally {
-      setIsLoading(false);
+      // SEMPRE recarrega a lista para garantir que a UI reflita o estado real do banco.
+      // Isso resolve o problema do cliente não sumir da tela e o erro 404 subsequente.
+      await carregarClientes();
     }
+
+    // O retorno aqui é menos crítico, pois a UI será sempre sincronizada.
+    // Podemos aprimorar isso se necessário, mas a robustez vem do recarregamento.
+    return true; 
   }, [carregarClientes]);
 
   // ============= STATUS DE CONECTIVIDADE =============
